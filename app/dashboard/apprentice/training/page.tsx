@@ -104,9 +104,9 @@ export default async function TrainingPage({ searchParams }: PageProps) {
 
   if (!data) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-4xl font-bold tracking-tight">Training Content</h1>
-        <p className="text-muted-foreground">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Training Content</h1>
+        <p className="text-muted-foreground text-base">
           No apprentice record found. Please contact your administrator.
         </p>
       </div>
@@ -156,8 +156,8 @@ export default async function TrainingPage({ searchParams }: PageProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-4xl font-bold tracking-tight">Training Content</h1>
-          <p className="text-muted-foreground text-lg">Your weekly learning materials</p>
+          <h1 className="text-2xl font-bold tracking-tight">Training Content</h1>
+          <p className="text-muted-foreground text-base">Your weekly learning materials</p>
         </div>
         <Button asChild className="bg-primary text-primary-foreground">
           <Link href={`/dashboard/apprentice/training/submit?week=${data.currentWeek}`}>

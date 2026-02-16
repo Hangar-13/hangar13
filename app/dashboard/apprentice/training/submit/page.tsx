@@ -59,9 +59,9 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
   
   if (!data) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-4xl font-bold tracking-tight">Weekly Submission</h1>
-        <p className="text-muted-foreground">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Weekly Submission</h1>
+        <p className="text-muted-foreground text-base">
           No apprentice record found. Please contact your administrator.
         </p>
       </div>
@@ -96,8 +96,8 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-4xl font-bold tracking-tight">Weekly Submission</h1>
-        <p className="text-muted-foreground text-lg">
+        <h1 className="text-2xl font-bold tracking-tight">Weekly Submission</h1>
+        <p className="text-muted-foreground text-base">
           {submission ? "Edit your Week" : "Submit your Week"} {currentWeek} reflection
         </p>
       </div>

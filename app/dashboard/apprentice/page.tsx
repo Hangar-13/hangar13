@@ -207,11 +207,11 @@ export default async function ApprenticeDashboard() {
   if (!data) {
     return (
       <div className="space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">
+        <div className="space-y-0.5">
+          <h1 className="text-2xl font-bold tracking-tight">
             Welcome back, {firstName}
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base">
             No apprentice record found. Please contact your administrator.
           </p>
         </div>
@@ -222,17 +222,17 @@ export default async function ApprenticeDashboard() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">
+        <div className="space-y-0.5">
+          <h1 className="text-2xl font-bold tracking-tight">
             Welcome back, {firstName}
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base">
             Keep up the great work on your aviation journey
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button asChild>
-            <Link href="/dashboard/apprentice/logbook">+ Log Entry</Link>
+            <Link href="/dashboard/apprentice/logbook?add=true">+ Log Entry</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href={`/dashboard/apprentice/training/submit?week=${data.weeks.current}`}>
@@ -243,7 +243,7 @@ export default async function ApprenticeDashboard() {
         </div>
       </div>
 
-      <div className="space-y-2 -mt-8">
+      <div className="space-y-2 -mt-4">
         <ProgressBar
           completed={data.progress.completed}
           total={data.progress.total}

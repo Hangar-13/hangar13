@@ -1,6 +1,8 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect, notFound } from "next/navigation";
 import { ApprenticeEntriesList } from "@/components/mentor/apprentice-entries-list";
+import { getAcsCodesByEntry } from "@/app/actions/logbook";
+import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { Card, CardContent } from "@/components/ui/card";
 import { User, Mail, Calendar, ArrowLeft, Clock, Target, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
 import Link from "next/link";
@@ -167,6 +169,11 @@ export default async function ApprenticeDetailPage({ params }: PageProps) {
   }
 
   const { apprentice, entries, entriesByStatus, progress, hours, weeks, progressStatus, pendingEntries } = data;
+
+  const [ataChapters, acsCodesByEntry] = await Promise.all([
+    getAtaChapters(),
+    entries && entries.length > 0 ? getAcsCodesByEntry(entries.map((e: { id: string }) => e.id)) : Promise.resolve({}),
+  ]);
   const profile = apprentice.profile;
 
   const formatDate = (dateString: string) => {
@@ -215,8 +222,8 @@ export default async function ApprenticeDetailPage({ params }: PageProps) {
         </Link>
         <div className="flex-1">
           <div className="flex items-start gap-6">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight mb-4">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold tracking-tight">
                 {profile?.full_name || "Apprentice"}
               </h1>
               <div className="space-y-2">
@@ -258,7 +265,14 @@ export default async function ApprenticeDetailPage({ params }: PageProps) {
 
       {/* Progress Stats */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Progress Overview</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold">Progress Overview</h2>
+          <Link href={`/dashboard/mentor/mentees/progress?apprentice=${apprentice.id}`}>
+            <Button variant="outline" size="sm">
+              Apprentice Progress
+            </Button>
+          </Link>
+        </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Overall Progress */}
@@ -352,6 +366,11 @@ export default async function ApprenticeDetailPage({ params }: PageProps) {
           rejected: [],
           draft: [],
         }}
+        acsCodesByEntry={acsCodesByEntry || {}}
+        ataChapters={ataChapters.map((c: { chapter_number: string; title: string }) => ({
+          value: c.chapter_number,
+          label: `${c.chapter_number} - ${c.title}`,
+        }))}
       />
     </div>
   );

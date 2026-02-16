@@ -1,6 +1,8 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { PendingLogbookEntries } from "@/components/mentor/pending-logbook-entries";
+import { getAcsCodesByEntry } from "@/app/actions/logbook";
+import { getAtaChapters } from "@/app/actions/ata-chapters";
 
 async function getMentorData(userId: string) {
   const supabase = await createServerSupabaseClient();
@@ -100,6 +102,7 @@ async function getMentorData(userId: string) {
 interface PageProps {
   searchParams: Promise<{
     apprentice?: string;
+    openLog?: string;
   }>;
 }
 
@@ -116,19 +119,37 @@ export default async function ReviewLogsPage({ searchParams }: PageProps) {
 
   const params = await searchParams;
   const apprenticeName = params.apprentice || "";
+  const openLogId = params.openLog || "";
 
-  const data = await getMentorData(user.id);
+  const [data, ataChapters] = await Promise.all([
+    getMentorData(user.id),
+    getAtaChapters(),
+  ]);
+
+  const acsCodesByEntry =
+    data.allEntries?.length > 0
+      ? await getAcsCodesByEntry(data.allEntries.map((e: { id: string }) => e.id))
+      : {};
 
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">Review Logbook Entries</h1>
-        <p className="text-muted-foreground text-lg">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Review Logbook Entries</h1>
+        <p className="text-muted-foreground text-base">
           Review and approve logbook entries from your mentees.
         </p>
       </div>
 
-      <PendingLogbookEntries entries={data.allEntries} initialNameFilter={apprenticeName} />
+      <PendingLogbookEntries
+        entries={data.allEntries}
+        acsCodesByEntry={acsCodesByEntry}
+        ataChapters={ataChapters.map((c: { chapter_number: string; title: string }) => ({
+          value: c.chapter_number,
+          label: `${c.chapter_number} - ${c.title}`,
+        }))}
+        initialNameFilter={apprenticeName}
+        initialOpenEntryId={openLogId}
+      />
     </div>
   );
 }

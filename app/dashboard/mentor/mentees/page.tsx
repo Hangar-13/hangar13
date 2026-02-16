@@ -144,9 +144,9 @@ export default async function MenteeListPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">My Apprentices</h1>
-          <p className="text-muted-foreground text-lg">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">My Apprentices</h1>
+          <p className="text-muted-foreground text-base">
             View and manage all your assigned apprentices.
           </p>
         </div>

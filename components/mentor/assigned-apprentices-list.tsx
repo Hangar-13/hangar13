@@ -35,10 +35,13 @@ interface AssignedApprentice {
 
 interface AssignedApprenticesListProps {
   apprentices: AssignedApprentice[];
+  /** Compact layout for dashboard overview */
+  compact?: boolean;
 }
 
 export function AssignedApprenticesList({
   apprentices,
+  compact = false,
 }: AssignedApprenticesListProps) {
   const router = useRouter();
   
@@ -61,26 +64,28 @@ export function AssignedApprenticesList({
     router.push(`/dashboard/mentor/review-logs?apprentice=${encodeURIComponent(name)}`);
   };
 
-  const getStatusBadge = (progressStatus?: "on_track" | "behind_pace" | "ahead") => {
+  const getStatusBadge = (progressStatus?: "on_track" | "behind_pace" | "ahead", small?: boolean) => {
+    const sizeClass = small ? "px-1.5 py-0.5 text-[10px]" : "px-2 py-1 text-xs";
+    const iconSize = small ? "h-2.5 w-2.5" : "h-3 w-3";
     switch (progressStatus) {
       case "on_track":
         return (
-          <span className="px-2 py-1 rounded-full bg-green-500/10 text-green-600 text-xs font-medium flex items-center gap-1">
-            <CheckCircle className="h-3 w-3" />
+          <span className={`${sizeClass} rounded-full bg-green-500/10 text-green-600 font-medium flex items-center gap-1`}>
+            <CheckCircle className={iconSize} />
             On Track
           </span>
         );
       case "behind_pace":
         return (
-          <span className="px-2 py-1 rounded-full bg-red-500/10 text-red-600 text-xs font-medium flex items-center gap-1">
-            <AlertCircle className="h-3 w-3" />
-            Behind Pace
+          <span className={`${sizeClass} rounded-full bg-red-500/10 text-red-600 font-medium flex items-center gap-1`}>
+            <AlertCircle className={iconSize} />
+            Behind
           </span>
         );
       case "ahead":
         return (
-          <span className="px-2 py-1 rounded-full bg-blue-500/10 text-blue-600 text-xs font-medium flex items-center gap-1">
-            <TrendingUp className="h-3 w-3" />
+          <span className={`${sizeClass} rounded-full bg-blue-500/10 text-blue-600 font-medium flex items-center gap-1`}>
+            <TrendingUp className={iconSize} />
             Ahead
           </span>
         );
@@ -97,8 +102,79 @@ export function AssignedApprenticesList({
     );
   }
 
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-2">
+        {apprentices.map((apprentice) => (
+          <Card
+            key={apprentice.id}
+            className="bg-card/25 border transition-all hover:shadow-md hover:border-primary/50 cursor-pointer"
+            onClick={() => handleCardClick(apprentice.id)}
+          >
+            <CardContent className="p-3">
+              <div className="flex items-center gap-3">
+                {/* Avatar */}
+                <div className="flex-shrink-0">
+                  {apprentice.profiles?.avatar_url ? (
+                    <img
+                      src={apprentice.profiles.avatar_url}
+                      alt={apprentice.profiles.full_name || "Apprentice"}
+                      className="h-8 w-8 rounded-full"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                  )}
+                </div>
+                {/* Name + Status */}
+                <div className="flex-1 min-w-0 flex items-center gap-2">
+                  <h4 className="font-medium text-sm truncate">
+                    {apprentice.profiles?.full_name || "Unnamed Apprentice"}
+                  </h4>
+                  {getStatusBadge(apprentice.progressStatus, true)}
+                </div>
+                {/* Compact stats */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground flex-shrink-0">
+                  {apprentice.progress && (
+                    <span title="Overall progress">{apprentice.progress.overall}%</span>
+                  )}
+                  {apprentice.hours && (
+                    <span title="Hours">{apprentice.hours.total.toFixed(0)}h</span>
+                  )}
+                  {apprentice.pendingEntries !== undefined && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs hover:bg-primary/10"
+                      onClick={(e) => handlePendingEntriesClick(e, apprentice.profiles?.full_name, apprentice.profiles?.email)}
+                    >
+                      <Target className="h-3 w-3 mr-1" />
+                      {apprentice.pendingEntries}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {/* Thin progress bar */}
+              {apprentice.progress && (
+                <div className="mt-2">
+                  <div className="w-full bg-secondary rounded-full h-1">
+                    <div
+                      className="bg-primary rounded-full h-1 transition-all"
+                      style={{ width: `${apprentice.progress.overall}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="flex flex-col gap-4">
       {apprentices.map((apprentice) => (
         <Card
           key={apprentice.id}

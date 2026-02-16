@@ -35,9 +35,9 @@ export default async function Home() {
 
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">Welcome back, {firstName}</h1>
-        <p className="text-muted-foreground text-lg">
+      <div className="space-y-0.5">
+        <h1 className="text-2xl font-bold tracking-tight">Welcome back, {firstName}</h1>
+        <p className="text-muted-foreground text-base">
           Keep up the great work on your aviation journey
         </p>
       </div>

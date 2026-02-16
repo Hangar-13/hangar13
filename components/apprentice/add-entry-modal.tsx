@@ -1,11 +1,19 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createLogbookEntry, updateLogbookEntry } from "@/app/actions/logbook";
+import {
+  createLogbookEntry,
+  updateLogbookEntry,
+  clearPendingAcsForLogbookEntry,
+  getPendingAcsCodesForLogbookEntry,
+  getPendingAcsCodesForLogbookEntryForReview,
+} from "@/app/actions/logbook";
+import { approveLogbookEntry, rejectLogbookEntry } from "@/app/actions/logbook-approval";
+import { getAcsCodesByChapter } from "@/app/actions/acs-codes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Check, Plus, Clock, Calendar, Save, Pencil } from "lucide-react";
+import { Check, Plus, Clock, Calendar, Save, Pencil, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const logbookEntrySchema = z
@@ -51,54 +59,7 @@ const logbookEntrySchema = z
 
 type LogbookEntryFormData = z.infer<typeof logbookEntrySchema>;
 
-const ataChapters = [
-  { value: "00", label: "00 - General" },
-  { value: "05", label: "05 - Time Limits/Maintenance Checks" },
-  { value: "06", label: "06 - Dimensions & Areas" },
-  { value: "07", label: "07 - Lifting & Shoring" },
-  { value: "08", label: "08 - Leveling & Weighing" },
-  { value: "09", label: "09 - Towing & Taxiing" },
-  { value: "10", label: "10 - Parking, Mooring, Storage" },
-  { value: "11", label: "11 - Placards & Markings" },
-  { value: "12", label: "12 - Servicing" },
-  { value: "20", label: "20 - Standard Practices - Airframe" },
-  { value: "21", label: "21 - Air Conditioning" },
-  { value: "23", label: "23 - Communications" },
-  { value: "24", label: "24 - Electrical Power" },
-  { value: "25", label: "25 - Equipment/Furnishings" },
-  { value: "26", label: "26 - Fire Protection" },
-  { value: "27", label: "27 - Flight Controls" },
-  { value: "28", label: "28 - Fuel" },
-  { value: "29", label: "29 - Hydraulic Power" },
-  { value: "30", label: "30 - Ice & Rain Protection" },
-  { value: "31", label: "31 - Indicating/Recording Systems" },
-  { value: "32", label: "32 - Landing Gear" },
-  { value: "33", label: "33 - Lights" },
-  { value: "34", label: "34 - Navigation" },
-  { value: "35", label: "35 - Oxygen" },
-  { value: "36", label: "36 - Pneumatic" },
-  { value: "38", label: "38 - Water/Waste" },
-  { value: "49", label: "49 - Airborne Auxiliary Power" },
-  { value: "51", label: "51 - Structures" },
-  { value: "52", label: "52 - Doors" },
-  { value: "53", label: "53 - Fuselage" },
-  { value: "54", label: "54 - Nacelles/Pylons" },
-  { value: "55", label: "55 - Stabilizers" },
-  { value: "56", label: "56 - Windows" },
-  { value: "57", label: "57 - Wings" },
-  { value: "61", label: "61 - Propellers/Propulsors" },
-  { value: "71", label: "71 - Powerplant" },
-  { value: "72", label: "72 - Engine - Turbine/Turbo Prop" },
-  { value: "73", label: "73 - Engine Fuel & Control" },
-  { value: "74", label: "74 - Ignition" },
-  { value: "75", label: "75 - Air" },
-  { value: "76", label: "76 - Engine Controls" },
-  { value: "77", label: "77 - Engine Indicating" },
-  { value: "78", label: "78 - Exhaust" },
-  { value: "79", label: "79 - Oil" },
-  { value: "80", label: "80 - Starting" },
-  { value: "91", label: "91 - Charts" },
-];
+export type AtaChapterOption = { value: string; label: string };
 
 function calculateHours(startTime: string, endTime: string): number {
   if (!startTime || !endTime) return 0;
@@ -123,6 +84,7 @@ function extractATAChapterCode(ataLabel: string | null | undefined): string {
 }
 
 interface AddEntryModalProps {
+  ataChapters: AtaChapterOption[];
   onSuccess?: () => void;
   entry?: {
     id: string;
@@ -131,23 +93,35 @@ interface AddEntryModalProps {
     description: string;
     skills_practiced?: string[] | null;
     status: string;
+    reject_reason?: string | null;
   };
   trigger?: React.ReactNode;
   viewOnly?: boolean;
+  /** When true, all fields are read-only except ACS codes which the mentor can edit */
+  mentorMode?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** When true, modal opens on mount (e.g. from dashboard "Log Entry" link) */
+  defaultOpen?: boolean;
+  /** When true, no trigger button is shown (modal opened programmatically only) */
+  hideTrigger?: boolean;
 }
 
 export function AddEntryModal({ 
+  ataChapters,
   onSuccess, 
   entry, 
   trigger, 
   viewOnly = false,
+  mentorMode = false,
   open: controlledOpen,
-  onOpenChange: controlledOnOpenChange
+  onOpenChange: controlledOnOpenChange,
+  defaultOpen = false,
+  hideTrigger = false
 }: AddEntryModalProps) {
   const router = useRouter();
-  const [internalOpen, setInternalOpen] = useState(!!entry && !trigger); // Auto-open if entry provided without trigger
+  const searchParams = useSearchParams();
+  const [internalOpen, setInternalOpen] = useState(!!entry && !trigger || defaultOpen); // Auto-open if entry provided without trigger, or from add param
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setIsOpen = controlledOnOpenChange || setInternalOpen;
   
@@ -155,13 +129,20 @@ export function AddEntryModal({
     setIsOpen(open);
     if (!open) {
       onSuccess?.(); // Call onSuccess to clear selected entry in parent
+      // Clear ?add=true from URL when closing (e.g. after navigating from dashboard)
+      if (searchParams.get("add") === "true") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("add");
+        router.replace(url.pathname + (url.search || ""));
+      }
     }
   };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const isEditMode = !!entry;
-  const isViewMode = viewOnly || (entry && entry.status !== "draft");
+  const isViewMode = viewOnly || mentorMode || (entry && entry.status !== "draft" && entry.status !== "rejected");
+  const acsCodesEditable = mentorMode;
 
   // Extract ATA chapter from existing entry
   const existingATAChapter = entry?.skills_practiced?.[0]?.replace(/^ATA:\s*/, "") || "";
@@ -201,6 +182,65 @@ export function AddEntryModal({
   const taskDescription = watch("taskDescription");
   const ataChapter = watch("ataChapter");
   const certified = watch("certified");
+
+  // ACS codes state
+  const [acsCodes, setAcsCodes] = useState<Array<{ id: number; code: string; type: string; description: string | null }>>([]);
+  const [selectedAcsCodeIds, setSelectedAcsCodeIds] = useState<Set<number>>(new Set());
+  const [acsLoading, setAcsLoading] = useState(false);
+
+  const prevAtaChapterRef = useRef<string | undefined>(undefined);
+
+  // Reset prev chapter when modal opens so we don't treat initial load as "chapter change"
+  useEffect(() => {
+    if (isOpen) {
+      prevAtaChapterRef.current = undefined;
+    }
+  }, [isOpen]);
+
+  // Fetch ACS codes when chapter changes; clear selections on chapter change; load pending when editing
+  useEffect(() => {
+    if (!ataChapter) {
+      setAcsCodes([]);
+      setSelectedAcsCodeIds(new Set());
+      return;
+    }
+    const isChapterChange = prevAtaChapterRef.current !== undefined && prevAtaChapterRef.current !== ataChapter;
+    prevAtaChapterRef.current = ataChapter;
+
+    if (isChapterChange && entry && isEditMode) {
+      clearPendingAcsForLogbookEntry(entry.id);
+    }
+
+    setAcsLoading(true);
+    getAcsCodesByChapter(ataChapter).then(async (codes) => {
+      setAcsCodes(codes);
+      const codeIds = new Set(codes.map((c) => c.id));
+      if (isChapterChange) {
+        setSelectedAcsCodeIds(new Set());
+      } else if (entry && (entry.status === "draft" || mentorMode)) {
+        const pendingIds = mentorMode
+          ? await getPendingAcsCodesForLogbookEntryForReview(entry.id)
+          : await getPendingAcsCodesForLogbookEntry(entry.id);
+        setSelectedAcsCodeIds(new Set(pendingIds.filter((id) => codeIds.has(id))));
+      } else {
+        setSelectedAcsCodeIds(new Set());
+      }
+      setAcsLoading(false);
+    });
+  }, [ataChapter, entry?.id, entry?.status, isEditMode, mentorMode]);
+
+  const toggleAcsCode = (id: number) => {
+    if (isViewMode && !acsCodesEditable) return;
+    setSelectedAcsCodeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   // Check if form is valid for submission
   const isFormValid = ataChapter && taskDescription && taskDescription.length >= 10;
@@ -243,6 +283,73 @@ export function AddEntryModal({
     }
   }, [isOpen, entry, reset]);
 
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState<string | null>(null);
+
+  const handleApprove = async () => {
+    if (!entry) return;
+    setSubmitError(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await approveLogbookEntry(entry.id, Array.from(selectedAcsCodeIds));
+
+      if (result.error) {
+        setSubmitError(result.error);
+        setIsSubmitting(false);
+        return;
+      }
+
+      onSuccess?.();
+      handleClose(false);
+      router.refresh();
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectClick = () => {
+    setRejectReason("");
+    setRejectError(null);
+    setRejectDialogOpen(true);
+  };
+
+  const handleRejectConfirm = async () => {
+    if (!entry) return;
+    setRejectError(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await rejectLogbookEntry(entry.id, rejectReason);
+
+      if (result.error) {
+        setRejectError(result.error);
+        setIsSubmitting(false);
+        return;
+      }
+
+      setRejectDialogOpen(false);
+      onSuccess?.();
+      handleClose(false);
+      router.refresh();
+    } catch (error) {
+      setRejectError(
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const onSubmit = async (data: LogbookEntryFormData) => {
     setSubmitError(null);
     setSubmitSuccess(false);
@@ -258,6 +365,7 @@ export function AddEntryModal({
             taskDescription: data.taskDescription,
             ataChapter: data.ataChapter,
             certified: data.certified,
+            selectedAcsCodeIds: Array.from(selectedAcsCodeIds),
           })
         : await createLogbookEntry({
             entryDate: data.entryDate,
@@ -267,6 +375,7 @@ export function AddEntryModal({
             taskDescription: data.taskDescription,
             ataChapter: data.ataChapter,
             certified: data.certified,
+            selectedAcsCodeIds: Array.from(selectedAcsCodeIds),
           });
 
       if (result.error) {
@@ -296,23 +405,25 @@ export function AddEntryModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      {trigger ? (
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
-      ) : (
-        <DialogTrigger asChild>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Entry
-          </Button>
-        </DialogTrigger>
+      {!hideTrigger && (
+        trigger ? (
+          <DialogTrigger asChild>{trigger}</DialogTrigger>
+        ) : (
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Entry
+            </Button>
+          </DialogTrigger>
+        )
       )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {isViewMode ? "View Logbook Entry" : isEditMode ? "Edit Logbook Entry" : "New Logbook Entry"}
+            {mentorMode ? "Review Logbook Entry" : isViewMode ? "View Logbook Entry" : isEditMode ? "Edit Logbook Entry" : "New Logbook Entry"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={isViewMode ? (e) => e.preventDefault() : handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={(isViewMode && !mentorMode) ? (e) => e.preventDefault() : handleSubmit(onSubmit)} className="space-y-6">
           {submitError && (
             <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
               {submitError}
@@ -458,6 +569,51 @@ export function AddEntryModal({
             )}
           </div>
 
+          {/* ACS Codes */}
+          <div className="space-y-2">
+            <Label>ACS Codes</Label>
+            {!ataChapter ? (
+              <p className="text-sm text-muted-foreground">
+                Select an ATA chapter to see available ACS codes.
+              </p>
+            ) : acsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading ACS codes...</p>
+            ) : acsCodes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No ACS codes found for this chapter.
+              </p>
+            ) : (
+              <div className="max-h-48 overflow-y-auto rounded-md border p-3 space-y-2">
+                {acsCodes.map((acs) => (
+                  <label
+                    key={acs.id}
+                    className={cn(
+                      "flex items-start gap-3 p-2 rounded cursor-pointer hover:bg-muted/50",
+                      isViewMode && !acsCodesEditable && "cursor-default hover:bg-transparent"
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedAcsCodeIds.has(acs.id)}
+                      onChange={() => toggleAcsCode(acs.id)}
+                      disabled={isViewMode && !acsCodesEditable}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-sm">{acs.code}</span>
+                      <span className="text-muted-foreground text-xs ml-2">({acs.type})</span>
+                      {acs.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate" title={acs.description}>
+                          {acs.description}
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Certification Checkbox */}
           <div className="space-y-2">
             <div className="flex items-start gap-3">
@@ -486,8 +642,15 @@ export function AddEntryModal({
             )}
           </div>
 
+          {entry?.reject_reason && (
+            <div className="space-y-2 rounded-md border-2 border-red-500 bg-red-50 dark:bg-red-950/30 p-4">
+              <p className="text-sm font-semibold text-red-600 dark:text-red-400">Rejection Reason</p>
+              <p className="text-sm">{entry.reject_reason}</p>
+            </div>
+          )}
+
           {/* Action Buttons */}
-          {!isViewMode && (
+          {(!isViewMode || mentorMode) && (
             <div className="flex justify-end gap-2 pt-4 border-t">
               <Button
                 type="button"
@@ -496,19 +659,41 @@ export function AddEntryModal({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting || !isFormValid}>
-                <Save className="mr-2 h-4 w-4" />
-                {isSubmitting
-                  ? certified
-                    ? "Submitting..."
-                    : "Saving..."
-                  : certified
-                    ? "Submit for Signature"
-                    : "Save Draft"}
-              </Button>
+              {mentorMode ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={handleRejectClick}
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Reject
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={handleApprove}
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    {isSubmitting ? "Approving..." : "Approve"}
+                  </Button>
+                </>
+              ) : (
+                <Button type="submit" disabled={isSubmitting || !isFormValid}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {isSubmitting
+                    ? certified
+                      ? "Submitting..."
+                      : "Saving..."
+                    : certified
+                      ? "Submit for Signature"
+                      : "Save Draft"}
+                </Button>
+              )}
             </div>
           )}
-          {isViewMode && (
+          {isViewMode && !mentorMode && (
             <div className="flex justify-end gap-2 pt-4 border-t">
               <Button
                 type="button"
@@ -521,6 +706,53 @@ export function AddEntryModal({
           )}
         </form>
       </DialogContent>
+
+      {/* Reject reason dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Logbook Entry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Please provide a reason for rejecting this entry. The apprentice will see this feedback and the entry will be returned to draft status.
+            </p>
+            {rejectError && (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                {rejectError}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="rejectReason">Rejection reason</Label>
+              <Textarea
+                id="rejectReason"
+                placeholder="e.g. Hours don't match the description, please add more detail..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRejectDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={isSubmitting}
+                onClick={handleRejectConfirm}
+              >
+                <XCircle className="mr-2 h-4 w-4" />
+                {isSubmitting ? "Rejecting..." : "Reject"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

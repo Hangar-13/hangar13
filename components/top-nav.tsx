@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { Search, Bell, User, LogOut } from "lucide-react";
+import { Search, User, LogOut } from "lucide-react";
+import { NotificationDropdown } from "@/components/notifications/notification-dropdown";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +15,7 @@ export function TopNav() {
 
   async function handleSignOut() {
     await supabaseClient.auth.signOut();
-    router.push("/auth/login");
-    router.refresh();
+    window.location.href = "/auth/login";
   }
 
   const handleSearch = async (e: FormEvent<HTMLFormElement>) => {
@@ -66,16 +66,7 @@ export function TopNav() {
       </div>
       <div className="flex items-center gap-1 sm:gap-2">
         <ThemeToggle />
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-9 w-9 relative"
-          title="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive"></span>
-          <span className="sr-only">Notifications</span>
-        </Button>
+        <NotificationDropdown />
         <Button 
           variant="ghost" 
           size="icon" 

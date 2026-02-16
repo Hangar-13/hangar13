@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Clock, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { Calendar, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { approveLogbookEntry, rejectLogbookEntry } from "@/app/actions/logbook-approval";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AddEntryModal } from "@/components/apprentice/add-entry-modal";
+import { RejectReasonDialog } from "@/components/mentor/reject-reason-dialog";
 
 interface LogbookEntry {
   id: string;
@@ -20,7 +22,10 @@ interface LogbookEntry {
   status: "draft" | "submitted" | "approved" | "rejected";
   created_at: string;
   approved_at: string | null;
+  reject_reason?: string | null;
 }
+
+export type AtaChapterOption = { value: string; label: string };
 
 interface ApprenticeEntriesListProps {
   entries: LogbookEntry[];
@@ -30,14 +35,20 @@ interface ApprenticeEntriesListProps {
     rejected: LogbookEntry[];
     draft: LogbookEntry[];
   };
+  acsCodesByEntry?: Record<string, string[]>;
+  ataChapters: AtaChapterOption[];
 }
 
 export function ApprenticeEntriesList({
   entries,
   entriesByStatus,
+  acsCodesByEntry = {},
+  ataChapters,
 }: ApprenticeEntriesListProps) {
   const router = useRouter();
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const [selectedEntry, setSelectedEntry] = useState<LogbookEntry | null>(null);
+  const [rejectingEntryId, setRejectingEntryId] = useState<string | null>(null);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -50,7 +61,7 @@ export function ApprenticeEntriesList({
   const handleApprove = async (entryId: string) => {
     setProcessingIds((prev) => new Set(prev).add(entryId));
     try {
-      const result = await approveLogbookEntry(entryId);
+      const result = await approveLogbookEntry(entryId, []);
       if (result.success) {
         router.refresh();
       } else {
@@ -67,21 +78,25 @@ export function ApprenticeEntriesList({
     }
   };
 
-  const handleReject = async (entryId: string) => {
-    setProcessingIds((prev) => new Set(prev).add(entryId));
+  const handleRejectClick = (entryId: string) => {
+    setRejectingEntryId(entryId);
+  };
+
+  const handleRejectConfirm = async (reason: string) => {
+    if (!rejectingEntryId) return;
+    setProcessingIds((prev) => new Set(prev).add(rejectingEntryId));
     try {
-      const result = await rejectLogbookEntry(entryId);
+      const result = await rejectLogbookEntry(rejectingEntryId, reason);
       if (result.success) {
+        setRejectingEntryId(null);
         router.refresh();
       } else {
-        alert(result.error || "Failed to reject entry");
+        throw new Error(result.error || "Failed to reject entry");
       }
-    } catch (error) {
-      alert("An error occurred. Please try again.");
     } finally {
       setProcessingIds((prev) => {
         const next = new Set(prev);
-        next.delete(entryId);
+        next.delete(rejectingEntryId);
         return next;
       });
     }
@@ -94,7 +109,11 @@ export function ApprenticeEntriesList({
     return (
       <div
         key={entry.id}
-        className="p-4 rounded-lg border border-border bg-card hover:shadow-md transition-shadow space-y-3"
+        className={cn(
+          "p-4 rounded-lg border border-border bg-card transition-shadow space-y-3",
+          "hover:shadow-md cursor-pointer"
+        )}
+        onClick={() => setSelectedEntry(entry)}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 text-sm">
@@ -120,6 +139,19 @@ export function ApprenticeEntriesList({
         </div>
 
         <p className="text-sm">{entry.description}</p>
+
+        {(acsCodesByEntry[entry.id]?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {acsCodesByEntry[entry.id].map((code) => (
+              <span
+                key={code}
+                className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground"
+              >
+                {code}
+              </span>
+            ))}
+          </div>
+        )}
 
         {entry.skills_practiced && entry.skills_practiced.length > 0 && (
           <div className="flex flex-wrap gap-1">
@@ -157,7 +189,7 @@ export function ApprenticeEntriesList({
         )}
 
         {isPending && (
-          <div className="flex gap-2 pt-2 border-t">
+          <div className="flex gap-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
             <Button
               size="sm"
               variant="default"
@@ -171,7 +203,7 @@ export function ApprenticeEntriesList({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => handleReject(entry.id)}
+              onClick={() => handleRejectClick(entry.id)}
               disabled={isProcessing}
               className="flex-1"
             >
@@ -245,6 +277,37 @@ export function ApprenticeEntriesList({
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      <RejectReasonDialog
+        open={!!rejectingEntryId}
+        onOpenChange={(open) => !open && setRejectingEntryId(null)}
+        onConfirm={handleRejectConfirm}
+        isSubmitting={rejectingEntryId ? processingIds.has(rejectingEntryId) : false}
+      />
+
+      {selectedEntry && (
+        <AddEntryModal
+          ataChapters={ataChapters}
+          entry={{
+            id: selectedEntry.id,
+            entry_date: selectedEntry.entry_date,
+            hours_worked: selectedEntry.hours_worked,
+            description: selectedEntry.description,
+            skills_practiced: selectedEntry.skills_practiced,
+            status: selectedEntry.status,
+            reject_reason: selectedEntry.reject_reason,
+          }}
+          mentorMode
+          open={!!selectedEntry}
+          onOpenChange={(open) => {
+            if (!open) setSelectedEntry(null);
+          }}
+          onSuccess={() => {
+            setSelectedEntry(null);
+            router.refresh();
+          }}
+        />
+      )}
     </Card>
   );
 }

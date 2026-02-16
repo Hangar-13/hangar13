@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { supabaseClient } from "@/lib/supabaseClient";
@@ -10,7 +11,6 @@ import {
   BookOpen,
   ClipboardList,
   TrendingUp,
-  Plane,
   Users,
   Settings,
   FileText,
@@ -30,6 +30,7 @@ const mentorMentoringNavigation = [
   { name: "Summary", href: "/dashboard/mentor", icon: BarChart3 },
   { name: "Review Logs", href: "/dashboard/mentor/review-logs", icon: ClipboardList },
   { name: "My Apprentices", href: "/dashboard/mentor/mentees", icon: Users },
+  { name: "Apprentice Progress", href: "/dashboard/mentor/mentees/progress", icon: TrendingUp, subItem: true },
 ];
 
 const mentorTrainingNavigation = [
@@ -100,17 +101,22 @@ export function Sidebar() {
 
   return (
     <aside className="hidden lg:flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar shadow-sm">
-      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Plane className="h-5 w-5" />
-        </div>
+      <Link href="/" className="flex min-h-20 items-center gap-3 border-b border-sidebar-border px-6 py-4">
+        <Image
+          src="/images/hangar13Logo.png"
+          alt="Hangar 13"
+          width={80}
+          height={80}
+          className="h-20 w-auto object-contain"
+          priority
+        />
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-sidebar-foreground">
             Hangar 13
           </h2>
           <p className="text-xs text-muted-foreground">Training Platform</p>
         </div>
-      </div>
+      </Link>
       <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {isLoading ? (
           <div className="text-sm text-muted-foreground px-3 py-2">Loading...</div>
@@ -151,19 +157,21 @@ export function Sidebar() {
                       .reduce((sum, s) => sum + s.items.length, 0) + itemIndex;
                     const isActive = globalIndex === activeItemIndex;
                     
+                    const isSubItem = "subItem" in item && (item as { subItem?: boolean }).subItem;
                     return (
                       <Link
                         key={item.name}
                         href={item.href}
                         className={cn(
                           "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                          isSubItem ? "ml-4 pl-2 border-l-2 border-sidebar-border" : "",
                           isActive
                             ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
                             : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                         )}
                       >
                         <item.icon className={cn(
-                          "h-5 w-5 transition-transform",
+                          "h-5 w-5 transition-transform flex-shrink-0",
                           isActive ? "scale-110" : "group-hover:scale-105"
                         )} />
                         <span>{item.name}</span>

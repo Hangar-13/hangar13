@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { LogbookSummaryCards } from "@/components/apprentice/logbook-summary-cards";
 import { LogbookTable } from "@/components/apprentice/logbook-table";
 import { AddEntryModal } from "@/components/apprentice/add-entry-modal";
+import { getAtaChapters } from "@/app/actions/ata-chapters";
+import { getAcsCodesByEntry } from "@/app/actions/logbook";
 
 async function getLogbookEntries(userId: string) {
   const supabase = await createServerSupabaseClient();
@@ -28,8 +30,15 @@ async function getLogbookEntries(userId: string) {
   return logbookEntries || [];
 }
 
-export default async function LogbookPage() {
+interface PageProps {
+  searchParams: Promise<{ openLog?: string; add?: string }>;
+}
+
+export default async function LogbookPage({ searchParams }: PageProps) {
   const supabase = await createServerSupabaseClient();
+  const params = await searchParams;
+  const openLogId = params.openLog || "";
+  const openAddModal = params.add === "true";
 
   const {
     data: { user },
@@ -39,14 +48,21 @@ export default async function LogbookPage() {
     redirect("/auth/login");
   }
 
-  const entries = await getLogbookEntries(user.id);
+  const [entries, ataChapters] = await Promise.all([
+    getLogbookEntries(user.id),
+    getAtaChapters(),
+  ]);
+
+  const acsCodesByEntry = entries
+    ? await getAcsCodesByEntry(entries.map((e) => e.id))
+    : {};
 
   if (entries === null) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">OJT Logbook</h1>
-          <p className="text-muted-foreground mt-2">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">OJT Logbook</h1>
+          <p className="text-muted-foreground text-base">
             No apprentice record found. Please contact your administrator.
           </p>
         </div>
@@ -67,12 +83,18 @@ export default async function LogbookPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <h1 className="text-4xl font-bold tracking-tight">OJT Logbook</h1>
-          <p className="text-muted-foreground text-lg">
+          <h1 className="text-2xl font-bold tracking-tight">OJT Logbook</h1>
+          <p className="text-muted-foreground text-base">
             Track your daily work and hours
           </p>
         </div>
-        <AddEntryModal />
+        <AddEntryModal
+          ataChapters={ataChapters.map((c) => ({
+            value: c.chapter_number,
+            label: `${c.chapter_number} - ${c.title}`,
+          }))}
+          defaultOpen={openAddModal}
+        />
       </div>
 
       {/* Summary Cards */}
@@ -84,7 +106,17 @@ export default async function LogbookPage() {
       />
 
       {/* Table */}
-      <LogbookTable entries={entries} runningTotal={totalHours} />
+      <LogbookTable
+        entries={entries}
+        runningTotal={totalHours}
+        ataChapters={ataChapters.map((c) => ({
+          value: c.chapter_number,
+          label: `${c.chapter_number} - ${c.title}`,
+        }))}
+        acsCodesByEntry={acsCodesByEntry}
+        initialOpenEntryId={openLogId}
+        defaultOpenAddModal={openAddModal}
+      />
     </div>
   );
 }

@@ -11,9 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Clock, Eye, Pencil } from "lucide-react";
+import { Search, Clock, Eye, Pencil, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AddEntryModal } from "./add-entry-modal";
+import { AddEntryModal, type AtaChapterOption } from "./add-entry-modal";
 
 interface LogbookEntry {
   id: string;
@@ -23,35 +23,47 @@ interface LogbookEntry {
   status: "draft" | "submitted" | "approved" | "rejected";
   category?: string | null;
   skills_practiced?: string[] | null;
+  reject_reason?: string | null;
 }
 
 interface LogbookTableProps {
   entries: LogbookEntry[];
   runningTotal: number;
+  ataChapters: AtaChapterOption[];
+  acsCodesByEntry?: Record<string, string[]>;
+  initialOpenEntryId?: string;
+  defaultOpenAddModal?: boolean;
 }
 
-export function LogbookTable({ entries, runningTotal }: LogbookTableProps) {
+export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEntry = {}, initialOpenEntryId, defaultOpenAddModal }: LogbookTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [chapterFilter, setChapterFilter] = useState<string>("all");
   const [selectedEntry, setSelectedEntry] = useState<LogbookEntry | null>(null);
 
-  // Extract unique ATA chapters from entries (from skills_practiced or category)
-  const extractATAChapter = (entry: LogbookEntry): string | null => {
-    if (entry.category) return entry.category;
-    if (entry.skills_practiced && entry.skills_practiced.length > 0) {
-      const ataMatch = entry.skills_practiced[0]?.match(/ATA:\s*(.+)/);
-      if (ataMatch) return ataMatch[1];
+  // Open modal for specific entry when navigating from notification
+  useEffect(() => {
+    if (initialOpenEntryId && entries.length > 0) {
+      const entry = entries.find((e) => e.id === initialOpenEntryId);
+      if (entry) {
+        setSelectedEntry(entry);
+      }
     }
-    return null;
+  }, [initialOpenEntryId, entries]);
+
+  // Extract ATA chapters from entry (a log can reference multiple chapters)
+  const extractATAChapters = (entry: LogbookEntry): string[] => {
+    if (entry.category) return [entry.category];
+    if (entry.skills_practiced && entry.skills_practiced.length > 0) {
+      return entry.skills_practiced
+        .map((s) => s?.match(/ATA:\s*(.+)/)?.[1])
+        .filter((c): c is string => !!c);
+    }
+    return [];
   };
 
   const uniqueChapters = Array.from(
-    new Set(
-      entries
-        .map(extractATAChapter)
-        .filter((c): c is string => !!c)
-    )
+    new Set(entries.flatMap(extractATAChapters))
   );
 
   // Filter entries
@@ -61,9 +73,9 @@ export function LogbookTable({ entries, runningTotal }: LogbookTableProps) {
       entry.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || entry.status === statusFilter;
-    const entryChapter = extractATAChapter(entry);
+    const entryChapters = extractATAChapters(entry);
     const matchesChapter =
-      chapterFilter === "all" || entryChapter === chapterFilter;
+      chapterFilter === "all" || entryChapters.includes(chapterFilter);
     return matchesSearch && matchesStatus && matchesChapter;
   });
 
@@ -109,7 +121,7 @@ export function LogbookTable({ entries, runningTotal }: LogbookTableProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
             type="search"
-            placeholder="Search tasks..."
+            placeholder="Search logs..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
@@ -155,7 +167,8 @@ export function LogbookTable({ entries, runningTotal }: LogbookTableProps) {
                   <th className="text-left py-3 px-4 text-sm font-semibold">Date</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold">Task</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold">Hours</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold">ATA</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold">ATA Chapter</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold">ACS</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold">Status</th>
                   <th className="text-left py-3 px-4 text-sm font-semibold">Actions</th>
                 </tr>
@@ -163,7 +176,7 @@ export function LogbookTable({ entries, runningTotal }: LogbookTableProps) {
               <tbody>
                 {filteredEntries.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                       No entries found.
                     </td>
                   </tr>
@@ -187,7 +200,23 @@ export function LogbookTable({ entries, runningTotal }: LogbookTableProps) {
                           {entry.hours_worked}h
                         </td>
                         <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {formatATA(extractATAChapter(entry))}
+                          {extractATAChapters(entry).map((c) => formatATA(c)).join(", ") || "—"}
+                        </td>
+                        <td className="py-3 px-4 text-sm">
+                          {(() => {
+                            const acsCodes = acsCodesByEntry[entry.id] ?? [];
+                            const count = acsCodes.length;
+                            return count > 0 ? (
+                              <span
+                                className="cursor-default underline decoration-dotted decoration-muted-foreground"
+                                title={acsCodes.join("\n")}
+                              >
+                                {count}
+                              </span>
+                            ) : (
+                              "—"
+                            );
+                          })()}
                         </td>
                         <td className="py-3 px-4">
                           <span
@@ -200,19 +229,34 @@ export function LogbookTable({ entries, runningTotal }: LogbookTableProps) {
                             {status.label}
                           </span>
                         </td>
-                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                        <td
+                          className="py-3 px-4"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isEditable) setSelectedEntry(entry);
+                          }}
+                        >
                           {isEditable ? (
                             <AddEntryModal
+                              ataChapters={ataChapters}
                               entry={entry}
                               trigger={
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 hover:bg-transparent"
+                                >
                                   <Pencil className="h-4 w-4" />
                                   <span className="sr-only">Edit entry</span>
                                 </Button>
                               }
                             />
                           ) : (
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-transparent"
+                            >
                               <Eye className="h-4 w-4" />
                               <span className="sr-only">View entry</span>
                             </Button>
@@ -228,23 +272,35 @@ export function LogbookTable({ entries, runningTotal }: LogbookTableProps) {
         </CardContent>
       </Card>
 
-      {/* Running Total */}
-      <div className="flex justify-end">
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-sm font-medium">
+      {/* Bottom actions: Add Entry + Running Total */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <AddEntryModal
+          ataChapters={ataChapters}
+          defaultOpen={defaultOpenAddModal}
+          trigger={
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Entry
+            </Button>
+          }
+        />
+        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted text-sm font-medium w-fit">
           <Clock className="h-4 w-4" />
           <span>Running Total: {runningTotal} hours</span>
         </div>
       </div>
 
-      {/* Modal for selected entry - controlled open state */}
+      {/* Modal for selected entry - controlled open state, no trigger (opened by row click) */}
       <AddEntryModal
+        ataChapters={ataChapters}
         entry={selectedEntry || undefined}
-        viewOnly={selectedEntry ? selectedEntry.status !== "draft" : false}
+        viewOnly={selectedEntry ? selectedEntry.status !== "draft" && selectedEntry.status !== "rejected" : false}
         onSuccess={() => setSelectedEntry(null)}
         open={!!selectedEntry}
         onOpenChange={(open) => {
           if (!open) setSelectedEntry(null);
         }}
+        hideTrigger
       />
     </div>
   );

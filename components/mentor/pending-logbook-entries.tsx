@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Calendar, Clock, User, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { approveLogbookEntry, rejectLogbookEntry } from "@/app/actions/logbook-approval";
 import { useRouter } from "next/navigation";
+import { AddEntryModal } from "@/components/apprentice/add-entry-modal";
+import { RejectReasonDialog } from "@/components/mentor/reject-reason-dialog";
+import { cn } from "@/lib/utils";
 
 interface PendingLogbookEntry {
   id: string;
@@ -18,6 +21,7 @@ interface PendingLogbookEntry {
   challenges_encountered: string | null;
   next_steps: string | null;
   status: string;
+  reject_reason?: string | null;
   apprentices: {
     id: string;
     profiles: {
@@ -28,16 +32,40 @@ interface PendingLogbookEntry {
   } | null;
 }
 
+export type AtaChapterOption = { value: string; label: string };
+
 interface PendingLogbookEntriesProps {
   entries: PendingLogbookEntry[];
+  acsCodesByEntry?: Record<string, string[]>;
+  ataChapters: AtaChapterOption[];
   initialNameFilter?: string;
+  initialOpenEntryId?: string;
 }
 
-export function PendingLogbookEntries({ entries, initialNameFilter = "" }: PendingLogbookEntriesProps) {
+export function PendingLogbookEntries({
+  entries,
+  acsCodesByEntry = {},
+  ataChapters,
+  initialNameFilter = "",
+  initialOpenEntryId,
+}: PendingLogbookEntriesProps) {
   const router = useRouter();
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+  const [selectedEntry, setSelectedEntry] = useState<PendingLogbookEntry | null>(null);
+  const [rejectingEntryId, setRejectingEntryId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"draft" | "pending" | "all">("pending");
   const [nameFilter, setNameFilter] = useState<string>(initialNameFilter);
+
+  // Open modal for specific entry when navigating from notification.
+  // Only open if entry is still pending (submitted) - don't re-open after approve/reject.
+  useEffect(() => {
+    if (initialOpenEntryId && entries.length > 0) {
+      const entry = entries.find((e) => e.id === initialOpenEntryId);
+      if (entry && entry.status === "submitted") {
+        setSelectedEntry(entry);
+      }
+    }
+  }, [initialOpenEntryId, entries]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -45,6 +73,19 @@ export function PendingLogbookEntries({ entries, initialNameFilter = "" }: Pendi
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case "submitted":
+        return { label: "Pending Signature", color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" };
+      case "approved":
+        return { label: "Signed", color: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" };
+      case "rejected":
+        return { label: "Rejected", color: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" };
+      default:
+        return { label: "Draft", color: "bg-muted text-muted-foreground" };
+    }
   };
 
   // Filter entries based on status and name
@@ -78,7 +119,7 @@ export function PendingLogbookEntries({ entries, initialNameFilter = "" }: Pendi
   const handleApprove = async (entryId: string) => {
     setProcessingIds((prev) => new Set(prev).add(entryId));
     try {
-      const result = await approveLogbookEntry(entryId);
+      const result = await approveLogbookEntry(entryId, []);
       if (result.success) {
         router.refresh();
       } else {
@@ -95,21 +136,25 @@ export function PendingLogbookEntries({ entries, initialNameFilter = "" }: Pendi
     }
   };
 
-  const handleReject = async (entryId: string) => {
-    setProcessingIds((prev) => new Set(prev).add(entryId));
+  const handleRejectClick = (entryId: string) => {
+    setRejectingEntryId(entryId);
+  };
+
+  const handleRejectConfirm = async (reason: string) => {
+    if (!rejectingEntryId) return;
+    setProcessingIds((prev) => new Set(prev).add(rejectingEntryId));
     try {
-      const result = await rejectLogbookEntry(entryId);
+      const result = await rejectLogbookEntry(rejectingEntryId, reason);
       if (result.success) {
+        setRejectingEntryId(null);
         router.refresh();
       } else {
-        alert(result.error || "Failed to reject entry");
+        throw new Error(result.error || "Failed to reject entry");
       }
-    } catch (error) {
-      alert("An error occurred. Please try again.");
     } finally {
       setProcessingIds((prev) => {
         const next = new Set(prev);
-        next.delete(entryId);
+        next.delete(rejectingEntryId);
         return next;
       });
     }
@@ -118,14 +163,14 @@ export function PendingLogbookEntries({ entries, initialNameFilter = "" }: Pendi
   return (
     <div className="space-y-6">
       {/* Filters */}
-      <div className="flex items-end gap-4">
-        <div className="space-y-2 flex-1 max-w-xs">
-          <Label htmlFor="status-filter">Status</Label>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="status-filter" className="text-sm whitespace-nowrap">Status</Label>
           <Select
             value={statusFilter}
             onValueChange={(value: "draft" | "pending" | "all") => setStatusFilter(value)}
           >
-            <SelectTrigger id="status-filter">
+            <SelectTrigger id="status-filter" className="w-[140px]">
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
@@ -135,14 +180,15 @@ export function PendingLogbookEntries({ entries, initialNameFilter = "" }: Pendi
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2 flex-1 max-w-xs">
-          <Label htmlFor="name-filter">Apprentice Name</Label>
+        <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+          <Label htmlFor="name-filter" className="text-sm whitespace-nowrap">Name</Label>
           <Input
             id="name-filter"
             type="text"
-            placeholder="Search by apprentice name..."
+            placeholder="Search by name..."
             value={nameFilter}
             onChange={(e) => setNameFilter(e.target.value)}
+            className="flex-1"
           />
         </div>
       </div>
@@ -160,16 +206,30 @@ export function PendingLogbookEntries({ entries, initialNameFilter = "" }: Pendi
               entry.apprentices?.profiles?.full_name ||
               entry.apprentices?.profiles?.email ||
               "Unknown Apprentice";
+            const statusDisplay = getStatusDisplay(entry.status);
+            const isPending = entry.status === "submitted";
 
             return (
               <div
                 key={entry.id}
-                className="p-4 rounded-lg border border-border bg-card hover:shadow-md transition-shadow space-y-3"
+                className={cn(
+                  "p-4 rounded-lg border border-border bg-card transition-shadow space-y-3",
+                  "hover:shadow-md cursor-pointer"
+                )}
+                onClick={() => setSelectedEntry(entry)}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 text-sm">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">{apprenticeName}</span>
+                    <span
+                      className={cn(
+                        "inline-flex items-center text-xs px-2 py-1 rounded-full font-medium",
+                        statusDisplay.color
+                      )}
+                    >
+                      {statusDisplay.label}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
@@ -180,6 +240,19 @@ export function PendingLogbookEntries({ entries, initialNameFilter = "" }: Pendi
                 </div>
 
                 <p className="text-sm">{entry.description}</p>
+
+                {(acsCodesByEntry[entry.id]?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {acsCodesByEntry[entry.id].map((code) => (
+                      <span
+                        key={code}
+                        className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground"
+                      >
+                        {code}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {entry.skills_practiced && entry.skills_practiced.length > 0 && (
                   <div className="flex flex-wrap gap-1">
@@ -206,33 +279,66 @@ export function PendingLogbookEntries({ entries, initialNameFilter = "" }: Pendi
                   </p>
                 )}
 
-                <div className="flex gap-2 pt-2 border-t">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={() => handleApprove(entry.id)}
-                    disabled={isProcessing}
-                    className="flex-1"
-                  >
-                    <CheckCircle2 className="h-4 w-4 mr-1" />
-                    {isProcessing ? "Processing..." : "Approve"}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleReject(entry.id)}
-                    disabled={isProcessing}
-                    className="flex-1"
-                  >
-                    <XCircle className="h-4 w-4 mr-1" />
-                    Reject
-                  </Button>
-                </div>
+                {isPending && (
+                  <div className="flex gap-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => handleApprove(entry.id)}
+                      disabled={isProcessing}
+                      className="flex-1"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-1" />
+                      {isProcessing ? "Processing..." : "Approve"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRejectClick(entry.id)}
+                      disabled={isProcessing}
+                      className="flex-1"
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
+                )}
               </div>
             );
           })
         )}
       </div>
+
+      <RejectReasonDialog
+        open={!!rejectingEntryId}
+        onOpenChange={(open) => !open && setRejectingEntryId(null)}
+        onConfirm={handleRejectConfirm}
+        isSubmitting={rejectingEntryId ? processingIds.has(rejectingEntryId) : false}
+      />
+
+      {selectedEntry && (
+        <AddEntryModal
+          ataChapters={ataChapters}
+          entry={{
+            id: selectedEntry.id,
+            entry_date: selectedEntry.entry_date,
+            hours_worked: selectedEntry.hours_worked,
+            description: selectedEntry.description,
+            skills_practiced: selectedEntry.skills_practiced,
+            status: selectedEntry.status,
+            reject_reason: selectedEntry.reject_reason,
+          }}
+          mentorMode
+          open={!!selectedEntry}
+          onOpenChange={(open) => {
+            if (!open) setSelectedEntry(null);
+          }}
+          onSuccess={() => {
+            setSelectedEntry(null);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -3,10 +3,12 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
 
-export async function approveLogbookEntry(entryId: string) {
+export async function approveLogbookEntry(
+  entryId: string,
+  acsCodeIds: number[] = []
+) {
   const supabase = await createServerSupabaseClient();
 
-  // Get current user
   const {
     data: { user },
     error: userError,
@@ -16,63 +18,45 @@ export async function approveLogbookEntry(entryId: string) {
     return { error: "You must be logged in to approve entries." };
   }
 
-  // Verify the user is a mentor with permission to approve this entry
-  const { data: entry, error: entryError } = await supabase
+  const { data: result, error: rpcError } = await supabase.rpc("approve_logbook_entry", {
+    p_entry_id: entryId,
+    p_approver_id: user.id,
+    p_acs_code_ids: acsCodeIds,
+  });
+
+  if (rpcError) {
+    return { error: rpcError.message || "Failed to approve entry." };
+  }
+
+  const res = result as { error?: string; success?: boolean };
+  if (res.error) {
+    return { error: res.error };
+  }
+
+  const { data: entry } = await supabase
     .from("logbook_entries")
-    .select(
-      `
-      *,
-      apprentices:apprentice_id (
-        id,
-        mentor_id
-      )
-    `
-    )
+    .select("apprentice_id")
     .eq("id", entryId)
     .single();
 
-  if (entryError || !entry) {
-    return { error: "Entry not found." };
-  }
+  const apprenticeId = (entry as { apprentice_id?: string })?.apprentice_id;
 
-  // Check if user is the mentor for this apprentice
-  const apprentice = entry.apprentices as any;
-  if (apprentice?.mentor_id !== user.id) {
-    return {
-      error: "You don't have permission to approve this entry.",
-    };
-  }
+  // Notification created by database trigger on logbook_entries (approve_logbook_entry RPC updates status)
 
-  // Store apprentice ID before update
-  const apprenticeId = apprentice?.id;
-
-  // Update entry status to approved
-  const { error: updateError } = await supabase
-    .from("logbook_entries")
-    .update({
-      status: "approved",
-      approved_by: user.id,
-      approved_at: new Date().toISOString(),
-    })
-    .eq("id", entryId);
-
-  if (updateError) {
-    return { error: updateError.message || "Failed to approve entry." };
-  }
-
-  // Revalidate mentor dashboard and apprentice detail pages
   revalidatePath("/dashboard/mentor");
+  revalidatePath("/dashboard/mentor/review-logs");
   if (apprenticeId) {
     revalidatePath(`/dashboard/mentor/apprentice/${apprenticeId}`);
   }
+  revalidatePath("/dashboard/apprentice");
+  revalidatePath("/dashboard/apprentice/progress");
 
   return { success: true };
 }
 
-export async function rejectLogbookEntry(entryId: string) {
+export async function rejectLogbookEntry(entryId: string, rejectReason: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Get current user
   const {
     data: { user },
     error: userError,
@@ -82,7 +66,6 @@ export async function rejectLogbookEntry(entryId: string) {
     return { error: "You must be logged in to reject entries." };
   }
 
-  // Verify the user is a mentor with permission to reject this entry
   const { data: entry, error: entryError } = await supabase
     .from("logbook_entries")
     .select(
@@ -90,7 +73,8 @@ export async function rejectLogbookEntry(entryId: string) {
       *,
       apprentices:apprentice_id (
         id,
-        mentor_id
+        mentor_id,
+        user_id
       )
     `
     )
@@ -101,22 +85,18 @@ export async function rejectLogbookEntry(entryId: string) {
     return { error: "Entry not found." };
   }
 
-  // Check if user is the mentor for this apprentice
-  const apprentice = entry.apprentices as any;
+  const apprentice = entry.apprentices as { id?: string; mentor_id?: string; user_id?: string } | null;
   if (apprentice?.mentor_id !== user.id) {
-    return {
-      error: "You don't have permission to reject this entry.",
-    };
+    return { error: "You don't have permission to reject this entry." };
   }
 
-  // Store apprentice ID before update
   const apprenticeId = apprentice?.id;
 
-  // Update entry status to rejected
   const { error: updateError } = await supabase
     .from("logbook_entries")
     .update({
       status: "rejected",
+      reject_reason: rejectReason || null,
     })
     .eq("id", entryId);
 
@@ -124,11 +104,15 @@ export async function rejectLogbookEntry(entryId: string) {
     return { error: updateError.message || "Failed to reject entry." };
   }
 
-  // Revalidate mentor dashboard and apprentice detail pages
+  // Notification created by database trigger on logbook_entries
+
   revalidatePath("/dashboard/mentor");
+  revalidatePath("/dashboard/mentor/review-logs");
   if (apprenticeId) {
     revalidatePath(`/dashboard/mentor/apprentice/${apprenticeId}`);
   }
+  revalidatePath("/dashboard/apprentice");
+  revalidatePath("/dashboard/apprentice/progress");
 
   return { success: true };
 }

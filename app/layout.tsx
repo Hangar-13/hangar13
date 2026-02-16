@@ -17,6 +17,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Hangar 13",
   description: "Next.js app with sidebar and top navigation",
+  icons: {
+    icon: "/images/hangar13Logo.png",
+    apple: "/images/hangar13Logo.png",
+  },
 };
 
 export default function RootLayout({
