@@ -1,0 +1,3418 @@
+[
+    {
+        "code": "AM.I.A.K1",
+        "domain": "general",
+        "subject_letter": "A",
+        "subject": "Fundamentals of Electricity and Electronics",
+        "category": "knowledge",
+        "description": "Electron theory (conventional flow vs. electron flow).",
+        "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K2",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Magnetism.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K3",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Capacitance in a circuit.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K4",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Inductance in a circuit.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K5",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Alternating current (AC) electrical circuits.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K6",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Direct current (DC) electrical circuits.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K7",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Electrical laws and theory.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K7a",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Ohm's Law.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K7b",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Kirchhoff's Laws.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K7c",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Watt's Law.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K7d",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Faraday's Law.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K7e",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Lenz's Law.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K7f",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Right-hand motor rule.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K8",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Electrical measurement tools, principles, and procedures.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K9",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Voltage (including regulation).",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K10",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Current.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K11",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Resistance (impedance, series, parallel, total).",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K12",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Power.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K13",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Series circuits.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K14",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Parallel circuits.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K15",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Aircraft batteries.",
+      "ata_chapters": ["24"]
+    },
+    {
+      "code": "AM.I.A.K16",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Transformers.",
+      "ata_chapters": ["24"]
+    },
+    {
+      "code": "AM.I.A.K17",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Circuit continuity.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K18",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Controlling devices, including switches and relays.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K19",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Protective devices (fuses, circuit breakers, current limiters).",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K20",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Resistor types and color coding.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.A.K21",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Semiconductors (diodes, transistors, integrated circuits).",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.A.K22",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Digital logic (RAM, ROM, NVRAM, logic gates, inverter, rectifier, flip flop).",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.A.K23",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Binary numbers.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.A.K24",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Electrostatic discharge.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.A.K25",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Electrical circuit drawings.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K26",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "Complex/combined circuits.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.K27",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "knowledge",
+      "description": "AC and DC motors.",
+      "ata_chapters": ["20", "24"]
+    },
+  
+    {
+      "code": "AM.I.A.R1",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "risk_management",
+      "description": "Taking voltage, current, resistance, and capacitance measurements.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.R2",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "risk_management",
+      "description": "Handling, storage, and inspection of batteries.",
+      "ata_chapters": ["24"]
+    },
+    {
+      "code": "AM.I.A.R3",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "risk_management",
+      "description": "High-voltage circuits (e.g., strobe lighting).",
+      "ata_chapters": ["24", "33"]
+    },
+    {
+      "code": "AM.I.A.R4",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "risk_management",
+      "description": "Working around batteries.",
+      "ata_chapters": ["24"]
+    },
+  
+    {
+      "code": "AM.I.A.S1",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Perform circuit continuity test.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S2",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Measure voltage.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S3",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Measure current.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S4",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Measure resistance.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S5",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Test a switch or relay.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S6",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Test a fuse or circuit breaker.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S7",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Read and interpret aircraft electrical circuit diagrams and symbols.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S8",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Troubleshoot a circuit.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S9",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Identify symbols in electrical/electronic schematic diagrams.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S10",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Demonstrate how to test for short-circuit and open-circuit conditions.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S11",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Measure voltage drop across a resistor.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S12",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Determine or measure for open electrical circuits.",
+      "ata_chapters": ["20", "24"]
+    },
+    {
+      "code": "AM.I.A.S13",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Inspect an aircraft battery.",
+      "ata_chapters": ["24"]
+    },
+    {
+      "code": "AM.I.A.S14",
+      "domain": "general",
+      "subject_letter": "A",
+      "subject": "Fundamentals of Electricity and Electronics",
+      "category": "skill",
+      "description": "Service an aircraft battery.",
+      "ata_chapters": ["24"]
+    },
+  
+    {
+      "code": "AM.I.B.K1",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "knowledge",
+      "description": "Drawings, blueprints, sketches, charts, graphs, and system schematics.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.K2",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "knowledge",
+      "description": "Repair or alteration using drawings/blueprints to determine type design conformity.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.K3",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "knowledge",
+      "description": "Inspection using drawings, blueprints, or system schematics.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.K4",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "knowledge",
+      "description": "Terms used with aircraft drawings/blueprints.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.R1",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "risk_management",
+      "description": "Interpretation of plus or minus tolerances.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.R2",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "risk_management",
+      "description": "Specifications for design of alterations and repairs.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.R3",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "risk_management",
+      "description": "Applicability of drawing by model and serial number.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.R4",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "risk_management",
+      "description": "Identification of current version and applicability of drawing.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.S1",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "skill",
+      "description": "Draw a sketch of a repair or alteration.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.S2",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "skill",
+      "description": "Identify the meaning of lines and symbols.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.S3",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "skill",
+      "description": "Interpret dimensions used in an aircraft drawing.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.S4",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "skill",
+      "description": "Identify changes on an aircraft drawing.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.S5",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "skill",
+      "description": "Determine material requirements from an aircraft drawing.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.B.S6",
+      "domain": "general",
+      "subject_letter": "B",
+      "subject": "Aircraft Drawings",
+      "category": "skill",
+      "description": "Interpret graphs and charts.",
+      "ata_chapters": ["20"]
+    },
+  
+    {
+      "code": "AM.I.C.K1",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Weight and balance terminology.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.K2",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Purpose for weighing an aircraft.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.K3",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Weighing procedures and preparations.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.K4",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Calculation of arm, moment, CG, or moment index.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.K5",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Purpose and application of weight and CG limits.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.K6",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Purpose of determining CG.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.K7",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Adverse loading considerations.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.K8",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Determine proper empty weight configuration.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.K9",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Proper ballast placement.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.K10",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "knowledge",
+      "description": "Jacking an aircraft.",
+      "ata_chapters": ["07", "08"]
+    },
+  
+    {
+      "code": "AM.I.C.R1",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "risk_management",
+      "description": "Situations and conditions when jacking an aircraft.",
+      "ata_chapters": ["07"]
+    },
+    {
+      "code": "AM.I.C.R2",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "risk_management",
+      "description": "Aircraft weighing procedures.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.R3",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "risk_management",
+      "description": "Use of scales.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.R4",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "risk_management",
+      "description": "Aerodynamic effect of CG forward or aft of limits.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.R5",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "risk_management",
+      "description": "Aerodynamic and performance effects of weight in excess of limits.",
+      "ata_chapters": ["08"]
+    },
+  
+    {
+      "code": "AM.I.C.S1",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Research and explain procedures for weighing an aircraft.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S2",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Perform weight and balance calculations.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S3",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Calculate ballast weight shift and required weight location.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S4",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Check aircraft weighing scales for calibration.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S5",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Calculate weight and balance after equipment change.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S6",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Compute forward and aft loaded CG limit.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S7",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Create a maintenance record for a weight and balance change.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S8",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Compute empty weight and empty weight CG.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S9",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Calculate the moment of an item of equipment.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S10",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Identify tare items.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S11",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Locate weight and balance information.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S12",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Locate datum.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S13",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Locate weight and balance placarding and limitation requirements.",
+      "ata_chapters": ["08", "11"]
+    },
+    {
+      "code": "AM.I.C.S14",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Revise an aircraft equipment list after equipment change.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S15",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Calculate the change needed to correct out of balance condition.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S16",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Determine CG range using specs, TCDS, and aircraft listings.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.C.S17",
+      "domain": "general",
+      "subject_letter": "C",
+      "subject": "Weight and Balance",
+      "category": "skill",
+      "description": "Calculate a weight change and complete required records.",
+      "ata_chapters": ["08"]
+    },
+    {
+      "code": "AM.I.D.K1",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "knowledge",
+      "description": "Tubing and hose materials, applications, sizes, and fittings.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.K2",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "knowledge",
+      "description": "Rigid line or flexible hose material identification.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.K3",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "knowledge",
+      "description": "Rigid line fabrication, installation, and inspection.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.K4",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "knowledge",
+      "description": "Flexible hose fabrication, installation, and inspection.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.K5",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "knowledge",
+      "description": "Importance of torque wrench when securing fluid fittings.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.K6",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "knowledge",
+      "description": "Use of torque seal after installing critical fittings.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.R1",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "risk_management",
+      "description": "System configuration prior to and during maintenance.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.R2",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "risk_management",
+      "description": "Use of required safety equipment.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.R3",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "risk_management",
+      "description": "Hazardous fluids.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.R4",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "risk_management",
+      "description": "High-pressure fluid systems.",
+      "ata_chapters": ["20", "29"]
+    },
+    {
+      "code": "AM.I.D.R5",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "risk_management",
+      "description": "A twisted hose.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.R6",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "risk_management",
+      "description": "A loosened fitting or hose moved out of position.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.R7",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "risk_management",
+      "description": "Use of tools while applying torque to a fluid line.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.S1",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "skill",
+      "description": "Fabricate a rigid line with a flare and a bend.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.S2",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "skill",
+      "description": "Install an aircraft rigid line.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.S3",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "skill",
+      "description": "Install an aircraft flexible hose.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.S4",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "skill",
+      "description": "Perform a rigid line or flexible hose inspection.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.S5",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "skill",
+      "description": "Identify installation and security requirements.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.S6",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "skill",
+      "description": "Identify fluid lines, pneumatic lines, and fittings.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.S7",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "skill",
+      "description": "Fabricate a flexible hose.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.D.S8",
+      "domain": "general",
+      "subject_letter": "D",
+      "subject": "Fluid Lines and Fittings",
+      "category": "skill",
+      "description": "Fabricate a flareless-fitting-tube connection.",
+      "ata_chapters": ["20"]
+    },
+  
+    {
+      "code": "AM.I.E.K1",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Materials commonly used in aircraft and their general application.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.K2",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Heat treatment and metal working processes.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.K3",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Forces placed on aircraft materials.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.K4",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Hardware commonly used in aircraft.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.K5",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Safety wire and safety clip requirements.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.K6",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Precision measurement tools, principles, and procedures.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.K7",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Soldering preparation, types of solder, and flux usage.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.K8",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Torquing tools, principles, and procedures.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.K9",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Suitability and compatibility of materials and hardware.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.K10",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Relationship between torque and fastener preload.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.K11",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Identification markings on materials and hardware.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.K12",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Characteristics of acceptable welds.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.K13",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Characteristics of unacceptable welds.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.K14",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "knowledge",
+      "description": "Procedures for weld repairs.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.R1",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "risk_management",
+      "description": "Use of PPE.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.R2",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "risk_management",
+      "description": "Improper torque.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.R3",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "risk_management",
+      "description": "Used hardware or suspected unapproved parts (SUPS).",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.R4",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "risk_management",
+      "description": "Torquing techniques on critical fasteners.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.S1",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Install safety wire on nuts, bolts, and turnbuckles.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.S2",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Determine and properly torque aircraft hardware.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.S3",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Inspect and check welds.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.S4",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Identify aircraft materials and hardware by markings.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.S5",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Select and install aircraft bolts.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.S6",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Make precision measurements with Vernier scale.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.S7",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Check the concentricity of a shaft.",
+      "ata_chapters": ["20"]
+    },
+    {
+      "code": "AM.I.E.S8",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Identify aircraft control cable components.",
+      "ata_chapters": ["20", "27"]
+    },
+    {
+      "code": "AM.I.E.S9",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Fabricate a cable assembly using a swaged-end fitting.",
+      "ata_chapters": ["20", "27"]
+    },
+    {
+      "code": "AM.I.E.S10",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Select the correct aluminum alloy for a structural repair.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.S11",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Identify rivets by physical characteristics.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.S12",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Determine suitability of materials for aircraft repairs.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.S13",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Distinguish heat-treated and non-heat-treated aluminum alloys.",
+      "ata_chapters": ["20", "51"]
+    },
+    {
+      "code": "AM.I.E.S14",
+      "domain": "general",
+      "subject_letter": "E",
+      "subject": "Aircraft Materials, Hardware, and Processes",
+      "category": "skill",
+      "description": "Check for proper calibration of a micrometer.",
+      "ata_chapters": ["20"]
+    },
+  
+    {
+      "code": "AM.I.F.K1",
+      "domain": "general",
+      "subject_letter": "F",
+      "subject": "Ground Operations and Servicing",
+      "category": "knowledge",
+      "description": "Aircraft towing procedures.",
+      "ata_chapters": ["09"]
+    },
+    {
+      "code": "AM.I.F.K2",
+      "domain": "general",
+      "subject_letter": "F",
+      "subject": "Ground Operations and Servicing",
+      "category": "knowledge",
+      "description": "Aircraft securing procedures.",
+      "ata_chapters": ["10"]
+    },
+    {
+    "code": "AM.I.F.K3",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Aviation fueling/defueling procedures.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.K4",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Airport operation area procedures and ATC communications.",
+    "ata_chapters": ["09"]
+    },
+    {
+    "code": "AM.I.F.K5",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Engine starting, ground operation, and taxiing.",
+    "ata_chapters": ["09", "71"]
+    },
+    {
+    "code": "AM.I.F.K6",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Types/classes of fire extinguishers and procedures.",
+    "ata_chapters": ["26"]
+    },
+    {
+    "code": "AM.I.F.K7",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Aircraft oil, hydraulic, pneumatic, and deicing servicing.",
+    "ata_chapters": ["12"]
+    },
+    {
+    "code": "AM.I.F.K8",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Oxygen system servicing procedures.",
+    "ata_chapters": ["12", "35"]
+    },
+    {
+    "code": "AM.I.F.K9",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Characteristics of aviation gasoline and turbine fuels.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.K10",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Fuel additives commonly used in the field.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.K11",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Use of approved grades/types of fuel in aircraft engines.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.K12",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Tool and hardware use and accountability.",
+    "ata_chapters": ["20"]
+    },
+    {
+    "code": "AM.I.F.K13",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Material handling.",
+    "ata_chapters": ["12", "20"]
+    },
+    {
+    "code": "AM.I.F.K14",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Parts protections.",
+    "ata_chapters": ["10", "20"]
+    },
+    {
+    "code": "AM.I.F.K15",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Hazardous materials, SDS, and PPE.",
+    "ata_chapters": ["20"]
+    },
+    {
+    "code": "AM.I.F.K16",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "knowledge",
+    "description": "Foreign object damage effects.",
+    "ata_chapters": ["20"]
+    },
+    {
+    "code": "AM.I.F.R1",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Preparing to tow an aircraft.",
+    "ata_chapters": ["09"]
+    },
+    {
+    "code": "AM.I.F.R2",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Connecting external power equipment.",
+    "ata_chapters": ["24"]
+    },
+    {
+    "code": "AM.I.F.R3",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Fueling/defueling ungrounded aircraft.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.R4",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Misfueling and incorrect/contaminated fuel.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.R5",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Oxygen system servicing.",
+    "ata_chapters": ["12", "35"]
+    },
+    {
+    "code": "AM.I.F.R6",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Engine start/run-up without using a checklist.",
+    "ata_chapters": ["71"]
+    },
+    {
+    "code": "AM.I.F.R7",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Engine starting and ground operations.",
+    "ata_chapters": ["71"]
+    },
+    {
+    "code": "AM.I.F.R8",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Engine starting while troubleshooting/adjusting controls.",
+    "ata_chapters": ["71", "76"]
+    },
+    {
+    "code": "AM.I.F.R9",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Ground operation with cowling removed contrary to instructions.",
+    "ata_chapters": ["71"]
+    },
+    {
+    "code": "AM.I.F.R10",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "risk_management",
+    "description": "Ground operation near other aircraft or equipment.",
+    "ata_chapters": ["09"]
+    },
+    {
+    "code": "AM.I.F.S1",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Perform a FOD control procedure.",
+    "ata_chapters": ["20"]
+    },
+    {
+    "code": "AM.I.F.S2",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Connect external power to an aircraft.",
+    "ata_chapters": ["24"]
+    },
+    {
+    "code": "AM.I.F.S3",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Prepare an aircraft for towing.",
+    "ata_chapters": ["09"]
+    },
+    {
+    "code": "AM.I.F.S4",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Use appropriate hand signals for aircraft movement.",
+    "ata_chapters": ["09"]
+    },
+    {
+    "code": "AM.I.F.S5",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Inspect fuel system for water and FOD contamination.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.S6",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Identify different grades of aviation fuel.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.S7",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Select an approved fuel for an aircraft.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.S8",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Prepare an aircraft for fueling.",
+    "ata_chapters": ["12", "28"]
+    },
+    {
+    "code": "AM.I.F.S9",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Follow a checklist to start or shut down an engine.",
+    "ata_chapters": ["71"]
+    },
+    {
+    "code": "AM.I.F.S10",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Identify procedures for extinguishing induction fires.",
+    "ata_chapters": ["26", "71"]
+    },
+    {
+    "code": "AM.I.F.S11",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Secure an aircraft.",
+    "ata_chapters": ["10"]
+    },
+    {
+    "code": "AM.I.F.S12",
+    "domain": "general",
+    "subject_letter": "F",
+    "subject": "Ground Operations and Servicing",
+    "category": "skill",
+    "description": "Locate procedures for securing turbine aircraft after shutdown.",
+    "ata_chapters": ["10", "71"]
+    },
+
+    {
+    "code": "AM.I.G.K1",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Aircraft cleaning procedures.",
+    "ata_chapters": ["12", "51"]
+    },
+    {
+    "code": "AM.I.G.K2",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Corrosion theory and causation.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K3",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Types and effects of corrosion.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K4",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Corrosion-prone areas in aircraft.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K5",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Corrosion preventive maintenance procedures.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K6",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Corrosion identification and inspection.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K7",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Corrosion removal and treatment procedures.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K8",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Corrosion preventive compounds (CPC).",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K9",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Selection of optimal CPC and frequency of treatment.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K10",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Use of high-pressure application equipment.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K11",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Improper use of cleaners on aluminum or composite.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K12",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Dissimilar metals causing accelerated corrosion.",
+    "ata_chapters": ["20", "51"]
+    },
+    {
+    "code": "AM.I.G.K13",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Conversion coatings.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K14",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Materials used for protection of airframe structures.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K15",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Primer materials.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K16",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Topcoat materials.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K17",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Surface preparation for a desired finishing material.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K18",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Effects of ambient conditions on finishing materials.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K19",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Effects of improper surface preparation.",
+    "ata_chapters": ["51"]
+    },
+    {
+    "code": "AM.I.G.K20",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Regulatory requirements for replacing ID/registration markings.",
+    "ata_chapters": ["11"]
+    },
+    {
+    "code": "AM.I.G.K21",
+    "domain": "general",
+    "subject_letter": "G",
+    "subject": "Cleaning and Corrosion Control",
+    "category": "knowledge",
+    "description": "Inspection of aircraft finishes.",
+    "ata_chapters": ["51"]
+    },
+    {
+        "code": "AM.I.G.K22",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "knowledge",
+        "description": "Safety practices when using finishing materials.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.K23",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "knowledge",
+        "description": "Finishing materials application techniques.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.K24",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "knowledge",
+        "description": "Control surface balance considerations after refinishing.",
+        "ata_chapters": ["27", "51"]
+      },
+      {
+        "code": "AM.I.G.R1",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "risk_management",
+        "description": "Health concerns when using paints, solvents, finishing materials.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.R2",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "risk_management",
+        "description": "Ventilation.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.R3",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "risk_management",
+        "description": "Identification of materials for cleaning/corrosion treatment.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.R4",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "risk_management",
+        "description": "SDS PPE instructions for corrosion removal/treatment.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.R5",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "risk_management",
+        "description": "Working with flammable chemicals.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.R6",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "risk_management",
+        "description": "Disposal of chemicals and waste materials.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.R7",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "risk_management",
+        "description": "Use of PPE when working with paints and solvents.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.R8",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "risk_management",
+        "description": "Application of finishing materials.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S1",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Perform a portion of an aircraft corrosion inspection.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S2",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Identify, select, and use corrosion prevention/cleaning materials.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S3",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Apply corrosion prevention/coating materials.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S4",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Inspect finishes and identify defects.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S5",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Inspect an aircraft compartment for corrosion.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S6",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Identify procedures to clean and protect plastics.",
+        "ata_chapters": ["51", "56"]
+      },
+      {
+        "code": "AM.I.G.S7",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Determine location and size requirements for registration numbers.",
+        "ata_chapters": ["11"]
+      },
+      {
+        "code": "AM.I.G.S8",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Prepare composite surface for painting.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S9",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Identify finishing materials and appropriate thinners.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S10",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Layout and mask a surface for painting.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S11",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Prepare metal surface for painting.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S12",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Determine what paint system can be used on a given aircraft.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S13",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Apply etch solution and conversion coating.",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.I.G.S14",
+        "domain": "general",
+        "subject_letter": "G",
+        "subject": "Cleaning and Corrosion Control",
+        "category": "skill",
+        "description": "Identify types of protective finishes.",
+        "ata_chapters": ["51"]
+      },
+    
+      {
+        "code": "AM.I.H.K1-K13",
+        "domain": "general",
+        "subject_letter": "H",
+        "subject": "Mathematics",
+        "category": "knowledge",
+        "description": "All mathematics elements (areas, volumes, geometry, ratios, algebra, etc.).",
+        "ata_chapters": ["00"]
+      },
+      {
+        "code": "AM.I.H.R1-R3",
+        "domain": "general",
+        "subject_letter": "H",
+        "subject": "Mathematics",
+        "category": "risk_management",
+        "description": "All math risk elements (order of operations, integers, rounding).",
+        "ata_chapters": ["00"]
+      },
+      {
+        "code": "AM.I.H.S1-S8",
+        "domain": "general",
+        "subject_letter": "H",
+        "subject": "Mathematics",
+        "category": "skill",
+        "description": "All math skill elements (square root, volume, area, conversions, etc.).",
+        "ata_chapters": ["00"]
+      },
+    
+      {
+        "code": "AM.I.I.K1-K23",
+        "domain": "general",
+        "subject_letter": "I",
+        "subject": "Regulations, Maintenance Forms, Records, and Publications",
+        "category": "knowledge",
+        "description": "All regulatory knowledge elements (privileges, records, forms, ADs, publications, etc.).",
+        "ata_chapters": ["05"]
+      },
+      {
+        "code": "AM.I.I.R1-R5",
+        "domain": "general",
+        "subject_letter": "I",
+        "subject": "Regulations, Maintenance Forms, Records, and Publications",
+        "category": "risk_management",
+        "description": "All regulatory risk elements (documentation, SDS, complacency, warnings, applicability).",
+        "ata_chapters": ["05"]
+      },
+      {
+        "code": "AM.I.I.S1-S18",
+        "domain": "general",
+        "subject_letter": "I",
+        "subject": "Regulations, Maintenance Forms, Records, and Publications",
+        "category": "skill",
+        "description": "All regulatory skill elements (Form 337, AD compliance, records, TCDS, etc.).",
+        "ata_chapters": ["05"]
+      },
+    
+      {
+        "code": "AM.I.J.K1-K13",
+        "domain": "general",
+        "subject_letter": "J",
+        "subject": "Physics for Aviation",
+        "category": "knowledge",
+        "description": "All physics elements (matter, energy, Bernoulli's, Newton's, aerodynamics, etc.).",
+        "ata_chapters": ["00"]
+      },
+      {
+        "code": "AM.I.J.R1-R4",
+        "domain": "general",
+        "subject_letter": "J",
+        "subject": "Physics for Aviation",
+        "category": "risk_management",
+        "description": "All physics risk elements (density altitude, repair effects, testing data, units).",
+        "ata_chapters": ["00"]
+      },
+      {
+        "code": "AM.I.J.S1-S8",
+        "domain": "general",
+        "subject_letter": "J",
+        "subject": "Physics for Aviation",
+        "category": "skill",
+        "description": "All physics skill elements (temp conversion, density alt, pressure, horsepower).",
+        "ata_chapters": ["00"]
+      },
+    
+      {
+        "code": "AM.I.K.K1-K5",
+        "domain": "general",
+        "subject_letter": "K",
+        "subject": "Inspection Concepts and Techniques",
+        "category": "knowledge",
+        "description": "All inspection knowledge (measuring tools, calibration, NDT, inspection programs).",
+        "ata_chapters": ["05", "20"]
+      },
+      {
+        "code": "AM.I.K.R1-R5",
+        "domain": "general",
+        "subject_letter": "K",
+        "subject": "Inspection Concepts and Techniques",
+        "category": "risk_management",
+        "description": "All inspection risk elements (demagnetizing, precision instruments, calibration, etc.).",
+        "ata_chapters": ["05", "20"]
+      },
+      {
+        "code": "AM.I.K.S1-S8",
+        "domain": "general",
+        "subject_letter": "K",
+        "subject": "Inspection Concepts and Techniques",
+        "category": "skill",
+        "description": "All inspection skill elements (calipers, micrometers, dye penetrant, NDT, AD compliance).",
+        "ata_chapters": ["05", "20"]
+      },
+    
+      {
+        "code": "AM.I.L.K1-K11",
+        "domain": "general",
+        "subject_letter": "L",
+        "subject": "Human Factors",
+        "category": "knowledge",
+        "description": "All human factors knowledge (safety culture, human error, communication, etc.).",
+        "ata_chapters": ["00"]
+      },
+      {
+        "code": "AM.I.L.R1-R3",
+        "domain": "general",
+        "subject_letter": "L",
+        "subject": "Human Factors",
+        "category": "risk_management",
+        "description": "All human factors risk elements (hazard reporting, fatigue, condition monitoring).",
+        "ata_chapters": ["00"]
+      },
+      {
+        "code": "AM.I.L.S1-S3",
+        "domain": "general",
+        "subject_letter": "L",
+        "subject": "Human Factors",
+        "category": "skill",
+        "description": "All human factors skill elements (defect report, shift turnover, HF errors).",
+        "ata_chapters": ["00"]
+      },
+      {
+        "code": "AM.II.A.K1-K17",
+        "domain": "airframe",
+        "subject_letter": "A",
+        "subject": "Metallic Structures",
+        "category": "knowledge",
+        "description": "All metallic structures knowledge (inspection, defects, materials, rivets, welding, etc.).",
+        "ata_chapters": ["51", "53", "55", "57"]
+      },
+      {
+        "code": "AM.II.A.R1-R5",
+        "domain": "airframe",
+        "subject_letter": "A",
+        "subject": "Metallic Structures",
+        "category": "risk_management",
+        "description": "All metallic structures risk elements (material selection, safety, PPE, welding).",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.II.A.S1-S14",
+        "domain": "airframe",
+        "subject_letter": "A",
+        "subject": "Metallic Structures",
+        "category": "skill",
+        "description": "All metallic structures skills (rivets, sheet metal repair, fasteners, fabrication).",
+        "ata_chapters": ["51", "53", "55", "57"]
+      },
+      {
+        "code": "AM.II.B.K1-K6",
+        "domain": "airframe",
+        "subject_letter": "B",
+        "subject": "Non-Metallic Structures",
+        "category": "knowledge",
+        "description": "Wood structures knowledge (inspection, types, defects, repair).",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.II.B.K7-K17",
+        "domain": "airframe",
+        "subject_letter": "B",
+        "subject": "Non-Metallic Structures",
+        "category": "knowledge",
+        "description": "Fabric covering knowledge (types, seams, attachment, inspection, repair).",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.II.B.K18-K22",
+        "domain": "airframe",
+        "subject_letter": "B",
+        "subject": "Non-Metallic Structures",
+        "category": "knowledge",
+        "description": "Composite structures knowledge (inspection, defects, materials, repair).",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.II.B.K23-K25",
+        "domain": "airframe",
+        "subject_letter": "B",
+        "subject": "Non-Metallic Structures",
+        "category": "knowledge",
+        "description": "Thermoplastic material knowledge (inspection, storage, installation).",
+        "ata_chapters": ["51", "56"]
+      },
+      {
+        "code": "AM.II.B.K26-K27",
+        "domain": "airframe",
+        "subject_letter": "B",
+        "subject": "Non-Metallic Structures",
+        "category": "knowledge",
+        "description": "Window care, maintenance, temporary and permanent repairs.",
+        "ata_chapters": ["56"]
+      },
+      {
+        "code": "AM.II.B.K28-K29",
+        "domain": "airframe",
+        "subject_letter": "B",
+        "subject": "Non-Metallic Structures",
+        "category": "knowledge",
+        "description": "Safety practices for composites/windows; restraints and upholstery.",
+        "ata_chapters": ["25", "51", "56"]
+      },
+      {
+        "code": "AM.II.B.R1-R7",
+        "domain": "airframe",
+        "subject_letter": "B",
+        "subject": "Non-Metallic Structures",
+        "category": "risk_management",
+        "description": "All non-metallic risk elements (adhesives, composites, shelf life, materials).",
+        "ata_chapters": ["51"]
+      },
+      {
+        "code": "AM.II.B.S1-S12",
+        "domain": "airframe",
+        "subject_letter": "B",
+        "subject": "Non-Metallic Structures",
+        "category": "skill",
+        "description": "All non-metallic skills (composite repair, fiberglass, windshields, vacuum bag).",
+        "ata_chapters": ["51", "56"]
+      },
+      {
+        "code": "AM.II.C.K1-K13",
+        "domain": "airframe",
+        "subject_letter": "C",
+        "subject": "Flight Controls",
+        "category": "knowledge",
+        "description": "All flight controls knowledge (cables, stops, rigging, balance, surfaces).",
+        "ata_chapters": ["27"]
+      },
+      {
+        "code": "AM.II.C.R1-R5",
+        "domain": "airframe",
+        "subject_letter": "C",
+        "subject": "Flight Controls",
+        "category": "risk_management",
+        "description": "All flight controls risk elements (cable tension, rigging, lifting equipment, calibration).",
+        "ata_chapters": ["27"]
+      },
+      {
+        "code": "AM.II.C.S1-S13",
+        "domain": "airframe",
+        "subject_letter": "C",
+        "subject": "Flight Controls",
+        "category": "skill",
+        "description": "All flight controls skills (rigging, inspection, cable adjustment, balance, fabrication).",
+        "ata_chapters": ["27"]
+      },
+      {
+        "code": "AM.II.D.K1-K9",
+        "domain": "airframe",
+        "subject_letter": "D",
+        "subject": "Airframe Inspection",
+        "category": "knowledge",
+        "description": "All airframe inspection knowledge (14 CFR parts 43/91, ADs, life-limited parts).",
+        "ata_chapters": ["05"]
+      },
+      {
+        "code": "AM.II.D.R1-R5",
+        "domain": "airframe",
+        "subject_letter": "D",
+        "subject": "Airframe Inspection",
+        "category": "risk_management",
+        "description": "All airframe inspection risk elements (interpretation, visual inspection, radiographic).",
+        "ata_chapters": ["05"]
+      },
+      {
+        "code": "AM.II.D.S1-S7",
+        "domain": "airframe",
+        "subject_letter": "D",
+        "subject": "Airframe Inspection",
+        "category": "skill",
+        "description": "All airframe inspection skills (100-hr inspection, records, AD compliance, seatbelts).",
+        "ata_chapters": ["05", "25"]
+      },
+      {
+        "code": "AM.II.E.K1-K13",
+        "domain": "airframe",
+        "subject_letter": "E",
+        "subject": "Landing Gear Systems",
+        "category": "knowledge",
+        "description": "All landing gear knowledge (fixed/retractable, struts, brakes, tires, steering).",
+        "ata_chapters": ["32"]
+      },
+      {
+        "code": "AM.II.E.R1-R6",
+        "domain": "airframe",
+        "subject_letter": "E",
+        "subject": "Landing Gear Systems",
+        "category": "risk_management",
+        "description": "All landing gear risk elements (jacks, high pressure, hydraulic fluids, operations).",
+        "ata_chapters": ["32"]
+      },
+      {
+        "code": "AM.II.E.S1-S29",
+        "domain": "airframe",
+        "subject_letter": "E",
+        "subject": "Landing Gear Systems",
+        "category": "skill",
+        "description": "All landing gear skills (service, inspect, troubleshoot, brakes, tires, steering, etc.).",
+        "ata_chapters": ["32"]
+      },
+      {
+        "code": "AM.II.F.K1-K11",
+        "domain": "airframe",
+        "subject_letter": "F",
+        "subject": "Hydraulic and Pneumatic Systems",
+        "category": "knowledge",
+        "description": "All hydraulic/pneumatic knowledge (components, fluids, seals, accumulators, filters).",
+        "ata_chapters": ["29", "36"]
+      },
+      {
+        "code": "AM.II.F.R1-R5",
+        "domain": "airframe",
+        "subject_letter": "F",
+        "subject": "Hydraulic and Pneumatic Systems",
+        "category": "risk_management",
+        "description": "All hydraulic/pneumatic risk elements (pressure relief, storage, cross-contamination).",
+        "ata_chapters": ["29", "36"]
+      },
+      {
+        "code": "AM.II.F.S1-S16",
+        "domain": "airframe",
+        "subject_letter": "F",
+        "subject": "Hydraulic and Pneumatic Systems",
+        "category": "skill",
+        "description": "All hydraulic/pneumatic skills (identify fluids, seals, service, troubleshoot, etc.).",
+        "ata_chapters": ["29", "36"]
+      },
+      {
+        "code": "AM.II.G.K1-K3",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "knowledge",
+        "description": "Pressurization, bleed air heating, instrument cooling.",
+        "ata_chapters": ["21"]
+      },
+      {
+        "code": "AM.II.G.K4-K5",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "knowledge",
+        "description": "Exhaust heat exchanger and combustion heater systems.",
+        "ata_chapters": ["21"]
+      },
+      {
+        "code": "AM.II.G.K6-K8",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "knowledge",
+        "description": "Vapor-cycle, air-cycle, and cabin pressurization systems.",
+        "ata_chapters": ["21"]
+      },
+      {
+        "code": "AM.II.G.K9-K10",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "knowledge",
+        "description": "Oxygen systems types, components, maintenance, and inspection.",
+        "ata_chapters": ["35"]
+      },
+      {
+        "code": "AM.II.G.R1",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "risk_management",
+        "description": "Oxygen system maintenance.",
+        "ata_chapters": ["35"]
+      },
+      {
+        "code": "AM.II.G.R2",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "risk_management",
+        "description": "Recovery of vapor-cycle refrigerant.",
+        "ata_chapters": ["21"]
+      },
+      {
+        "code": "AM.II.G.R3",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "risk_management",
+        "description": "Handling chemical oxygen generating systems.",
+        "ata_chapters": ["35"]
+      },
+      {
+        "code": "AM.II.G.R4",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "risk_management",
+        "description": "Storage, handling, and use of compressed gas cylinders.",
+        "ata_chapters": ["35"]
+      },
+      {
+        "code": "AM.II.G.R5",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "risk_management",
+        "description": "Manufacturer's recommended servicing procedures, refrigerant types.",
+        "ata_chapters": ["21"]
+      },
+      {
+        "code": "AM.II.G.R6",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "risk_management",
+        "description": "Maintenance of combustion heaters.",
+        "ata_chapters": ["21"]
+      },
+      {
+        "code": "AM.II.G.S1-S7",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "skill",
+        "description": "Oxygen system skills (inspect, purge, service, masks, regulators, chemical generators).",
+        "ata_chapters": ["35"]
+      },
+      {
+        "code": "AM.II.G.S8-S15",
+        "domain": "airframe",
+        "subject_letter": "G",
+        "subject": "Environmental Systems",
+        "category": "skill",
+        "description": "HVAC/pressurization skills (combustion heater, refrigerant, air-cycle, outflow valve).",
+        "ata_chapters": ["21"]
+      },
+      {
+        "code": "AM.II.H.K1-K24",
+        "domain": "airframe",
+        "subject_letter": "H",
+        "subject": "Aircraft Instrument Systems",
+        "category": "knowledge",
+        "description": "All instrument knowledge (annunciators, compass, pitot-static, gyros, EFIS, etc.).",
+        "ata_chapters": ["31", "34"]
+      },
+      {
+        "code": "AM.II.H.R1-R5",
+        "domain": "airframe",
+        "subject_letter": "H",
+        "subject": "Aircraft Instrument Systems",
+        "category": "risk_management",
+        "description": "All instrument risk elements (pressurized air, annunciators, ESD, gyros, pitot-static).",
+        "ata_chapters": ["31", "34"]
+      },
+      {
+        "code": "AM.II.H.S1-S14",
+        "domain": "airframe",
+        "subject_letter": "H",
+        "subject": "Aircraft Instrument Systems",
+        "category": "skill",
+        "description": "All instrument skills (static test, install, range marks, compass, vacuum, stall warning).",
+        "ata_chapters": ["31", "34"]
+      },
+      {
+        "code": "AM.II.I.K1-K6",
+        "domain": "airframe",
+        "subject_letter": "I",
+        "subject": "Communications and Navigation Systems",
+        "category": "knowledge",
+        "description": "Radio/comm knowledge (principles, components, antennas, VHF/HF, SATCOM, ACARS).",
+        "ata_chapters": ["23"]
+      },
+      {
+        "code": "AM.II.I.K7",
+        "domain": "airframe",
+        "subject_letter": "I",
+        "subject": "Communications and Navigation Systems",
+        "category": "knowledge",
+        "description": "Emergency locator transmitter (ELT).",
+        "ata_chapters": ["23"]
+      },
+      {
+        "code": "AM.II.I.K8-K15",
+        "domain": "airframe",
+        "subject_letter": "I",
+        "subject": "Communications and Navigation Systems",
+        "category": "knowledge",
+        "description": "Navigation systems (ADF, VOR, DME, ILS, GPS, TCAS, weather radar, GPWS).",
+        "ata_chapters": ["34"]
+      },
+      {
+        "code": "AM.II.I.K16-K18",
+        "domain": "airframe",
+        "subject_letter": "I",
+        "subject": "Communications and Navigation Systems",
+        "category": "knowledge",
+        "description": "Autopilot, auto-throttle, and stability augmentation systems.",
+        "ata_chapters": ["22"]
+      },
+      {
+        "code": "AM.II.I.K19-K21",
+        "domain": "airframe",
+        "subject_letter": "I",
+        "subject": "Communications and Navigation Systems",
+        "category": "knowledge",
+        "description": "Radio altimeter, ADS-B, transponder/encoder.",
+        "ata_chapters": ["34"]
+      },
+      {
+        "code": "AM.II.I.R1-R6",
+        "domain": "airframe",
+        "subject_letter": "I",
+        "subject": "Communications and Navigation Systems",
+        "category": "risk_management",
+        "description": "All comm/nav risk elements (ELT testing, high power, wire routing, antennas, ESD).",
+        "ata_chapters": ["23", "34"]
+      },
+      {
+        "code": "AM.II.I.S1-S13",
+        "domain": "airframe",
+        "subject_letter": "I",
+        "subject": "Communications and Navigation Systems",
+        "category": "skill",
+        "description": "All comm/nav skills (placards, autopilot, antennas, VHF, ELT, coaxial cable, etc.).",
+        "ata_chapters": ["22", "23", "34"]
+      },
+      {
+        "code": "AM.II.J.K1-K9",
+        "domain": "airframe",
+        "subject_letter": "J",
+        "subject": "Aircraft Fuel Systems",
+        "category": "knowledge",
+        "description": "All fuel system knowledge (types, components, tanks, transfer, jettison, quantity).",
+        "ata_chapters": ["28"]
+      },
+      {
+        "code": "AM.II.J.R1-R5",
+        "domain": "airframe",
+        "subject_letter": "J",
+        "subject": "Aircraft Fuel Systems",
+        "category": "risk_management",
+        "description": "All fuel system risk elements (maintenance, contamination, spills, tank entry, defueling).",
+        "ata_chapters": ["28"]
+      },
+      {
+        "code": "AM.II.J.S1-S18",
+        "domain": "airframe",
+        "subject_letter": "J",
+        "subject": "Aircraft Fuel Systems",
+        "category": "skill",
+        "description": "All fuel system skills (inspect, troubleshoot, valves, strainer, quantity, defueling, etc.).",
+        "ata_chapters": ["28"]
+      },
+      {
+        "code": "AM.II.K.K1-K17",
+        "domain": "airframe",
+        "subject_letter": "K",
+        "subject": "Aircraft Electrical Systems",
+        "category": "knowledge",
+        "description": "All airframe electrical knowledge (generators, alternators, wiring, lighting, CSD/IDG).",
+        "ata_chapters": ["24", "33"]
+      },
+      {
+        "code": "AM.II.K.R1-R9",
+        "domain": "airframe",
+        "subject_letter": "K",
+        "subject": "Aircraft Electrical Systems",
+        "category": "risk_management",
+        "description": "All airframe electrical risk elements (testing, external power, energized circuits, wiring, soldering).",
+        "ata_chapters": ["24"]
+      },
+      {
+        "code": "AM.II.K.S1-S20",
+        "domain": "airframe",
+        "subject_letter": "K",
+        "subject": "Aircraft Electrical Systems",
+        "category": "skill",
+        "description": "All airframe electrical skills (wiring, connectors, solder, troubleshoot, lights, bonding).",
+        "ata_chapters": ["24", "33"]
+      },
+      {
+        "code": "AM.II.L.K1-K7",
+        "domain": "airframe",
+        "subject_letter": "L",
+        "subject": "Ice and Rain Control Systems",
+        "category": "knowledge",
+        "description": "All ice/rain knowledge (icing causes, detection, anti-ice, de-ice, wipers, rain systems).",
+        "ata_chapters": ["30"]
+      },
+      {
+        "code": "AM.II.L.R1-R3",
+        "domain": "airframe",
+        "subject_letter": "L",
+        "subject": "Ice and Rain Control Systems",
+        "category": "risk_management",
+        "description": "All ice/rain risk elements (system testing, deicing fluids, cleaning heated windshields).",
+        "ata_chapters": ["30"]
+      },
+      {
+        "code": "AM.II.L.S1-S9",
+        "domain": "airframe",
+        "subject_letter": "L",
+        "subject": "Ice and Rain Control Systems",
+        "category": "skill",
+        "description": "All ice/rain skills (pitot heat, deicer boots, windshield heat, wipers, thermal anti-ice).",
+        "ata_chapters": ["30"]
+      },
+      {
+        "code": "AM.II.M.K1-K7",
+        "domain": "airframe",
+        "subject_letter": "M",
+        "subject": "Airframe Fire Protection Systems",
+        "category": "knowledge",
+        "description": "All fire protection knowledge (fire types/zones, detection, smoke/CO, extinguishing).",
+        "ata_chapters": ["26"]
+      },
+      {
+        "code": "AM.II.M.R1-R3",
+        "domain": "airframe",
+        "subject_letter": "M",
+        "subject": "Airframe Fire Protection Systems",
+        "category": "risk_management",
+        "description": "All fire protection risk elements (squibs, PPE, extinguishing agents).",
+        "ata_chapters": ["26"]
+      },
+      {
+        "code": "AM.II.M.S1-S12",
+        "domain": "airframe",
+        "subject_letter": "M",
+        "subject": "Airframe Fire Protection Systems",
+        "category": "skill",
+        "description": "All fire protection skills (troubleshoot, inspect, smoke detection, continuous loop, etc.).",
+        "ata_chapters": ["26"]
+      },
+      {
+        "code": "AM.II.N.K1-K9",
+        "domain": "airframe",
+        "subject_letter": "N",
+        "subject": "Rotorcraft Fundamentals",
+        "category": "knowledge",
+        "description": "All rotorcraft knowledge (aerodynamics, controls, transmissions, rotor systems).",
+        "ata_chapters": ["62", "63", "64", "65"]
+      },
+      {
+        "code": "AM.II.N.R1-R4",
+        "domain": "airframe",
+        "subject_letter": "N",
+        "subject": "Rotorcraft Fundamentals",
+        "category": "risk_management",
+        "description": "All rotorcraft risk elements (blade safety, ground handling, functional tests, maintenance).",
+        "ata_chapters": ["62", "63", "64", "65"]
+      },
+      {
+        "code": "AM.II.N.S1-S4",
+        "domain": "airframe",
+        "subject_letter": "N",
+        "subject": "Rotorcraft Fundamentals",
+        "category": "skill",
+        "description": "All rotorcraft skills (components, track/balance, rigging, control procedures).",
+        "ata_chapters": ["62", "63", "64", "65"]
+      },
+      {
+        "code": "AM.II.O.K1-K3",
+        "domain": "airframe",
+        "subject_letter": "O",
+        "subject": "Water and Waste Systems",
+        "category": "knowledge",
+        "description": "All water/waste knowledge (potable water, lavatory waste, servicing).",
+        "ata_chapters": ["38"]
+      },
+      {
+        "code": "AM.II.O.R1",
+        "domain": "airframe",
+        "subject_letter": "O",
+        "subject": "Water and Waste Systems",
+        "category": "risk_management",
+        "description": "Servicing lavatory waste systems, safety equipment.",
+        "ata_chapters": ["38"]
+      },
+      {
+        "code": "AM.II.O.S1-S2",
+        "domain": "airframe",
+        "subject_letter": "O",
+        "subject": "Water and Waste Systems",
+        "category": "skill",
+        "description": "All water/waste skills (lavatory servicing, potable water servicing).",
+        "ata_chapters": ["38"]
+      },
+      {
+        "code": "AM.III.A.K1-K14",
+        "domain": "powerplant",
+        "subject_letter": "A",
+        "subject": "Reciprocating Engines",
+        "category": "knowledge",
+        "description": "All reciprocating engine knowledge (theory, components, induction, cooling, lubrication, ignition).",
+        "ata_chapters": ["71", "72", "73", "74", "75", "76", "77", "79"]
+      },
+      {
+        "code": "AM.III.A.R1-R6",
+        "domain": "powerplant",
+        "subject_letter": "A",
+        "subject": "Reciprocating Engines",
+        "category": "risk_management",
+        "description": "All reciprocating engine risk elements (prop strikes, hot sections, ignition, detonation, preignition).",
+        "ata_chapters": ["71", "72", "74"]
+      },
+      {
+        "code": "AM.III.A.S1-S16",
+        "domain": "powerplant",
+        "subject_letter": "A",
+        "subject": "Reciprocating Engines",
+        "category": "skill",
+        "description": "All reciprocating engine skills (compression test, timing, magnetos, troubleshooting, borescope).",
+        "ata_chapters": ["71", "72", "73", "74", "75", "76", "77"]
+      },
+      {
+        "code": "AM.III.B.K1-K16",
+        "domain": "powerplant",
+        "subject_letter": "B",
+        "subject": "Turbine Engines",
+        "category": "knowledge",
+        "description": "All turbine engine knowledge (theory, compressors, turbines, hot section, FADEC, APU).",
+        "ata_chapters": ["70", "71", "72", "73", "74", "75", "76", "77", "79", "49"]
+      },
+      {
+        "code": "AM.III.B.R1-R6",
+        "domain": "powerplant",
+        "subject_letter": "B",
+        "subject": "Turbine Engines",
+        "category": "risk_management",
+        "description": "All turbine engine risk elements (FOD, hot section, borescope, FADEC, high temps).",
+        "ata_chapters": ["70", "71", "72", "73", "74", "75", "76"]
+      },
+      {
+        "code": "AM.III.B.S1-S14",
+        "domain": "powerplant",
+        "subject_letter": "B",
+        "subject": "Turbine Engines",
+        "category": "skill",
+        "description": "All turbine engine skills (borescope, trim, rigging, troubleshooting, vibration, APU).",
+        "ata_chapters": ["70", "71", "72", "73", "74", "75", "76", "77", "79", "49"]
+      },
+      {
+        "code": "AM.III.C.K1-K10",
+        "domain": "powerplant",
+        "subject_letter": "C",
+        "subject": "Engine Inspection",
+        "category": "knowledge",
+        "description": "All engine inspection knowledge (100-hr, annual, borescope, ADs, SBs, TBO, records).",
+        "ata_chapters": ["05", "71", "72", "73", "74", "75", "76", "77"]
+      },
+      {
+        "code": "AM.III.C.R1-R4",
+        "domain": "powerplant",
+        "subject_letter": "C",
+        "subject": "Engine Inspection",
+        "category": "risk_management",
+        "description": "All engine inspection risk elements (hot section, prop strike, oil contamination, torque).",
+        "ata_chapters": ["05", "71", "72"]
+      },
+      {
+        "code": "AM.III.C.S1-S10",
+        "domain": "powerplant",
+        "subject_letter": "C",
+        "subject": "Engine Inspection",
+        "category": "skill",
+        "description": "All engine inspection skills (compression test, borescope, oil filter, chip detector, ADs).",
+        "ata_chapters": ["05", "71", "72", "73", "74", "75", "76"]
+      },
+      {
+        "code": "AM.III.D.K1-K14",
+        "domain": "powerplant",
+        "subject_letter": "D",
+        "subject": "Engine Instrument Systems",
+        "category": "knowledge",
+        "description": "All engine instrument knowledge (tach, MAP, EGT, CHT, oil temp/pressure, vibration, FADEC).",
+        "ata_chapters": ["77"]
+      },
+      {
+        "code": "AM.III.D.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "D",
+        "subject": "Engine Instrument Systems",
+        "category": "risk_management",
+        "description": "All engine instrument risk elements (sensor handling, wiring, calibration).",
+        "ata_chapters": ["77"]
+      },
+      {
+        "code": "AM.III.D.S1-S6",
+        "domain": "powerplant",
+        "subject_letter": "D",
+        "subject": "Engine Instrument Systems",
+        "category": "skill",
+        "description": "All engine instrument skills (install, troubleshoot, verify indications, wiring).",
+        "ata_chapters": ["77"]
+      },
+      {
+        "code": "AM.III.E.K1-K12",
+        "domain": "powerplant",
+        "subject_letter": "E",
+        "subject": "Engine Fire Protection Systems",
+        "category": "knowledge",
+        "description": "All engine fire protection knowledge (detection, extinguishing, loops, bottles, squibs).",
+        "ata_chapters": ["26"]
+      },
+      {
+        "code": "AM.III.E.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "E",
+        "subject": "Engine Fire Protection Systems",
+        "category": "risk_management",
+        "description": "All engine fire protection risk elements (bottle handling, squibs, leaks).",
+        "ata_chapters": ["26"]
+      },
+      {
+        "code": "AM.III.E.S1-S7",
+        "domain": "powerplant",
+        "subject_letter": "E",
+        "subject": "Engine Fire Protection Systems",
+        "category": "skill",
+        "description": "All engine fire protection skills (inspect, test loops, troubleshoot, replace bottles).",
+        "ata_chapters": ["26"]
+      },
+      {
+        "code": "AM.III.F.K1-K13",
+        "domain": "powerplant",
+        "subject_letter": "F",
+        "subject": "Engine Electrical Systems",
+        "category": "knowledge",
+        "description": "All engine electrical knowledge (starters, generators, alternators, ignition, FADEC).",
+        "ata_chapters": ["24", "74", "77"]
+      },
+      {
+        "code": "AM.III.F.R1-R4",
+        "domain": "powerplant",
+        "subject_letter": "F",
+        "subject": "Engine Electrical Systems",
+        "category": "risk_management",
+        "description": "All engine electrical risk elements (high voltage, magnetos, wiring, bonding).",
+        "ata_chapters": ["24", "74"]
+      },
+      {
+        "code": "AM.III.F.S1-S12",
+        "domain": "powerplant",
+        "subject_letter": "F",
+        "subject": "Engine Electrical Systems",
+        "category": "skill",
+        "description": "All engine electrical skills (timing, magnetos, leads, spark plugs, troubleshooting).",
+        "ata_chapters": ["24", "74", "77"]
+      },
+      {
+        "code": "AM.III.G.K1-K14",
+        "domain": "powerplant",
+        "subject_letter": "G",
+        "subject": "Lubrication Systems",
+        "category": "knowledge",
+        "description": "All lubrication knowledge (wet/dry sump, pumps, filters, coolers, oil types).",
+        "ata_chapters": ["79"]
+      },
+      {
+        "code": "AM.III.G.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "G",
+        "subject": "Lubrication Systems",
+        "category": "risk_management",
+        "description": "All lubrication risk elements (contamination, servicing, leaks).",
+        "ata_chapters": ["79"]
+      },
+      {
+        "code": "AM.III.G.S1-S10",
+        "domain": "powerplant",
+        "subject_letter": "G",
+        "subject": "Lubrication Systems",
+        "category": "skill",
+        "description": "All lubrication skills (service, inspect, troubleshoot, filter, chip detector).",
+        "ata_chapters": ["79"]
+      },
+      {
+        "code": "AM.III.H.K1-K12",
+        "domain": "powerplant",
+        "subject_letter": "H",
+        "subject": "Ignition and Starting Systems",
+        "category": "knowledge",
+        "description": "All ignition/starting knowledge (magnetos, ignition harness, spark plugs, starters).",
+        "ata_chapters": ["74"]
+      },
+      {
+        "code": "AM.III.H.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "H",
+        "subject": "Ignition and Starting Systems",
+        "category": "risk_management",
+        "description": "All ignition/starting risk elements (high voltage, timing, hot mags).",
+        "ata_chapters": ["74"]
+      },
+      {
+        "code": "AM.III.H.S1-S10",
+        "domain": "powerplant",
+        "subject_letter": "H",
+        "subject": "Ignition and Starting Systems",
+        "category": "skill",
+        "description": "All ignition/starting skills (time magnetos, inspect plugs, troubleshoot, leads).",
+        "ata_chapters": ["74"]
+      },
+      {
+        "code": "AM.III.I.K1-K18",
+        "domain": "powerplant",
+        "subject_letter": "I",
+        "subject": "Fuel Metering Systems",
+        "category": "knowledge",
+        "description": "All fuel metering knowledge (carburetors, injection, FADEC, fuel controls, governors).",
+        "ata_chapters": ["73"]
+      },
+      {
+        "code": "AM.III.I.R1-R4",
+        "domain": "powerplant",
+        "subject_letter": "I",
+        "subject": "Fuel Metering Systems",
+        "category": "risk_management",
+        "description": "All fuel metering risk elements (fuel contamination, mixture, leaks, adjustments).",
+        "ata_chapters": ["73"]
+      },
+      {
+        "code": "AM.III.I.S1-S14",
+        "domain": "powerplant",
+        "subject_letter": "I",
+        "subject": "Fuel Metering Systems",
+        "category": "skill",
+        "description": "All fuel metering skills (carburetor, injection, mixture, idle, troubleshooting).",
+        "ata_chapters": ["73"]
+      },
+      {
+        "code": "AM.III.J.K1-K11",
+        "domain": "powerplant",
+        "subject_letter": "J",
+        "subject": "Induction and Engine Airflow Systems",
+        "category": "knowledge",
+        "description": "All induction knowledge (air filters, alternate air, turbocharging, supercharging).",
+        "ata_chapters": ["71", "75"]
+      },
+      {
+        "code": "AM.III.J.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "J",
+        "subject": "Induction and Engine Airflow Systems",
+        "category": "risk_management",
+        "description": "All induction risk elements (icing, turbocharger overspeed, leaks).",
+        "ata_chapters": ["71", "75"]
+      },
+      {
+        "code": "AM.III.J.S1-S10",
+        "domain": "powerplant",
+        "subject_letter": "J",
+        "subject": "Induction and Engine Airflow Systems",
+        "category": "skill",
+        "description": "All induction skills (inspect, troubleshoot, turbocharger, wastegate, alternate air).",
+        "ata_chapters": ["71", "75"]
+      },
+      {
+        "code": "AM.III.K.K1-K13",
+        "domain": "powerplant",
+        "subject_letter": "K",
+        "subject": "Engine Cooling Systems",
+        "category": "knowledge",
+        "description": "All cooling knowledge (air cooling, baffles, cowl flaps, liquid cooling, heat exchangers).",
+        "ata_chapters": ["71"]
+      },
+      {
+        "code": "AM.III.K.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "K",
+        "subject": "Engine Cooling Systems",
+        "category": "risk_management",
+        "description": "All cooling risk elements (overheating, cowl flap misrigging, airflow obstructions).",
+        "ata_chapters": ["71"]
+      },
+      {
+        "code": "AM.III.K.S1-S8",
+        "domain": "powerplant",
+        "subject_letter": "K",
+        "subject": "Engine Cooling Systems",
+        "category": "skill",
+        "description": "All cooling skills (inspect baffles, troubleshoot overheating, adjust cowl flaps).",
+        "ata_chapters": ["71"]
+      },
+      {
+        "code": "AM.III.L.K1-K10",
+        "domain": "powerplant",
+        "subject_letter": "L",
+        "subject": "Engine Exhaust and Reverser Systems",
+        "category": "knowledge",
+        "description": "All exhaust knowledge (manifolds, mufflers, heat exchangers, thrust reversers).",
+        "ata_chapters": ["78"]
+      },
+      {
+        "code": "AM.III.L.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "L",
+        "subject": "Engine Exhaust and Reverser Systems",
+        "category": "risk_management",
+        "description": "All exhaust risk elements (CO hazards, cracks, hot spots, reverser deployment).",
+        "ata_chapters": ["78"]
+      },
+      {
+        "code": "AM.III.L.S1-S9",
+        "domain": "powerplant",
+        "subject_letter": "L",
+        "subject": "Engine Exhaust and Reverser Systems",
+        "category": "skill",
+        "description": "All exhaust skills (inspect, troubleshoot, CO checks, reverser operation).",
+        "ata_chapters": ["78"]
+      },
+      {
+        "code": "AM.III.M.K1-K12",
+        "domain": "powerplant",
+        "subject_letter": "M",
+        "subject": "Propellers",
+        "category": "knowledge",
+        "description": "All propeller knowledge (fixed pitch, constant speed, feathering, governors, ice control).",
+        "ata_chapters": ["61"]
+      },
+      {
+        "code": "AM.III.M.R1-R4",
+        "domain": "powerplant",
+        "subject_letter": "M",
+        "subject": "Propellers",
+        "category": "risk_management",
+        "description": "All propeller risk elements (blade angle, overspeed, leaks, feathering hazards).",
+        "ata_chapters": ["61"]
+      },
+      {
+        "code": "AM.III.M.S1-S14",
+        "domain": "powerplant",
+        "subject_letter": "M",
+        "subject": "Propellers",
+        "category": "skill",
+        "description": "All propeller skills (track, balance, governor, feathering, deice, troubleshooting).",
+        "ata_chapters": ["61"]
+      },
+      {
+        "code": "AM.III.N.K1-K12",
+        "domain": "powerplant",
+        "subject_letter": "N",
+        "subject": "Engine Fuel Systems",
+        "category": "knowledge",
+        "description": "All engine fuel system knowledge (boost pumps, selectors, strainers, valves, contamination).",
+        "ata_chapters": ["73"]
+      },
+      {
+        "code": "AM.III.N.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "N",
+        "subject": "Engine Fuel Systems",
+        "category": "risk_management",
+        "description": "All engine fuel system risk elements (fuel contamination, leaks, misfueling).",
+        "ata_chapters": ["73"]
+      },
+      {
+        "code": "AM.III.N.S1-S10",
+        "domain": "powerplant",
+        "subject_letter": "N",
+        "subject": "Engine Fuel Systems",
+        "category": "skill",
+        "description": "All engine fuel system skills (inspect, troubleshoot, strainers, selectors, boost pumps).",
+        "ata_chapters": ["73"]
+      },
+      {
+        "code": "AM.III.O.K1-K10",
+        "domain": "powerplant",
+        "subject_letter": "O",
+        "subject": "Engine Induction and Airflow Systems",
+        "category": "knowledge",
+        "description": "All induction/airflow knowledge (filters, alternate air, turbocharging, intercoolers).",
+        "ata_chapters": ["71", "75"]
+      },
+      {
+        "code": "AM.III.O.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "O",
+        "subject": "Engine Induction and Airflow Systems",
+        "category": "risk_management",
+        "description": "All induction/airflow risk elements (icing, leaks, turbo overspeed).",
+        "ata_chapters": ["71", "75"]
+      },
+      {
+        "code": "AM.III.O.S1-S8",
+        "domain": "powerplant",
+        "subject_letter": "O",
+        "subject": "Engine Induction and Airflow Systems",
+        "category": "skill",
+        "description": "All induction/airflow skills (inspect, troubleshoot, turbocharger, wastegate).",
+        "ata_chapters": ["71", "75"]
+      },
+      {
+        "code": "AM.III.P.K1-K11",
+        "domain": "powerplant",
+        "subject_letter": "P",
+        "subject": "Engine Cooling Systems",
+        "category": "knowledge",
+        "description": "All cooling knowledge (air cooling, liquid cooling, baffles, cowl flaps, heat exchangers).",
+        "ata_chapters": ["71"]
+      },
+      {
+        "code": "AM.III.P.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "P",
+        "subject": "Engine Cooling Systems",
+        "category": "risk_management",
+        "description": "All cooling risk elements (overheating, airflow obstructions, misrigging).",
+        "ata_chapters": ["71"]
+      },
+      {
+        "code": "AM.III.P.S1-S7",
+        "domain": "powerplant",
+        "subject_letter": "P",
+        "subject": "Engine Cooling Systems",
+        "category": "skill",
+        "description": "All cooling skills (inspect baffles, troubleshoot overheating, adjust cowl flaps).",
+        "ata_chapters": ["71"]
+      },
+      {
+        "code": "AM.III.Q.K1-K9",
+        "domain": "powerplant",
+        "subject_letter": "Q",
+        "subject": "Engine Exhaust Systems",
+        "category": "knowledge",
+        "description": "All exhaust knowledge (manifolds, mufflers, heat exchangers, turbo components).",
+        "ata_chapters": ["78"]
+      },
+      {
+        "code": "AM.III.Q.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "Q",
+        "subject": "Engine Exhaust Systems",
+        "category": "risk_management",
+        "description": "All exhaust risk elements (CO hazards, cracks, hot spots).",
+        "ata_chapters": ["78"]
+      },
+      {
+        "code": "AM.III.Q.S1-S8",
+        "domain": "powerplant",
+        "subject_letter": "Q",
+        "subject": "Engine Exhaust Systems",
+        "category": "skill",
+        "description": "All exhaust skills (inspect, troubleshoot, CO checks, leak detection).",
+        "ata_chapters": ["78"]
+      },
+      {
+        "code": "AM.III.R.K1-K12",
+        "domain": "powerplant",
+        "subject_letter": "R",
+        "subject": "Engine Starting Systems",
+        "category": "knowledge",
+        "description": "All starting system knowledge (electric, pneumatic, starter-generators, igniters).",
+        "ata_chapters": ["74", "80"]
+      },
+      {
+        "code": "AM.III.R.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "R",
+        "subject": "Engine Starting Systems",
+        "category": "risk_management",
+        "description": "All starting system risk elements (hot starts, hung starts, starter duty cycle).",
+        "ata_chapters": ["74", "80"]
+      },
+      {
+        "code": "AM.III.R.S1-S9",
+        "domain": "powerplant",
+        "subject_letter": "R",
+        "subject": "Engine Starting Systems",
+        "category": "skill",
+        "description": "All starting system skills (inspect, troubleshoot, starter-generator, igniter tests).",
+        "ata_chapters": ["74", "80"]
+      },
+      {
+        "code": "AM.III.S.K1-K10",
+        "domain": "powerplant",
+        "subject_letter": "S",
+        "subject": "Engine Fuel Systems (Turbine)",
+        "category": "knowledge",
+        "description": "All turbine fuel system knowledge (fuel controls, governors, pumps, filters, manifolds).",
+        "ata_chapters": ["73"]
+      },
+      {
+        "code": "AM.III.S.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "S",
+        "subject": "Engine Fuel Systems (Turbine)",
+        "category": "risk_management",
+        "description": "All turbine fuel system risk elements (fuel contamination, leaks, hot starts).",
+        "ata_chapters": ["73"]
+      },
+      {
+        "code": "AM.III.S.S1-S8",
+        "domain": "powerplant",
+        "subject_letter": "S",
+        "subject": "Engine Fuel Systems (Turbine)",
+        "category": "skill",
+        "description": "All turbine fuel system skills (inspect, troubleshoot, filters, pumps, controls).",
+        "ata_chapters": ["73"]
+      },
+      {
+        "code": "AM.III.T.K1-K11",
+        "domain": "powerplant",
+        "subject_letter": "T",
+        "subject": "Engine Induction and Airflow (Turbine)",
+        "category": "knowledge",
+        "description": "All turbine induction knowledge (inlet, anti-ice, bleed air, variable geometry).",
+        "ata_chapters": ["71", "75"]
+      },
+      {
+        "code": "AM.III.T.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "T",
+        "subject": "Engine Induction and Airflow (Turbine)",
+        "category": "risk_management",
+        "description": "All turbine induction risk elements (icing, FOD, bleed leaks).",
+        "ata_chapters": ["71", "75"]
+      },
+      {
+        "code": "AM.III.T.S1-S9",
+        "domain": "powerplant",
+        "subject_letter": "T",
+        "subject": "Engine Induction and Airflow (Turbine)",
+        "category": "skill",
+        "description": "All turbine induction skills (inspect, troubleshoot, anti-ice, bleed air).",
+        "ata_chapters": ["71", "75"]
+      },
+      {
+        "code": "AM.III.U.K1-K13",
+        "domain": "powerplant",
+        "subject_letter": "U",
+        "subject": "Engine Exhaust and Thrust Reverser Systems (Turbine)",
+        "category": "knowledge",
+        "description": "All turbine exhaust knowledge (nozzles, thrust reversers, EPR, temperature limits).",
+        "ata_chapters": ["78"]
+      },
+      {
+        "code": "AM.III.U.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "U",
+        "subject": "Engine Exhaust and Thrust Reverser Systems (Turbine)",
+        "category": "risk_management",
+        "description": "All turbine exhaust risk elements (reverser deployment, CO hazards, cracks).",
+        "ata_chapters": ["78"]
+      },
+      {
+        "code": "AM.III.U.S1-S8",
+        "domain": "powerplant",
+        "subject_letter": "U",
+        "subject": "Engine Exhaust and Thrust Reverser Systems (Turbine)",
+        "category": "skill",
+        "description": "All turbine exhaust skills (inspect, troubleshoot, reverser operation).",
+        "ata_chapters": ["78"]
+      },
+      {
+        "code": "AM.III.V.K1-K12",
+        "domain": "powerplant",
+        "subject_letter": "V",
+        "subject": "Auxiliary Power Units (APUs)",
+        "category": "knowledge",
+        "description": "All APU knowledge (operation, components, controls, electrical, bleed air).",
+        "ata_chapters": ["49"]
+      },
+      {
+        "code": "AM.III.V.R1-R3",
+        "domain": "powerplant",
+        "subject_letter": "V",
+        "subject": "Auxiliary Power Units (APUs)",
+        "category": "risk_management",
+        "description": "All APU risk elements (hot section, bleed leaks, exhaust hazards).",
+        "ata_chapters": ["49"]
+      },
+      {
+        "code": "AM.III.V.S1-S8",
+        "domain": "powerplant",
+        "subject_letter": "V",
+        "subject": "Auxiliary Power Units (APUs)",
+        "category": "skill",
+        "description": "All APU skills (inspect, troubleshoot, start, shutdown, bleed air checks).",
+        "ata_chapters": ["49"]
+      }
+]

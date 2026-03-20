@@ -94,7 +94,7 @@ export function ProgressTrackingDashboard({
   );
   const [expandedAcsId, setExpandedAcsId] = useState<number | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<ProgressData["logbookEntries"][0] | null>(null);
-  const [acsCodesForChapter, setAcsCodesForChapter] = useState<Array<{ id: number; code: string; description: string }>>([]);
+  const [acsCodesForChapter, setAcsCodesForChapter] = useState<Array<{ id: number; code: string; description: string; ata_chapter_numbers?: string[] }>>([]);
   const [logsPage, setLogsPage] = useState(1);
   const [acsPage, setAcsPage] = useState(1);
   const [pendingSignAcs, setPendingSignAcs] = useState<{ id: number; code: string; description: string } | null>(null);
@@ -123,7 +123,7 @@ export function ProgressTrackingDashboard({
   useEffect(() => {
     if (coverageMode === "acs" && selectedChapter) {
       getAcsCodesByChapter(selectedChapter).then((codes) =>
-        setAcsCodesForChapter(codes.map((c) => ({ id: c.id, code: c.code, description: c.description })))
+        setAcsCodesForChapter(codes.map((c) => ({ id: c.id, code: c.code, description: c.description, ata_chapter_numbers: c.ata_chapter_numbers })))
       );
     } else {
       setAcsCodesForChapter([]);
@@ -440,11 +440,14 @@ export function ProgressTrackingDashboard({
                               ) : null}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-3 flex-wrap">
                                 <span className="text-sm font-medium w-28 flex-shrink-0">{acs.code}</span>
                                 <span className="text-sm text-muted-foreground truncate">
                                   {acs.description || <span className="italic">—</span>}
                                 </span>
+                                {acs.ata_chapter_numbers && acs.ata_chapter_numbers.length > 0 && (
+                                  <span className="text-xs text-muted-foreground/80">Ch {acs.ata_chapter_numbers.join(", ")}</span>
+                                )}
                               </div>
                             </div>
                             <span className="text-sm text-muted-foreground flex-shrink-0">

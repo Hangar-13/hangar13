@@ -2,31 +2,86 @@
 
 import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import type { AtaChapter } from "@/app/actions/ata-chapters";
+import {
+  normalizeChapterNumber,
+  getDomainForAtaChapter,
+  type AcsDomain,
+} from "@/lib/acs-utils";
+
+export type AcsCategory = "knowledge" | "risk_management" | "skill";
 
 export type AcsCode = {
   id: number;
   code: string;
-  type: string;
+  domain: AcsDomain;
+  subject_letter: string;
+  subject: string;
+  category: AcsCategory;
   description: string;
+  ata_chapters: number[];
 };
 
-export async function getAcsCodesByChapter(chapterNumber: string): Promise<AcsCode[]> {
-  const supabase = await createServerSupabaseClient();
+/** AcsCode with resolved chapter numbers for display (e.g. ["20", "24"]) */
+export type AcsCodeWithChapters = AcsCode & { ata_chapter_numbers: string[] };
 
-  const { data: ataChapter, error: chapterError } = await supabase
-    .from("ata_chapter")
-    .select("id")
-    .eq("chapter_number", chapterNumber)
+/** Get a single ACS code by ID. Returns null if not found. */
+export async function getAcsCodeById(id: number): Promise<AcsCode | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("acs_code")
+    .select("*")
+    .eq("id", id)
     .maybeSingle();
 
-  if (chapterError || !ataChapter) {
-    return [];
-  }
+  if (error || !data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    id: row.id as number,
+    code: row.code as string,
+    domain: row.domain as AcsDomain,
+    subject_letter: String(row.subject_letter ?? ""),
+    subject: String(row.subject ?? ""),
+    category: row.category as AcsCategory,
+    description: String(row.description ?? ""),
+    ata_chapters: (row.ata_chapters as number[]) ?? [],
+  };
+}
+
+/** Get ATA chapters for an ACS code (resolves ata_chapters IDs to full chapter info). */
+export async function getAtaChaptersForAcsCode(acsCodeId: number): Promise<AtaChapter[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data: acsCode, error: acsError } = await supabase
+    .from("acs_code")
+    .select("ata_chapters")
+    .eq("id", acsCodeId)
+    .maybeSingle();
+
+  if (acsError || !acsCode?.ata_chapters?.length) return [];
+  const ids = acsCode.ata_chapters as number[];
+  if (ids.length === 0) return [];
+
+  const { data: chapters, error: chError } = await supabase
+    .from("ata_chapter")
+    .select("id, chapter_number, title, description")
+    .in("id", ids)
+    .order("chapter_number", { ascending: true });
+
+  if (chError || !chapters?.length) return [];
+  return chapters.map((c) => ({
+    ...c,
+    chapter_number: normalizeChapterNumber(c.chapter_number),
+  })) as AtaChapter[];
+}
+
+/** Get ACS codes by domain (general | airframe | powerplant) */
+export async function getAcsCodesByDomain(domain: AcsDomain): Promise<AcsCode[]> {
+  const supabase = await createServerSupabaseClient();
 
   const { data, error } = await supabase
     .from("acs_code")
     .select("*")
-    .eq("ata_chapter_id", ataChapter.id)
+    .eq("domain", domain)
     .order("code", { ascending: true });
 
   if (error) {
@@ -34,53 +89,148 @@ export async function getAcsCodesByChapter(chapterNumber: string): Promise<AcsCo
     return [];
   }
 
-  // Explicitly map response to ensure description is passed through
-  const codes = (data ?? []).map((row: Record<string, unknown>) => ({
+  return (data ?? []).map((row: Record<string, unknown>) => ({
     id: row.id as number,
     code: row.code as string,
-    type: row.type as string,
+    domain: row.domain as AcsDomain,
+    subject_letter: String(row.subject_letter ?? ""),
+    subject: String(row.subject ?? ""),
+    category: row.category as AcsCategory,
     description: String(row.description ?? ""),
+    ata_chapters: (row.ata_chapters as number[]) ?? [],
   }));
-
-  return codes;
 }
 
-/** ACS coverage per chapter: satisfied count, total count, and IDs of satisfied codes */
-export type AcsCoverageByChapter = Record<
-  string,
-  { satisfied: number; total: number; satisfiedCodeIds: number[] }
->;
+/** Get ACS codes for an ATA chapter by chapter number (e.g. "20", "09"). Returns codes with resolved ata_chapter_numbers for display. */
+export async function getAcsCodesByChapter(chapterNumber: string): Promise<AcsCodeWithChapters[]> {
+  const supabase = await createServerSupabaseClient();
+  const normalizedChapter = normalizeChapterNumber(chapterNumber);
 
-export async function getAcsCoverageByChapter(
+  const { data: ataChapter, error: chapterError } = await supabase
+    .from("ata_chapter")
+    .select("id")
+    .eq("chapter_number", normalizedChapter)
+    .maybeSingle();
+
+  if (chapterError || !ataChapter) {
+    const domain = getDomainForAtaChapter(chapterNumber);
+    const codes = await getAcsCodesByDomain(domain);
+    return enrichWithChapterNumbers(supabase, codes);
+  }
+
+  const { data, error } = await supabase
+    .from("acs_code")
+    .select("*")
+    .contains("ata_chapters", [ataChapter.id])
+    .order("code", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching ACS codes:", error);
+    const domain = getDomainForAtaChapter(chapterNumber);
+    const codes = await getAcsCodesByDomain(domain);
+    return enrichWithChapterNumbers(supabase, codes);
+  }
+
+  if (!data?.length) {
+    const domain = getDomainForAtaChapter(chapterNumber);
+    const codes = await getAcsCodesByDomain(domain);
+    return enrichWithChapterNumbers(supabase, codes);
+  }
+
+  const codes = data.map((row: Record<string, unknown>) => ({
+    id: row.id as number,
+    code: row.code as string,
+    domain: row.domain as AcsDomain,
+    subject_letter: String(row.subject_letter ?? ""),
+    subject: String(row.subject ?? ""),
+    category: row.category as AcsCategory,
+    description: String(row.description ?? ""),
+    ata_chapters: (row.ata_chapters as number[]) ?? [],
+  }));
+  return enrichWithChapterNumbers(supabase, codes);
+}
+
+async function enrichWithChapterNumbers(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  codes: AcsCode[]
+): Promise<AcsCodeWithChapters[]> {
+  const allIds = [...new Set(codes.flatMap((c) => c.ata_chapters))];
+  if (allIds.length === 0) return codes.map((c) => ({ ...c, ata_chapter_numbers: [] }));
+  const { data: chapters } = await supabase
+    .from("ata_chapter")
+    .select("id, chapter_number")
+    .in("id", allIds);
+  const idToNum = Object.fromEntries(
+    (chapters ?? []).map((c) => [String(c.id), normalizeChapterNumber(c.chapter_number)])
+  );
+  return codes.map((c) => ({
+    ...c,
+    ata_chapter_numbers: c.ata_chapters
+      .map((id) => idToNum[String(id)])
+      .filter((n): n is string => n != null),
+  }));
+}
+
+/** Get ACS codes for an ATA chapter by ata_chapter.id (alternative to getAcsCodesByChapter when you have the ID). */
+export async function getAcsCodesByAtaChapterId(ataChapterId: number): Promise<AcsCode[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("acs_code")
+    .select("*")
+    .contains("ata_chapters", [ataChapterId])
+    .order("code", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching ACS codes by ata_chapter id:", error);
+    return [];
+  }
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: row.id as number,
+    code: row.code as string,
+    domain: row.domain as AcsDomain,
+    subject_letter: String(row.subject_letter ?? ""),
+    subject: String(row.subject ?? ""),
+    category: row.category as AcsCategory,
+    description: String(row.description ?? ""),
+    ata_chapters: (row.ata_chapters as number[]) ?? [],
+  }));
+}
+
+/** ACS coverage: satisfied count, total count, and IDs of satisfied codes */
+export type AcsCoverage = {
+  satisfied: number;
+  total: number;
+  satisfiedCodeIds: number[];
+};
+
+export type AcsCoverageByChapter = Record<string, AcsCoverage>;
+export type AcsCoverageByDomain = Record<AcsDomain, AcsCoverage>;
+
+/** Get ACS coverage by domain (general, airframe, powerplant) */
+export async function getAcsCoverageByDomain(
   apprenticeId: string
-): Promise<AcsCoverageByChapter> {
+): Promise<AcsCoverageByDomain> {
   const supabase = await createServerSupabaseClient();
 
-  // Get total ACS codes per chapter (ata_chapter.chapter_number)
   const { data: acsCodes } = await supabase
     .from("acs_code")
-    .select("id, ata_chapter_id")
+    .select("id, domain")
     .order("id");
 
-  const { data: ataChapters } = await supabase
-    .from("ata_chapter")
-    .select("id, chapter_number");
-
-  const chapterByAtaId = Object.fromEntries(
-    (ataChapters ?? []).map((c) => [c.id, c.chapter_number])
-  );
-
-  const totalByChapter: Record<string, number> = {};
-  const acsToChapter: Record<number, string> = {};
+  const totalByDomain: Record<AcsDomain, number> = {
+    general: 0,
+    airframe: 0,
+    powerplant: 0,
+  };
+  const acsToDomain: Record<number, AcsDomain> = {};
   (acsCodes ?? []).forEach((ac) => {
-    const ch = chapterByAtaId[ac.ata_chapter_id];
-    if (ch) {
-      totalByChapter[ch] = (totalByChapter[ch] ?? 0) + 1;
-      acsToChapter[ac.id] = ch;
+    const d = ac.domain as AcsDomain;
+    if (d in totalByDomain) {
+      totalByDomain[d]++;
+      acsToDomain[ac.id] = d;
     }
   });
 
-  // Get satisfied ACS codes from logbook_entry_acs (approved entries)
   const { data: approvedEntries } = await supabase
     .from("logbook_entries")
     .select("id")
@@ -89,12 +239,11 @@ export async function getAcsCoverageByChapter(
 
   const approvedIds = (approvedEntries ?? []).map((e) => e.id);
   if (approvedIds.length === 0) {
-    return Object.fromEntries(
-      Object.entries(totalByChapter).map(([ch, total]) => [
-        ch,
-        { satisfied: 0, total, satisfiedCodeIds: [] },
-      ])
-    );
+    return {
+      general: { satisfied: 0, total: totalByDomain.general, satisfiedCodeIds: [] },
+      airframe: { satisfied: 0, total: totalByDomain.airframe, satisfiedCodeIds: [] },
+      powerplant: { satisfied: 0, total: totalByDomain.powerplant, satisfiedCodeIds: [] },
+    };
   }
 
   const { data: approvedAcs } = await supabase
@@ -103,24 +252,91 @@ export async function getAcsCoverageByChapter(
     .in("logbook_entry_id", approvedIds);
 
   const satisfiedCodeIds = new Set<number>();
-  (approvedAcs ?? []).forEach((row) => {
-    satisfiedCodeIds.add(row.acs_code_id);
+  (approvedAcs ?? []).forEach((row) => satisfiedCodeIds.add(row.acs_code_id));
+
+  const satisfiedByDomain: Record<AcsDomain, number[]> = {
+    general: [],
+    airframe: [],
+    powerplant: [],
+  };
+  satisfiedCodeIds.forEach((acsId) => {
+    const d = acsToDomain[acsId];
+    if (d) satisfiedByDomain[d].push(acsId);
   });
+
+  return {
+    general: { satisfied: satisfiedByDomain.general.length, total: totalByDomain.general, satisfiedCodeIds: satisfiedByDomain.general },
+    airframe: { satisfied: satisfiedByDomain.airframe.length, total: totalByDomain.airframe, satisfiedCodeIds: satisfiedByDomain.airframe },
+    powerplant: { satisfied: satisfiedByDomain.powerplant.length, total: totalByDomain.powerplant, satisfiedCodeIds: satisfiedByDomain.powerplant },
+  };
+}
+
+/** Get ACS coverage keyed by ATA chapter (codes can appear in multiple chapters via ata_chapters) */
+export async function getAcsCoverageByChapter(
+  apprenticeId: string,
+  ataChapterNumbers: string[]
+): Promise<AcsCoverageByChapter> {
+  const supabase = await createServerSupabaseClient();
+
+  const [{ data: acsCodes }, { data: ataChapters }] = await Promise.all([
+    supabase.from("acs_code").select("id, ata_chapters, domain").order("id"),
+    supabase.from("ata_chapter").select("id, chapter_number"),
+  ]);
+
+  const idToChapter = Object.fromEntries(
+    (ataChapters ?? []).map((c) => [String(c.id), normalizeChapterNumber(c.chapter_number)])
+  );
+
+  const totalByChapter: Record<string, number> = {};
+  const acsToChapters: Record<number, string[]> = {};
+  (acsCodes ?? []).forEach((ac) => {
+    const chapterIds = (ac.ata_chapters as number[] ?? []);
+    const chapters = chapterIds
+      .map((id) => idToChapter[String(id)])
+      .filter((ch): ch is string => ch != null);
+    acsToChapters[ac.id] = chapters;
+    chapters.forEach((ch) => {
+      totalByChapter[ch] = (totalByChapter[ch] ?? 0) + 1;
+    });
+  });
+
+  const { data: approvedEntries } = await supabase
+    .from("logbook_entries")
+    .select("id")
+    .eq("apprentice_id", apprenticeId)
+    .eq("status", "approved");
+
+  const approvedIds = (approvedEntries ?? []).map((e) => e.id);
+  const satisfiedCodeIds = new Set<number>();
+  if (approvedIds.length > 0) {
+    const { data: approvedAcs } = await supabase
+      .from("logbook_entry_acs")
+      .select("logbook_entry_id, acs_code_id")
+      .in("logbook_entry_id", approvedIds);
+    (approvedAcs ?? []).forEach((row) => satisfiedCodeIds.add(row.acs_code_id));
+  }
 
   const satisfiedByChapter: Record<string, number[]> = {};
   satisfiedCodeIds.forEach((acsId) => {
-    const ch = acsToChapter[acsId];
-    if (ch) {
+    const chapters = acsToChapters[acsId] ?? [];
+    chapters.forEach((ch) => {
       if (!satisfiedByChapter[ch]) satisfiedByChapter[ch] = [];
       satisfiedByChapter[ch].push(acsId);
-    }
+    });
   });
 
+  const byDomain = await getAcsCoverageByDomain(apprenticeId);
+
   const result: AcsCoverageByChapter = {};
-  Object.entries(totalByChapter).forEach(([ch, total]) => {
-    const ids = satisfiedByChapter[ch] ?? [];
-    result[ch] = { satisfied: ids.length, total, satisfiedCodeIds: ids };
-  });
+  for (const ch of ataChapterNumbers) {
+    if (totalByChapter[ch] !== undefined) {
+      const ids = satisfiedByChapter[ch] ?? [];
+      result[ch] = { satisfied: ids.length, total: totalByChapter[ch], satisfiedCodeIds: ids };
+    } else {
+      const domain = getDomainForAtaChapter(ch);
+      result[ch] = byDomain[domain];
+    }
+  }
   return result;
 }
 

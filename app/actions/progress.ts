@@ -54,6 +54,9 @@ export async function getProgressDataForApprentice(
   const approvedCount =
     logbookEntries?.filter((entry) => entry.status === "approved").length || 0;
 
+  /** Normalize chapter to 2 digits for consistent keys */
+  const padChapter = (ch: string) => (ch.length === 1 && /^\d$/.test(ch) ? "0" + ch : ch);
+
   const ataChapterData: Record<string, { hours: number; status: string }> = {};
   logbookEntries?.forEach((entry) => {
     if (entry.skills_practiced && entry.skills_practiced.length > 0) {
@@ -61,7 +64,7 @@ export async function getProgressDataForApprentice(
       entry.skills_practiced.forEach((skill: string) => {
         const ataMatch = skill?.match(/ATA:\s*(\d+)\s*-/);
         if (ataMatch) {
-          const chapter = ataMatch[1];
+          const chapter = padChapter(ataMatch[1]);
           const currentData = ataChapterData[chapter] || { hours: 0, status: "none" };
           currentData.hours = currentData.hours + hours;
           if (entry.status === "submitted" || currentData.status === "submitted") {
@@ -83,8 +86,16 @@ export async function getProgressDataForApprentice(
   });
   const chaptersWithHours = Object.keys(ataChapterHours).length;
 
+  const { data: ataChaptersData } = await supabase
+    .from("ata_chapter")
+    .select("chapter_number")
+    .order("chapter_number", { ascending: true });
+  const ataChapterNumbers = (ataChaptersData ?? []).map((c) =>
+    padChapter(c.chapter_number)
+  );
+
   const [acsCoverageByChapter, entriesByAcsCode, acsSignoffs] = await Promise.all([
-    getAcsCoverageByChapter(apprentice.id),
+    getAcsCoverageByChapter(apprentice.id, ataChapterNumbers),
     getLogbookEntriesByAcsCode(apprentice.id),
     getAcsSignoffsByApprentice(apprentice.user_id),
   ]);

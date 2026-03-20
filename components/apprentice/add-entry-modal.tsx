@@ -184,7 +184,7 @@ export function AddEntryModal({
   const certified = watch("certified");
 
   // ACS codes state
-  const [acsCodes, setAcsCodes] = useState<Array<{ id: number; code: string; type: string; description: string | null }>>([]);
+  const [acsCodes, setAcsCodes] = useState<Array<{ id: number; code: string; category: string; description: string | null; ata_chapter_numbers?: string[] }>>([]);
   const [selectedAcsCodeIds, setSelectedAcsCodeIds] = useState<Set<number>>(new Set());
   const [acsLoading, setAcsLoading] = useState(false);
 
@@ -213,7 +213,7 @@ export function AddEntryModal({
 
     setAcsLoading(true);
     getAcsCodesByChapter(ataChapter).then(async (codes) => {
-      setAcsCodes(codes);
+      setAcsCodes(codes.map((c) => ({ id: c.id, code: c.code, category: c.category, description: c.description, ata_chapter_numbers: c.ata_chapter_numbers })));
       const codeIds = new Set(codes.map((c) => c.id));
       if (isChapterChange) {
         setSelectedAcsCodeIds(new Set());
@@ -600,8 +600,15 @@ export function AddEntryModal({
                       className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                     />
                     <div className="flex-1 min-w-0">
-                      <span className="font-medium text-sm">{acs.code}</span>
-                      <span className="text-muted-foreground text-xs ml-2">({acs.type})</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{acs.code}</span>
+                        <span className="text-muted-foreground text-xs">({acs.category})</span>
+                        {acs.ata_chapter_numbers && acs.ata_chapter_numbers.length > 0 && (
+                          <span className="text-xs text-muted-foreground/80" title="ATA chapters">
+                            Ch {acs.ata_chapter_numbers.join(", ")}
+                          </span>
+                        )}
+                      </div>
                       {acs.description && (
                         <p className="text-xs text-muted-foreground mt-0.5 truncate" title={acs.description}>
                           {acs.description}
