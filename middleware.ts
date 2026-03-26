@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
   if (user && isAuthPage) {
     // Get role from profile (JWT metadata may not be up to date)
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("users")
       .select("role")
       .eq("id", user.id)
       .single();
@@ -75,7 +75,7 @@ export async function middleware(request: NextRequest) {
   if (user && request.nextUrl.pathname === "/") {
     // Get role from profile (more reliable than JWT metadata)
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("users")
       .select("role")
       .eq("id", user.id)
       .single();

@@ -9,7 +9,7 @@ async function getMentorData(userId: string) {
 
   // Get assigned apprentices
   const { data: apprentices } = await supabase
-    .from("apprentices")
+    .from("user_trainings")
     .select("id")
     .eq("mentor_id", userId)
     .eq("status", "active");
@@ -24,7 +24,7 @@ async function getMentorData(userId: string) {
     const { data: entries } = await supabase
       .from("logbook_entries")
       .select("*")
-      .in("apprentice_id", apprenticeIds)
+      .in("user_training_id", apprenticeIds)
       .order("entry_date", { ascending: false });
 
     // Get pending entries
@@ -34,15 +34,15 @@ async function getMentorData(userId: string) {
     allEntries = await Promise.all(
       (entries || []).map(async (entry) => {
         const { data: apprentice } = await supabase
-          .from("apprentices")
+          .from("user_trainings")
           .select("id, user_id")
-          .eq("id", entry.apprentice_id)
+          .eq("id", entry.user_training_id)
           .single();
 
         let profile = null;
         if (apprentice?.user_id) {
           const { data: profileData } = await supabase
-            .from("profiles")
+            .from("users")
             .select("id, full_name, email")
             .eq("id", apprentice.user_id)
             .single();
@@ -51,10 +51,10 @@ async function getMentorData(userId: string) {
 
         return {
           ...entry,
-          apprentices: apprentice
+          user_trainings: apprentice
             ? {
                 ...apprentice,
-                profiles: profile,
+                users: profile,
               }
             : null,
         };
@@ -65,15 +65,15 @@ async function getMentorData(userId: string) {
     pendingEntries = await Promise.all(
       pendingEntries.map(async (entry) => {
         const { data: apprentice } = await supabase
-          .from("apprentices")
+          .from("user_trainings")
           .select("id, user_id")
-          .eq("id", entry.apprentice_id)
+          .eq("id", entry.user_training_id)
           .single();
 
         let profile = null;
         if (apprentice?.user_id) {
           const { data: profileData } = await supabase
-            .from("profiles")
+            .from("users")
             .select("id, full_name, email")
             .eq("id", apprentice.user_id)
             .single();
@@ -82,10 +82,10 @@ async function getMentorData(userId: string) {
 
         return {
           ...entry,
-          apprentices: apprentice
+          user_trainings: apprentice
             ? {
                 ...apprentice,
-                profiles: profile,
+                users: profile,
               }
             : null,
         };

@@ -22,9 +22,9 @@ interface PendingLogbookEntry {
   next_steps: string | null;
   status: string;
   reject_reason?: string | null;
-  apprentices: {
+  user_trainings: {
     id: string;
-    profiles: {
+    users: {
       id: string;
       full_name: string | null;
       email: string;
@@ -103,8 +103,8 @@ export function PendingLogbookEntries({
       // Filter by apprentice name
       if (nameFilter.trim()) {
         const apprenticeName =
-          entry.apprentices?.profiles?.full_name?.toLowerCase() ||
-          entry.apprentices?.profiles?.email?.toLowerCase() ||
+          entry.user_trainings?.users?.full_name?.toLowerCase() ||
+          entry.user_trainings?.users?.email?.toLowerCase() ||
           "";
         const searchTerm = nameFilter.toLowerCase().trim();
         if (!apprenticeName.includes(searchTerm)) {
@@ -203,8 +203,8 @@ export function PendingLogbookEntries({
           filteredEntries.map((entry) => {
             const isProcessing = processingIds.has(entry.id);
             const apprenticeName =
-              entry.apprentices?.profiles?.full_name ||
-              entry.apprentices?.profiles?.email ||
+              entry.user_trainings?.users?.full_name ||
+              entry.user_trainings?.users?.email ||
               "Unknown Apprentice";
             const statusDisplay = getStatusDisplay(entry.status);
             const isPending = entry.status === "submitted";

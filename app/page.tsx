@@ -7,7 +7,7 @@ async function getUserProfile(userId: string) {
   const supabase = await createServerSupabaseClient();
   
   const { data: profile, error } = await supabase
-    .from("profiles")
+    .from("users")
     .select("full_name")
     .eq("id", userId)
     .single();

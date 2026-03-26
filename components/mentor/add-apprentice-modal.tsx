@@ -55,7 +55,7 @@ export function AddApprenticeModal({
       // Get all apprentices with their profiles
       // Note: This requires RLS policy that allows mentors to view all apprentices
       const { data: allApprentices, error: apprenticesError } = await supabase
-        .from("apprentices")
+        .from("user_trainings")
         .select("id, user_id, mentor_id, status")
         .eq("status", "active");
 
@@ -77,7 +77,7 @@ export function AddApprenticeModal({
 
           // Get profile with role check
           const { data: profile, error: profileError } = await supabase
-            .from("profiles")
+            .from("users")
             .select("id, email, full_name, role")
             .eq("id", apprentice.user_id)
             .single();
@@ -97,7 +97,7 @@ export function AddApprenticeModal({
           const { data: entries, error: entriesError } = await supabase
             .from("logbook_entries")
             .select("hours_worked")
-            .eq("apprentice_id", apprentice.id);
+            .eq("user_training_id", apprentice.id);
 
           if (entriesError) {
             console.error(`Error fetching entries for apprentice ${apprentice.id}:`, entriesError);
@@ -139,7 +139,7 @@ export function AddApprenticeModal({
       const supabase = createClient();
 
       const { error: updateError } = await supabase
-        .from("apprentices")
+        .from("user_trainings")
         .update({ mentor_id: currentMentorId })
         .eq("id", apprenticeId);
 

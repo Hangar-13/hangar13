@@ -3,6 +3,11 @@ import { redirect, notFound } from "next/navigation";
 import { ApprenticeEntriesList } from "@/components/mentor/apprentice-entries-list";
 import { getAcsCodesByEntry } from "@/app/actions/logbook";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
+import {
+  getCertificationAwardsForUser,
+  getTrainingCompletionsForUser,
+} from "@/app/actions/user-credentials";
+import { CredentialsReadOnlyLists } from "@/components/user/credentials-read-only-lists";
 import { Card, CardContent } from "@/components/ui/card";
 import { User, Mail, Calendar, ArrowLeft, Clock, Target, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
 import Link from "next/link";
@@ -13,7 +18,7 @@ async function getApprenticeData(apprenticeId: string, mentorId: string) {
 
   // Get apprentice record and verify mentor relationship
   const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
+    .from("user_trainings")
     .select("*")
     .eq("id", apprenticeId)
     .single();
@@ -29,7 +34,7 @@ async function getApprenticeData(apprenticeId: string, mentorId: string) {
 
   // Get apprentice profile
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("users")
     .select("id, email, full_name, avatar_url")
     .eq("id", apprentice.user_id)
     .single();
@@ -38,7 +43,7 @@ async function getApprenticeData(apprenticeId: string, mentorId: string) {
   const { data: entries, error: entriesError } = await supabase
     .from("logbook_entries")
     .select("*")
-    .eq("apprentice_id", apprenticeId)
+    .eq("user_training_id", apprenticeId)
     .order("entry_date", { ascending: false });
 
   // Categorize entries by status
@@ -91,7 +96,7 @@ async function getApprenticeData(apprenticeId: string, mentorId: string) {
   const { data: progressData } = await supabase
     .from("apprentice_progress")
     .select("*")
-    .eq("apprentice_id", apprentice.id);
+    .eq("user_training_id", apprentice.id);
 
   const progressMap = new Map(
     progressData?.map((p) => [p.curriculum_item_id, p]) || []
@@ -170,9 +175,12 @@ export default async function ApprenticeDetailPage({ params }: PageProps) {
 
   const { apprentice, entries, entriesByStatus, progress, hours, weeks, progressStatus, pendingEntries } = data;
 
-  const [ataChapters, acsCodesByEntry] = await Promise.all([
+  const apprenticeUserId = apprentice.profile?.id;
+  const [ataChapters, acsCodesByEntry, trainingCompletions, certificationAwards] = await Promise.all([
     getAtaChapters(),
     entries && entries.length > 0 ? getAcsCodesByEntry(entries.map((e: { id: string }) => e.id)) : Promise.resolve({}),
+    apprenticeUserId ? getTrainingCompletionsForUser(apprenticeUserId) : Promise.resolve([]),
+    apprenticeUserId ? getCertificationAwardsForUser(apprenticeUserId) : Promise.resolve([]),
   ]);
   const profile = apprentice.profile;
 
@@ -355,6 +363,15 @@ export default async function ApprenticeDetailPage({ params }: PageProps) {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold">Training & certifications</h2>
+        <CredentialsReadOnlyLists
+          trainingCompletions={trainingCompletions}
+          certificationAwards={certificationAwards}
+          emptyHint="No completed trainings or certifications on file yet."
+        />
       </div>
 
       {/* Entries List */}

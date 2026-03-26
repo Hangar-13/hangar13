@@ -16,7 +16,7 @@ export async function updateUserRole(
 
   // Get the manager's role
   const { data: managerProfile } = await supabase
-    .from("profiles")
+    .from("users")
     .select("role")
     .eq("id", managerUserId)
     .single();
@@ -29,7 +29,7 @@ export async function updateUserRole(
 
   // Get the target user's current role
   const { data: targetProfile } = await supabase
-    .from("profiles")
+    .from("users")
     .select("role")
     .eq("id", targetUserId)
     .single();
@@ -66,7 +66,7 @@ export async function updateUserRole(
 
   // Update the role
   const { error: updateError } = await supabase
-    .from("profiles")
+    .from("users")
     .update({ role: newRole })
     .eq("id", targetUserId);
 
@@ -99,7 +99,7 @@ export async function getManageableUsers(userId: string): Promise<
 
   // Get the current user's role
   const { data: userProfile } = await supabase
-    .from("profiles")
+    .from("users")
     .select("role")
     .eq("id", userId)
     .single();
@@ -125,7 +125,7 @@ export async function getManageableUsers(userId: string): Promise<
 
   // Get all users with manageable roles
   const { data: profiles } = await supabase
-    .from("profiles")
+    .from("users")
     .select("id, email, full_name, role")
     .in("role", manageableRoles);
 

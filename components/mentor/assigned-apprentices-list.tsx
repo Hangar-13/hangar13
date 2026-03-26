@@ -10,7 +10,7 @@ interface AssignedApprentice {
   user_id: string;
   start_date: string;
   status: string;
-  profiles: {
+  users: {
     id: string;
     email: string;
     full_name: string | null;
@@ -115,10 +115,10 @@ export function AssignedApprenticesList({
               <div className="flex items-center gap-3">
                 {/* Avatar */}
                 <div className="flex-shrink-0">
-                  {apprentice.profiles?.avatar_url ? (
+                  {apprentice.users?.avatar_url ? (
                     <img
-                      src={apprentice.profiles.avatar_url}
-                      alt={apprentice.profiles.full_name || "Apprentice"}
+                      src={apprentice.users.avatar_url}
+                      alt={apprentice.users.full_name || "Apprentice"}
                       className="h-8 w-8 rounded-full"
                     />
                   ) : (
@@ -130,7 +130,7 @@ export function AssignedApprenticesList({
                 {/* Name + Status */}
                 <div className="flex-1 min-w-0 flex items-center gap-2">
                   <h4 className="font-medium text-sm truncate">
-                    {apprentice.profiles?.full_name || "Unnamed Apprentice"}
+                    {apprentice.users?.full_name || "Unnamed Apprentice"}
                   </h4>
                   {getStatusBadge(apprentice.progressStatus, true)}
                 </div>
@@ -147,7 +147,7 @@ export function AssignedApprenticesList({
                       variant="ghost"
                       size="sm"
                       className="h-6 px-2 text-xs hover:bg-primary/10"
-                      onClick={(e) => handlePendingEntriesClick(e, apprentice.profiles?.full_name, apprentice.profiles?.email)}
+                      onClick={(e) => handlePendingEntriesClick(e, apprentice.users?.full_name, apprentice.users?.email)}
                     >
                       <Target className="h-3 w-3 mr-1" />
                       {apprentice.pendingEntries}
@@ -186,10 +186,10 @@ export function AssignedApprenticesList({
                 {/* Header with Avatar and Name */}
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0">
-                    {apprentice.profiles?.avatar_url ? (
+                    {apprentice.users?.avatar_url ? (
                       <img
-                        src={apprentice.profiles.avatar_url}
-                        alt={apprentice.profiles.full_name || "Apprentice"}
+                        src={apprentice.users.avatar_url}
+                        alt={apprentice.users.full_name || "Apprentice"}
                         className="h-12 w-12 rounded-full"
                       />
                     ) : (
@@ -200,11 +200,11 @@ export function AssignedApprenticesList({
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-lg truncate">
-                      {apprentice.profiles?.full_name || "Unnamed Apprentice"}
+                      {apprentice.users?.full_name || "Unnamed Apprentice"}
                     </h4>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                       <Mail className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">{apprentice.profiles?.email}</span>
+                      <span className="truncate">{apprentice.users?.email}</span>
                     </div>
                   </div>
                 </div>
@@ -271,7 +271,7 @@ export function AssignedApprenticesList({
                       variant="outline"
                       size="sm"
                       className="w-full justify-between hover:bg-primary/10"
-                      onClick={(e) => handlePendingEntriesClick(e, apprentice.profiles?.full_name, apprentice.profiles?.email)}
+                      onClick={(e) => handlePendingEntriesClick(e, apprentice.users?.full_name, apprentice.users?.email)}
                     >
                       <span className="text-muted-foreground flex items-center gap-1 text-sm">
                         <Target className="h-3 w-3" />

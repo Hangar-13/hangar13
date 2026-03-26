@@ -1,25 +1,30 @@
--- Fix existing apprentice users who don't have an apprentices record
--- Run this in Supabase SQL Editor to create missing apprentice records
+-- Backfill missing user_trainings rows for apprentice-role users (Supabase SQL Editor).
 
--- This will create an apprentice record for any user with role 'apprentice'
--- who doesn't already have an apprentices record
-INSERT INTO public.apprentices (user_id, start_date, status)
-SELECT 
-    id as user_id,
-    CURRENT_DATE as start_date,
-    'active' as status
-FROM public.profiles
-WHERE role = 'apprentice'
-AND id NOT IN (SELECT user_id FROM public.apprentices)
-ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO public.user_trainings (user_id, start_date, status)
+SELECT
+    p.id AS user_id,
+    CURRENT_DATE AS start_date,
+    'active' AS status
+FROM public.users p
+WHERE p.role = 'apprentice'
+  AND NOT EXISTS (SELECT 1 FROM public.user_trainings ut WHERE ut.user_id = p.id);
 
--- Verify the fix worked
-SELECT 
+UPDATE public.users u
+SET current_user_training_id = (
+  SELECT ut.id FROM public.user_trainings ut
+  WHERE ut.user_id = u.id
+  ORDER BY ut.created_at ASC
+  LIMIT 1
+)
+WHERE u.current_user_training_id IS NULL
+  AND EXISTS (SELECT 1 FROM public.user_trainings ut WHERE ut.user_id = u.id);
+
+SELECT
     p.id,
     p.email,
     p.role,
-    a.id as apprentice_id,
-    a.status
-FROM public.profiles p
-LEFT JOIN public.apprentices a ON p.id = a.user_id
+    ut.id AS user_training_id,
+    p.current_user_training_id
+FROM public.users p
+LEFT JOIN public.user_trainings ut ON ut.user_id = p.id
 WHERE p.role = 'apprentice';

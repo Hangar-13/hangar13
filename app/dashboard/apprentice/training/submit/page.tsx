@@ -1,18 +1,16 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { WeeklySubmissionForm } from "@/components/apprentice/weekly-submission-form";
+import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
+import { redirectIfNoUserTrainings } from "@/lib/apprentice-user-trainings-guard";
+import Link from "next/link";
 
 async function getApprenticeTrainingData(userId: string, week: number = 1) {
   const supabase = await createServerSupabaseClient();
 
-  // Get apprentice record
-  const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, userId);
 
-  if (apprenticeError || !apprentice) {
+  if (!apprentice) {
     return null;
   }
 
@@ -51,6 +49,8 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
     redirect("/auth/login");
   }
 
+  await redirectIfNoUserTrainings(user.id);
+
   const params = await searchParams;
   const week = params.week ? parseInt(params.week) : undefined;
 
@@ -62,7 +62,11 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Weekly Submission</h1>
         <p className="text-muted-foreground text-base">
-          No apprentice record found. Please contact your administrator.
+          No active training selected. Use{" "}
+          <Link href="/dashboard/apprentice/find-training" className="text-primary underline underline-offset-4">
+            Find Training
+          </Link>{" "}
+          to choose a program.
         </p>
       </div>
     );
@@ -88,7 +92,7 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
       weekly_submission_files (*)
     `
     )
-    .eq("apprentice_id", data.apprentice.id)
+    .eq("user_training_id", data.apprentice.id)
     .eq("week_number", currentWeek)
     .maybeSingle();
 

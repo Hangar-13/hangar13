@@ -10,7 +10,7 @@ async function getMentorData(userId: string) {
 
   // Get assigned apprentices
   const { data: apprentices, error: apprenticesError } = await supabase
-    .from("apprentices")
+    .from("user_trainings")
     .select("*")
     .eq("mentor_id", userId)
     .eq("status", "active");
@@ -22,7 +22,7 @@ async function getMentorData(userId: string) {
   const apprenticesWithProfiles = await Promise.all(
     (apprentices || []).map(async (apprentice) => {
       const { data: profile } = await supabase
-        .from("profiles")
+        .from("users")
         .select("id, email, full_name, avatar_url")
         .eq("id", apprentice.user_id)
         .single();
@@ -30,7 +30,7 @@ async function getMentorData(userId: string) {
       const { data: logbookEntries } = await supabase
         .from("logbook_entries")
         .select("*")
-        .eq("apprentice_id", apprentice.id);
+        .eq("user_training_id", apprentice.id);
 
       const totalHours = logbookEntries?.reduce(
         (sum: number, entry: { hours_worked?: number }) => sum + Number(entry.hours_worked || 0),
@@ -64,7 +64,7 @@ async function getMentorData(userId: string) {
       const { data: progressData } = await supabase
         .from("apprentice_progress")
         .select("*")
-        .eq("apprentice_id", apprentice.id);
+        .eq("user_training_id", apprentice.id);
 
       const progressMap = new Map(
         progressData?.map((p: { curriculum_item_id: string }) => [p.curriculum_item_id, p]) || []
@@ -85,7 +85,7 @@ async function getMentorData(userId: string) {
 
       return {
         ...apprentice,
-        profiles: profile,
+        users: profile,
         progress: { overall: overallProgress, completed: completedItems, total: totalItems },
         hours: { total: totalHours, target: targetHours, progress: Math.round(hoursProgress) },
         weeks: { current: currentWeek },
@@ -103,7 +103,7 @@ async function getMentorData(userId: string) {
     const { data: entries, error: entriesError } = await supabase
       .from("logbook_entries")
       .select("*")
-      .in("apprentice_id", apprenticeIds)
+      .in("user_training_id", apprenticeIds)
       .eq("status", "submitted")
       .order("entry_date", { ascending: false });
 
@@ -111,15 +111,15 @@ async function getMentorData(userId: string) {
     pendingEntries = await Promise.all(
       (entries || []).map(async (entry) => {
         const { data: apprentice } = await supabase
-          .from("apprentices")
+          .from("user_trainings")
           .select("id, user_id")
-          .eq("id", entry.apprentice_id)
+          .eq("id", entry.user_training_id)
           .single();
 
         let profile = null;
         if (apprentice?.user_id) {
           const { data: profileData } = await supabase
-            .from("profiles")
+            .from("users")
             .select("id, full_name, email")
             .eq("id", apprentice.user_id)
             .single();
@@ -128,10 +128,10 @@ async function getMentorData(userId: string) {
 
         return {
           ...entry,
-          apprentices: apprentice
+          user_trainings: apprentice
             ? {
                 ...apprentice,
-                profiles: profile,
+                users: profile,
               }
             : null,
         };

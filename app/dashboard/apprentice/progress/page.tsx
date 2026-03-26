@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import { ProgressTrackingDashboard } from "@/components/apprentice/progress-tracking-dashboard";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getProgressDataForApprentice } from "@/app/actions/progress";
+import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
+import { redirectIfNoUserTrainings } from "@/lib/apprentice-user-trainings-guard";
+import Link from "next/link";
 
 export default async function ProgressPage() {
   const supabase = await createServerSupabaseClient();
@@ -15,34 +18,45 @@ export default async function ProgressPage() {
     redirect("/auth/login");
   }
 
-  const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
+  await redirectIfNoUserTrainings(user.id);
 
-  if (apprenticeError || !apprentice) {
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, user.id);
+
+  if (!apprentice) {
     return (
       <div className="space-y-6">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Progress Tracking</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Progress</h1>
           <p className="text-muted-foreground text-base">
-            No apprentice record found. Please contact your administrator.
+            No active training selected. Use{" "}
+            <Link href="/dashboard/apprentice/find-training" className="text-primary underline underline-offset-4">
+              Find Training
+            </Link>{" "}
+            to choose a program.
           </p>
         </div>
       </div>
     );
   }
 
-  const [progressData, ataChapters] = await Promise.all([
+  const [progressData, ataChapters, planRow] = await Promise.all([
     getProgressDataForApprentice(apprentice),
     getAtaChapters(),
+    apprentice.training_plan_id
+      ? supabase
+          .from("training_plans")
+          .select("name")
+          .eq("id", apprentice.training_plan_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null as { name: string } | null }),
   ]);
+
+  const pageTitle = planRow.data?.name ?? "Progress";
 
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">Progress Tracking</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
         <p className="text-muted-foreground text-base">
           Track your progress through the 30-month program
         </p>

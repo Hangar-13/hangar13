@@ -9,7 +9,7 @@ async function getMentees(userId: string) {
 
   // Get assigned apprentices
   const { data: apprentices, error: apprenticesError } = await supabase
-    .from("apprentices")
+    .from("user_trainings")
     .select("*")
     .eq("mentor_id", userId)
     .eq("status", "active")
@@ -23,7 +23,7 @@ async function getMentees(userId: string) {
     (apprentices || []).map(async (apprentice) => {
       // Get profile
       const { data: profile } = await supabase
-        .from("profiles")
+        .from("users")
         .select("id, email, full_name, avatar_url")
         .eq("id", apprentice.user_id)
         .single();
@@ -32,7 +32,7 @@ async function getMentees(userId: string) {
       const { data: logbookEntries } = await supabase
         .from("logbook_entries")
         .select("*")
-        .eq("apprentice_id", apprentice.id);
+        .eq("user_training_id", apprentice.id);
 
       // Calculate total hours
       const totalHours = logbookEntries?.reduce(
@@ -77,7 +77,7 @@ async function getMentees(userId: string) {
       const { data: progressData } = await supabase
         .from("apprentice_progress")
         .select("*")
-        .eq("apprentice_id", apprentice.id);
+        .eq("user_training_id", apprentice.id);
 
       const progressMap = new Map(
         progressData?.map((p) => [p.curriculum_item_id, p]) || []
@@ -103,7 +103,7 @@ async function getMentees(userId: string) {
 
       return {
         ...apprentice,
-        profiles: profile,
+        users: profile,
         progress: {
           overall: overallProgress,
           completed: completedItems,

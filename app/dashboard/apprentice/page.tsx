@@ -8,12 +8,18 @@ import { HoursProgressCard } from "@/components/apprentice/hours-progress-card";
 import { MetricCards } from "@/components/apprentice/metric-cards";
 import { RecentActivityCard } from "@/components/apprentice/recent-activity-card";
 import { FileText } from "lucide-react";
+import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
+import {
+  getCertificationAwardsForUser,
+  getTrainingCompletionsForUser,
+} from "@/app/actions/user-credentials";
+import { CredentialsSummaryCard } from "@/components/apprentice/credentials-summary-card";
 
 async function getUserProfile(userId: string) {
   const supabase = await createServerSupabaseClient();
   
   const { data: profile, error } = await supabase
-    .from("profiles")
+    .from("users")
     .select("full_name")
     .eq("id", userId)
     .single();
@@ -28,34 +34,9 @@ async function getUserProfile(userId: string) {
 async function getApprenticeData(userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Get apprentice record
-  // Note: RLS policy should allow: auth.uid() = user_id
-  const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle(); // Use maybeSingle() instead of single() to avoid error on no rows
-
-  if (apprenticeError) {
-    console.error("Apprentice query error:", apprenticeError);
-    return null;
-  }
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, userId);
 
   if (!apprentice) {
-    // No rows returned - likely RLS blocking the query
-    // Let's verify the user_id matches by checking profiles
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("id", userId)
-      .single();
-    
-    console.error("No apprentice record found. Profile check:", {
-      userId,
-      profileId: profile?.id,
-      profileRole: profile?.role,
-      profilesMatch: profile?.id === userId,
-    });
     return null;
   }
 
@@ -70,7 +51,7 @@ async function getApprenticeData(userId: string) {
   const { data: progressData } = await supabase
     .from("apprentice_progress")
     .select("*")
-    .eq("apprentice_id", apprentice.id);
+    .eq("user_training_id", apprentice.id);
 
   // Create a map of curriculum item ID to progress
   const progressMap = new Map(
@@ -92,13 +73,13 @@ async function getApprenticeData(userId: string) {
   const { data: allLogbookEntries } = await supabase
     .from("logbook_entries")
     .select("*")
-    .eq("apprentice_id", apprentice.id);
+    .eq("user_training_id", apprentice.id);
 
   // Get recent logbook entries (for recent activity)
   const { data: recentLogbookEntries } = await supabase
     .from("logbook_entries")
     .select("*")
-    .eq("apprentice_id", apprentice.id)
+    .eq("user_training_id", apprentice.id)
     .order("entry_date", { ascending: false })
     .limit(5);
 
@@ -155,8 +136,19 @@ async function getApprenticeData(userId: string) {
       .filter((cat): cat is string => !!cat)
   );
 
+  let trainingPlanName: string | null = null;
+  if (apprentice.training_plan_id) {
+    const { data: plan } = await supabase
+      .from("training_plans")
+      .select("name")
+      .eq("id", apprentice.training_plan_id)
+      .maybeSingle();
+    trainingPlanName = plan?.name ?? null;
+  }
+
   return {
     apprentice,
+    trainingPlanName,
     curriculumItems: itemsWithProgress,
     logbookEntries: recentLogbookEntries || [],
     progress: {
@@ -202,7 +194,11 @@ export default async function ApprenticeDashboard() {
   const profile = await getUserProfile(user.id);
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
-  const data = await getApprenticeData(user.id);
+  const [data, trainings, certifications] = await Promise.all([
+    getApprenticeData(user.id),
+    getTrainingCompletionsForUser(user.id),
+    getCertificationAwardsForUser(user.id),
+  ]);
 
   if (!data) {
     return (
@@ -212,9 +208,17 @@ export default async function ApprenticeDashboard() {
             Welcome back, {firstName}
           </h1>
           <p className="text-muted-foreground text-base">
-            No apprentice record found. Please contact your administrator.
+            No active training selected. Use{" "}
+            <Link href="/dashboard/apprentice/find-training" className="text-primary underline underline-offset-4">
+              Find Training
+            </Link>{" "}
+            to choose a program, or contact your administrator.
           </p>
         </div>
+        <CredentialsSummaryCard
+          trainingCount={trainings.length}
+          certificationCount={certifications.length}
+        />
       </div>
     );
   }
@@ -247,6 +251,7 @@ export default async function ApprenticeDashboard() {
         <ProgressBar
           completed={data.progress.completed}
           total={data.progress.total}
+          trainingProgramName={data.trainingPlanName}
         />
 
         <div className="grid gap-3 lg:grid-cols-3">
@@ -279,6 +284,11 @@ export default async function ApprenticeDashboard() {
           totalAtaChapters={data.ataChapters.total}
         />
       </div>
+
+      <CredentialsSummaryCard
+        trainingCount={trainings.length}
+        certificationCount={certifications.length}
+      />
 
       <RecentActivityCard entries={data.logbookEntries} />
     </div>

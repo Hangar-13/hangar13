@@ -37,7 +37,7 @@ export async function getProgressDataForApprentice(
   const { data: logbookEntries } = await supabase
     .from("logbook_entries")
     .select("*")
-    .eq("apprentice_id", apprentice.id);
+    .eq("user_training_id", apprentice.id);
 
   const totalHours =
     logbookEntries?.reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0) || 0;

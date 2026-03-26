@@ -13,7 +13,7 @@ DELETE FROM public.logbook_entry_acs_pending;
 DELETE FROM public.logbook_entry_acs;
 DELETE FROM public.logbook_entries;
 
--- 2. ACS signoffs (reference profiles)
+-- 2. ACS signoffs (reference users)
 DELETE FROM public.acs_signoff;
 
 -- 3. Notifications
@@ -26,11 +26,15 @@ DELETE FROM public.weekly_submissions;
 -- 5. Apprentice progress
 DELETE FROM public.apprentice_progress;
 
--- 6. Apprentices
-DELETE FROM public.apprentices;
+-- 5b. Credential history (references users)
+DELETE FROM public.user_training_completions;
+DELETE FROM public.user_certification_awards;
 
--- 7. Profiles (references auth.users)
-DELETE FROM public.profiles;
+-- 6. User trainings (enrollments)
+DELETE FROM public.user_trainings;
+
+-- 7. Users (references auth.users)
+DELETE FROM public.users;
 
 -- 8. Auth users (Supabase Auth)
 --    Local: works. Hosted: may need Dashboard > Authentication > Users > delete each,

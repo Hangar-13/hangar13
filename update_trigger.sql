@@ -1,46 +1,38 @@
--- Update the handle_new_user trigger function to create apprentice records
--- Run this in Supabase SQL Editor
+-- Legacy one-off: prefer supabase/migrations (handle_new_user in 003 + 004).
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
     user_role TEXT;
-    profile_id UUID;
+    v_training_id UUID;
 BEGIN
-    -- Extract role from metadata or default to 'apprentice'
     user_role := COALESCE(NEW.raw_user_meta_data->>'role', 'apprentice');
-    
-    -- Create profile
-    INSERT INTO public.profiles (id, email, full_name, role)
+
+    INSERT INTO public.users (id, email, full_name, role)
     VALUES (
         NEW.id,
         NEW.email,
         COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
         user_role
-    )
-    RETURNING id INTO profile_id;
-    
-    -- If role is 'apprentice', create an apprentices record
-    IF user_role = 'apprentice' THEN
-        INSERT INTO public.apprentices (user_id, start_date, status)
-        VALUES (
-            NEW.id,
-            CURRENT_DATE,
-            'active'
-        );
+    );
+
+    INSERT INTO public.user_trainings (user_id, start_date, status)
+    SELECT NEW.id, CURRENT_DATE, 'active'
+    WHERE NOT EXISTS (SELECT 1 FROM public.user_trainings ut WHERE ut.user_id = NEW.id)
+    RETURNING id INTO v_training_id;
+
+    IF v_training_id IS NULL THEN
+        SELECT ut.id INTO v_training_id
+        FROM public.user_trainings ut
+        WHERE ut.user_id = NEW.id
+        ORDER BY ut.created_at ASC
+        LIMIT 1;
     END IF;
-    
+
+    IF v_training_id IS NOT NULL THEN
+        UPDATE public.users SET current_user_training_id = v_training_id WHERE id = NEW.id;
+    END IF;
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Fix any existing apprentice users who don't have an apprentices record
-INSERT INTO public.apprentices (user_id, start_date, status)
-SELECT 
-    id as user_id,
-    CURRENT_DATE as start_date,
-    'active' as status
-FROM public.profiles
-WHERE role = 'apprentice'
-AND id NOT IN (SELECT user_id FROM public.apprentices WHERE user_id IS NOT NULL)
-ON CONFLICT (user_id) DO NOTHING;

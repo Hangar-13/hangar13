@@ -9,7 +9,7 @@ async function getMentorApprentices(mentorId: string) {
   const supabase = await createServerSupabaseClient();
 
   const { data: apprentices, error } = await supabase
-    .from("apprentices")
+    .from("user_trainings")
     .select("id, user_id")
     .eq("mentor_id", mentorId)
     .eq("status", "active")
@@ -20,13 +20,13 @@ async function getMentorApprentices(mentorId: string) {
   }
 
   const userIds = apprentices.map((a) => a.user_id);
-  const { data: profiles } = await supabase
-    .from("profiles")
+  const { data: userRows } = await supabase
+    .from("users")
     .select("id, full_name")
     .in("id", userIds);
 
   const profileMap = Object.fromEntries(
-    (profiles ?? []).map((p) => [p.id, p.full_name])
+    (userRows ?? []).map((p) => [p.id, p.full_name])
   );
 
   return apprentices.map((a) => ({
@@ -81,7 +81,7 @@ export default async function MentorApprenticeProgressPage({
   }
 
   const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
+    .from("user_trainings")
     .select("*")
     .eq("id", apprenticeId)
     .single();
@@ -113,7 +113,6 @@ export default async function MentorApprenticeProgressPage({
           chapter_number: c.chapter_number,
           title: c.title,
         }))}
-        mentorMode
       />
     </div>
   );

@@ -71,7 +71,7 @@ export async function getActiveUser(): Promise<ActiveUser | null> {
 
   // Get role from profile (more reliable than JWT metadata)
   const { data: profile } = await supabase
-    .from("profiles")
+    .from("users")
     .select("role, full_name, email")
     .eq("id", user.id)
     .single();

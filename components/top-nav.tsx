@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { Search, User, LogOut } from "lucide-react";
+import { Menu, Search, User, LogOut } from "lucide-react";
+import { useAppNavigation } from "@/components/app-navigation-provider";
 import { NotificationDropdown } from "@/components/notifications/notification-dropdown";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 export function TopNav() {
   const router = useRouter();
+  const { openMobileNav } = useAppNavigation();
   const [searchQuery, setSearchQuery] = useState("");
 
   async function handleSignOut() {
@@ -52,7 +54,17 @@ export function TopNav() {
 
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-sm">
-      <div className="flex flex-1 items-center gap-4">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 shrink-0 lg:hidden"
+        onClick={openMobileNav}
+        aria-label="Open menu"
+      >
+        <Menu className="h-5 w-5" />
+      </Button>
+      <div className="flex flex-1 items-center gap-4 min-w-0">
         <form onSubmit={handleSearch} className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input

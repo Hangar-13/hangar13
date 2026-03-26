@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { revalidatePath } from "next/cache";
 
 export async function submitWeeklyReflection(formData: {
@@ -26,16 +27,11 @@ export async function submitWeeklyReflection(formData: {
     return { error: "You must be logged in to submit reflections." };
   }
 
-  // Get apprentice record
-  const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, user.id);
 
-  if (apprenticeError || !apprentice) {
+  if (!apprentice) {
     return {
-      error: "Apprentice record not found. Please contact your administrator.",
+      error: "No active training selected. Choose a training in Find Training or contact your administrator.",
     };
   }
 
@@ -54,7 +50,7 @@ export async function submitWeeklyReflection(formData: {
     .from("weekly_submissions")
     .upsert(
       {
-        apprentice_id: apprentice.id,
+        user_training_id: apprentice.id,
         week_number: formData.weekNumber,
         curriculum_item_id: formData.curriculumItemId || null,
         reflection_text: formData.reflectionText,
@@ -62,7 +58,7 @@ export async function submitWeeklyReflection(formData: {
         submitted_at: new Date().toISOString(),
       },
       {
-        onConflict: "apprentice_id,week_number",
+        onConflict: "user_training_id,week_number",
       }
     )
     .select()
@@ -118,14 +114,10 @@ export async function getWeeklySubmission(weekNumber: number) {
     return { error: "You must be logged in." };
   }
 
-  const { data: apprentice } = await supabase
-    .from("apprentices")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, user.id);
 
   if (!apprentice) {
-    return { error: "Apprentice record not found." };
+    return { error: "No active training selected." };
   }
 
   const { data: submission, error: submissionError } = await supabase
@@ -136,7 +128,7 @@ export async function getWeeklySubmission(weekNumber: number) {
       weekly_submission_files (*)
     `
     )
-    .eq("apprentice_id", apprentice.id)
+    .eq("user_training_id", apprentice.id)
     .eq("week_number", weekNumber)
     .single();
 

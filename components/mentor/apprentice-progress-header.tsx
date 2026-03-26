@@ -17,11 +17,16 @@ interface Apprentice {
 interface ApprenticeProgressHeaderProps {
   apprentices: Apprentice[];
   currentApprenticeId: string;
+  /** Page to push when changing apprentice (preserves ?apprentice=) */
+  basePath?: string;
+  heading?: string;
 }
 
 export function ApprenticeProgressHeader({
   apprentices,
   currentApprenticeId,
+  basePath = "/dashboard/mentor/mentees/progress",
+  heading = "Progress for",
 }: ApprenticeProgressHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,12 +34,12 @@ export function ApprenticeProgressHeader({
   const handleApprenticeChange = (newId: string) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("apprentice", newId);
-    router.push(`/dashboard/mentor/mentees/progress?${params.toString()}`);
+    router.push(`${basePath}?${params.toString()}`);
   };
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-2xl font-bold tracking-tight">Progress for</span>
+      <span className="text-2xl font-bold tracking-tight">{heading}</span>
       <Select
         value={currentApprenticeId}
         onValueChange={handleApprenticeChange}

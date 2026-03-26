@@ -18,18 +18,15 @@ import {
   Edit
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/apprentice/collapsible-section";
+import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
+import { redirectIfNoUserTrainings } from "@/lib/apprentice-user-trainings-guard";
 
 async function getApprenticeTrainingData(userId: string, week: number = 1) {
   const supabase = await createServerSupabaseClient();
 
-  // Get apprentice record
-  const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
-    .select("*")
-    .eq("user_id", userId)
-    .single();
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, userId);
 
-  if (apprenticeError || !apprentice) {
+  if (!apprentice) {
     return null;
   }
 
@@ -44,17 +41,19 @@ async function getApprenticeTrainingData(userId: string, week: number = 1) {
   // Get training plan info if training_plan_id exists and table exists
   let totalWeeks = 130;
   let weekContent = null;
+  let trainingPlanName: string | null = null;
 
   if (apprentice.training_plan_id) {
     // Try to get training plan (table might not exist yet)
     const { data: trainingPlan } = await supabase
       .from("training_plans")
-      .select("total_weeks")
+      .select("total_weeks, name")
       .eq("id", apprentice.training_plan_id)
       .maybeSingle();
     
     if (trainingPlan) {
       totalWeeks = trainingPlan.total_weeks || 130;
+      trainingPlanName = trainingPlan.name ?? null;
     }
 
     // Try to get week content (table might not exist yet)
@@ -78,6 +77,7 @@ async function getApprenticeTrainingData(userId: string, week: number = 1) {
     totalWeeks,
     dueDate,
     weekContent,
+    trainingPlanName,
   };
 }
 
@@ -98,6 +98,8 @@ export default async function TrainingPage({ searchParams }: PageProps) {
     redirect("/auth/login");
   }
 
+  await redirectIfNoUserTrainings(user.id);
+
   const params = await searchParams;
   const week = params.week ? parseInt(params.week) : undefined;
   const data = await getApprenticeTrainingData(user.id, week);
@@ -105,9 +107,13 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   if (!data) {
     return (
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">Training Content</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Training</h1>
         <p className="text-muted-foreground text-base">
-          No apprentice record found. Please contact your administrator.
+          No active training selected. Use{" "}
+          <Link href="/dashboard/apprentice/find-training" className="text-primary underline underline-offset-4">
+            Find Training
+          </Link>{" "}
+          to choose a program.
         </p>
       </div>
     );
@@ -122,7 +128,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
       weekly_submission_files (*)
     `
     )
-    .eq("apprentice_id", data.apprentice.id)
+    .eq("user_training_id", data.apprentice.id)
     .eq("week_number", data.currentWeek)
     .maybeSingle();
 
@@ -151,12 +157,14 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const learningObjectives = weekContent.learning_objectives || [];
   const mentorQuestions = weekContent.mentor_discussion_questions || [];
 
+  const pageTitle = data.trainingPlanName ?? "Training";
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Training Content</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
           <p className="text-muted-foreground text-base">Your weekly learning materials</p>
         </div>
         <Button asChild className="bg-primary text-primary-foreground">

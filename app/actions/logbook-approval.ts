@@ -35,11 +35,11 @@ export async function approveLogbookEntry(
 
   const { data: entry } = await supabase
     .from("logbook_entries")
-    .select("apprentice_id")
+    .select("user_training_id")
     .eq("id", entryId)
     .single();
 
-  const apprenticeId = (entry as { apprentice_id?: string })?.apprentice_id;
+  const apprenticeId = (entry as { user_training_id?: string })?.user_training_id;
 
   // Notification created by database trigger on logbook_entries (approve_logbook_entry RPC updates status)
 
@@ -71,7 +71,7 @@ export async function rejectLogbookEntry(entryId: string, rejectReason: string) 
     .select(
       `
       *,
-      apprentices:apprentice_id (
+      user_trainings:user_training_id (
         id,
         mentor_id,
         user_id
@@ -85,7 +85,7 @@ export async function rejectLogbookEntry(entryId: string, rejectReason: string) 
     return { error: "Entry not found." };
   }
 
-  const apprentice = entry.apprentices as { id?: string; mentor_id?: string; user_id?: string } | null;
+  const apprentice = entry.user_trainings as { id?: string; mentor_id?: string; user_id?: string } | null;
   if (apprentice?.mentor_id !== user.id) {
     return { error: "You don't have permission to reject this entry." };
   }

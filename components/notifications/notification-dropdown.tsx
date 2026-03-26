@@ -44,7 +44,7 @@ export function NotificationDropdown() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (user) {
       const { data: profile } = await supabaseClient
-        .from("profiles")
+        .from("users")
         .select("role")
         .eq("id", user.id)
         .single();
@@ -102,7 +102,9 @@ export function NotificationDropdown() {
 
     let url: string;
     if (n.type === "acs_signed") {
-      url = "/dashboard/apprentice/progress?coverage=acs";
+      url = isMentor
+        ? "/dashboard/mentor/mentees/certification"
+        : "/dashboard/apprentice/certification";
     } else if (isMentor) {
       url = singleLogId
         ? `/dashboard/mentor/review-logs?openLog=${singleLogId}`

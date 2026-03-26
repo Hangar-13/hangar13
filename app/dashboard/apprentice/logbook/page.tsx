@@ -5,18 +5,15 @@ import { LogbookTable } from "@/components/apprentice/logbook-table";
 import { AddEntryModal } from "@/components/apprentice/add-entry-modal";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getAcsCodesByEntry } from "@/app/actions/logbook";
+import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
+import Link from "next/link";
 
 async function getLogbookEntries(userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Get apprentice record
-  const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
-    .select("id")
-    .eq("user_id", userId)
-    .single();
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, userId);
 
-  if (apprenticeError || !apprentice) {
+  if (!apprentice) {
     return null;
   }
 
@@ -24,7 +21,7 @@ async function getLogbookEntries(userId: string) {
   const { data: logbookEntries, error: logbookError } = await supabase
     .from("logbook_entries")
     .select("*")
-    .eq("apprentice_id", apprentice.id)
+    .eq("user_training_id", apprentice.id)
     .order("entry_date", { ascending: false });
 
   return logbookEntries || [];
@@ -63,7 +60,11 @@ export default async function LogbookPage({ searchParams }: PageProps) {
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">OJT Logbook</h1>
           <p className="text-muted-foreground text-base">
-            No apprentice record found. Please contact your administrator.
+            No active training selected. Use{" "}
+            <Link href="/dashboard/apprentice/find-training" className="text-primary underline underline-offset-4">
+              Find Training
+            </Link>{" "}
+            to choose a program.
           </p>
         </div>
       </div>

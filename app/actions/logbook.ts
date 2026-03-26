@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { revalidatePath } from "next/cache";
 
 export async function createLogbookEntry(formData: {
@@ -25,16 +26,11 @@ export async function createLogbookEntry(formData: {
     return { error: "You must be logged in to create logbook entries." };
   }
 
-  // Get apprentice record
-  const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, user.id);
 
-  if (apprenticeError || !apprentice) {
+  if (!apprentice) {
     return {
-      error: "Apprentice record not found. Please contact your administrator.",
+      error: "No active training selected. Choose a training in Find Training or contact your administrator.",
     };
   }
 
@@ -57,7 +53,7 @@ export async function createLogbookEntry(formData: {
   const { data: entry, error: entryError } = await supabase
     .from("logbook_entries")
     .insert({
-      apprentice_id: apprentice.id,
+      user_training_id: apprentice.id,
       entry_date: formData.entryDate,
       hours_worked: formData.hoursWorked,
       description: formData.taskDescription,
@@ -120,23 +116,18 @@ export async function updateLogbookEntry(
     return { error: "You must be logged in to update logbook entries." };
   }
 
-  // Get apprentice record
-  const { data: apprentice, error: apprenticeError } = await supabase
-    .from("apprentices")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, user.id);
 
-  if (apprenticeError || !apprentice) {
+  if (!apprentice) {
     return {
-      error: "Apprentice record not found. Please contact your administrator.",
+      error: "No active training selected. Choose a training in Find Training or contact your administrator.",
     };
   }
 
   // Verify the entry belongs to this apprentice and is draft or rejected
   const { data: existingEntry, error: fetchError } = await supabase
     .from("logbook_entries")
-    .select("apprentice_id, status")
+    .select("user_training_id, status")
     .eq("id", entryId)
     .single();
 
@@ -144,7 +135,7 @@ export async function updateLogbookEntry(
     return { error: "Entry not found." };
   }
 
-  if (existingEntry.apprentice_id !== apprentice.id) {
+  if (existingEntry.user_training_id !== apprentice.id) {
     return {
       error: "You don't have permission to update this entry.",
     };
@@ -237,7 +228,7 @@ export async function updateLogbookEntryAcsCodesForMentor(
 
   const { data: entry, error: fetchError } = await supabase
     .from("logbook_entries")
-    .select("id, apprentice_id")
+    .select("id, user_training_id")
     .eq("id", entryId)
     .single();
 
@@ -246,9 +237,9 @@ export async function updateLogbookEntryAcsCodesForMentor(
   }
 
   const { data: apprentice } = await supabase
-    .from("apprentices")
+    .from("user_trainings")
     .select("mentor_id")
-    .eq("id", entry.apprentice_id)
+    .eq("id", entry.user_training_id)
     .single();
 
   if (!apprentice || apprentice.mentor_id !== user.id) {
@@ -276,7 +267,7 @@ export async function updateLogbookEntryAcsCodesForMentor(
 
   revalidatePath("/dashboard/mentor");
   revalidatePath("/dashboard/mentor/review-logs");
-  revalidatePath(`/dashboard/mentor/apprentice/${entry.apprentice_id}`);
+  revalidatePath(`/dashboard/mentor/apprentice/${entry.user_training_id}`);
 
   return { success: true };
 }
@@ -293,23 +284,19 @@ export async function clearPendingAcsForLogbookEntry(entryId: string) {
     return { error: "You must be logged in." };
   }
 
-  const { data: apprentice } = await supabase
-    .from("apprentices")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, user.id);
 
   if (!apprentice) {
-    return { error: "Apprentice record not found." };
+    return { error: "No active training selected." };
   }
 
   const { data: existingEntry } = await supabase
     .from("logbook_entries")
-    .select("apprentice_id")
+    .select("user_training_id")
     .eq("id", entryId)
     .single();
 
-  if (!existingEntry || existingEntry.apprentice_id !== apprentice.id) {
+  if (!existingEntry || existingEntry.user_training_id !== apprentice.id) {
     return { error: "Entry not found or access denied." };
   }
 
@@ -333,11 +320,7 @@ export async function getPendingAcsCodesForLogbookEntry(entryId: string): Promis
     return [];
   }
 
-  const { data: apprentice } = await supabase
-    .from("apprentices")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, user.id);
 
   if (!apprentice) {
     return [];
@@ -345,11 +328,11 @@ export async function getPendingAcsCodesForLogbookEntry(entryId: string): Promis
 
   const { data: existingEntry } = await supabase
     .from("logbook_entries")
-    .select("apprentice_id")
+    .select("user_training_id")
     .eq("id", entryId)
     .single();
 
-  if (!existingEntry || existingEntry.apprentice_id !== apprentice.id) {
+  if (!existingEntry || existingEntry.user_training_id !== apprentice.id) {
     return [];
   }
 
