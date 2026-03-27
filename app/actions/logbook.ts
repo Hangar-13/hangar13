@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
+import { noActiveTrainingServerError } from "@/lib/training-enrollment-messages";
 import { revalidatePath } from "next/cache";
 
 export async function createLogbookEntry(formData: {
@@ -287,7 +288,7 @@ export async function clearPendingAcsForLogbookEntry(entryId: string) {
   const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, user.id);
 
   if (!apprentice) {
-    return { error: "No active training selected." };
+    return { error: noActiveTrainingServerError() };
   }
 
   const { data: existingEntry } = await supabase

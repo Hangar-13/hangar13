@@ -22,7 +22,7 @@ async function getUserProfile(userId: string) {
     .from("users")
     .select("full_name")
     .eq("id", userId)
-    .single();
+    .maybeSingle();
 
   if (error || !profile) {
     return null;
@@ -188,11 +188,26 @@ export default async function ApprenticeDashboard() {
     redirect("/auth/login");
   }
 
-  // Verify the user ID matches what RLS will see
-  console.log("Logged in user ID:", user.id);
-
   const profile = await getUserProfile(user.id);
-  const firstName = profile?.full_name?.split(" ")[0] || "there";
+
+  if (!profile) {
+    return (
+      <div className="space-y-3 rounded-lg border border-amber-500/35 bg-amber-500/10 p-4 sm:p-5">
+        <h2 className="text-lg font-semibold tracking-tight">
+          Your account profile could not be loaded
+        </h2>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Try signing out and signing back in. If this message persists, the database may not have run
+          migrations that create a profile when you sign up (for example the{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">on_auth_user_created</code> trigger on{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-xs">auth.users</code>). Apply pending Supabase
+          migrations, then sign up again or ask an administrator to verify your account.
+        </p>
+      </div>
+    );
+  }
+
+  const firstName = profile.full_name?.split(" ")[0] || "there";
 
   const [data, trainings, certifications] = await Promise.all([
     getApprenticeData(user.id),
@@ -208,11 +223,15 @@ export default async function ApprenticeDashboard() {
             Welcome back, {firstName}
           </h1>
           <p className="text-muted-foreground text-base">
-            No active training selected. Use{" "}
+            No active training enrollment. Use{" "}
             <Link href="/dashboard/apprentice/find-training" className="text-primary underline underline-offset-4">
               Find Training
             </Link>{" "}
-            to choose a program, or contact your administrator.
+            to enroll, or{" "}
+            <Link href="/dashboard/apprentice/credentials" className="text-primary underline underline-offset-4">
+              My Training Programs
+            </Link>{" "}
+            to set your current program.
           </p>
         </div>
         <CredentialsSummaryCard

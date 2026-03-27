@@ -21,6 +21,10 @@ type LoginFormData = z.infer<typeof loginSchema>;
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const sessionNotice =
+    searchParams.get("reason") === "session"
+      ? "Your session was cleared because it was out of date. Please sign in again."
+      : null;
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -86,6 +90,11 @@ function LoginForm() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {sessionNotice ? (
+          <div className="rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground">
+            {sessionNotice}
+          </div>
+        ) : null}
         {error && (
           <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
             {error}

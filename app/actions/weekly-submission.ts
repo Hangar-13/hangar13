@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
+import { noActiveTrainingServerError } from "@/lib/training-enrollment-messages";
 import { revalidatePath } from "next/cache";
 
 export async function submitWeeklyReflection(formData: {
@@ -31,7 +32,7 @@ export async function submitWeeklyReflection(formData: {
 
   if (!apprentice) {
     return {
-      error: "No active training selected. Choose a training in Find Training or contact your administrator.",
+      error: noActiveTrainingServerError(),
     };
   }
 
@@ -117,7 +118,7 @@ export async function getWeeklySubmission(weekNumber: number) {
   const { userTraining: apprentice } = await getCurrentUserTrainingContext(supabase, user.id);
 
   if (!apprentice) {
-    return { error: "No active training selected." };
+    return { error: noActiveTrainingServerError() };
   }
 
   const { data: submission, error: submissionError } = await supabase
