@@ -81,8 +81,8 @@ export async function addTrainingCompletion(formData: {
   if (error) {
     return { error: error.message };
   }
-  revalidatePath("/dashboard/apprentice");
-  revalidatePath("/dashboard/apprentice/credentials");
+  revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/student/credentials");
   return {};
 }
 
@@ -105,8 +105,8 @@ export async function deleteTrainingCompletion(id: string): Promise<{ error?: st
   if (error) {
     return { error: error.message };
   }
-  revalidatePath("/dashboard/apprentice");
-  revalidatePath("/dashboard/apprentice/credentials");
+  revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/student/credentials");
   return {};
 }
 
@@ -134,8 +134,8 @@ export async function addCertificationAward(formData: {
   if (error) {
     return { error: error.message };
   }
-  revalidatePath("/dashboard/apprentice");
-  revalidatePath("/dashboard/apprentice/credentials");
+  revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/student/credentials");
   return {};
 }
 
@@ -158,7 +158,7 @@ export async function deleteCertificationAward(id: string): Promise<{ error?: st
   if (error) {
     return { error: error.message };
   }
-  revalidatePath("/dashboard/apprentice");
-  revalidatePath("/dashboard/apprentice/credentials");
+  revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/student/credentials");
   return {};
 }

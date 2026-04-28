@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import {
+  hasPlatformAdminAccess,
+  normalizeSystemRole,
+  type SystemRole,
+} from "@/lib/auth-shared";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -42,6 +47,14 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = request.nextUrl.pathname.startsWith("/auth");
   const isPublicPath = request.nextUrl.pathname === "/" || isAuthPage;
 
+  const isGodRoute = request.nextUrl.pathname.startsWith("/dashboard/god");
+  if (user && isGodRoute) {
+    const role = await systemRoleForUser(user.id);
+    if (!hasPlatformAdminAccess(role)) {
+      return NextResponse.redirect(new URL("/dashboard/mentor", request.url));
+    }
+  }
+
   // If no user and trying to access protected route, redirect to login
   if (!user && !isPublicPath) {
     const loginUrl = new URL("/auth/login", request.url);
@@ -49,47 +62,41 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // If user is authenticated and on auth pages, redirect to dashboard
-  if (user && isAuthPage) {
-    // Get role from profile (JWT metadata may not be up to date)
-    const { data: profile } = await supabase
+  async function systemRoleForUser(uid: string): Promise<SystemRole> {
+    const { data: row } = await supabase
       .from("users")
       .select("role")
-      .eq("id", user.id)
-      .single();
+      .eq("id", uid)
+      .maybeSingle();
+    return normalizeSystemRole(row?.role as string | undefined);
+  }
 
-    const role = profile?.role || user.user_metadata?.role;
-
-    if (role === "apprentice") {
-      return NextResponse.redirect(new URL("/dashboard/apprentice", request.url));
-    } else if (role === "mentor" || role === "manager" || role === "god") {
-      // Managers and gods can access mentor dashboard (they have all mentor permissions)
-      // TODO: Add specific manager/god dashboards later
-      return NextResponse.redirect(new URL("/dashboard/mentor", request.url));
+  function redirectForSystemRole(role: SystemRole, baseUrl: string) {
+    if (role === "guest" || role === "student") {
+      return NextResponse.redirect(new URL("/dashboard/student", baseUrl));
     }
-    // Default to root dashboard if no role
-    return NextResponse.redirect(new URL("/", request.url));
+    if (role === "manager") {
+      return NextResponse.redirect(new URL("/dashboard/manager", baseUrl));
+    }
+    if (role === "admin" || role === "god") {
+      return NextResponse.redirect(new URL("/dashboard/god", baseUrl));
+    }
+    if (role === "mentor") {
+      return NextResponse.redirect(new URL("/dashboard/mentor", baseUrl));
+    }
+    return NextResponse.redirect(new URL("/", baseUrl));
+  }
+
+  // If user is authenticated and on auth pages, redirect to dashboard
+  if (user && isAuthPage) {
+    const role = await systemRoleForUser(user.id);
+    return redirectForSystemRole(role, request.url);
   }
 
   // If user is authenticated and on root path, redirect based on role
   if (user && request.nextUrl.pathname === "/") {
-    // Get role from profile (more reliable than JWT metadata)
-    const { data: profile } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    const role = profile?.role || user.user_metadata?.role;
-
-    if (role === "apprentice") {
-      return NextResponse.redirect(new URL("/dashboard/apprentice", request.url));
-    } else if (role === "mentor" || role === "manager" || role === "god") {
-      // Managers and gods can access mentor dashboard (they have all mentor permissions)
-      // TODO: Add specific manager/god dashboards later
-      return NextResponse.redirect(new URL("/dashboard/mentor", request.url));
-    }
-    // If no role set, allow access to root (which will show dashboard)
+    const role = await systemRoleForUser(user.id);
+    return redirectForSystemRole(role, request.url);
   }
 
   return response;
@@ -97,14 +104,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
-

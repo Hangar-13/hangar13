@@ -32,24 +32,24 @@ export function TopNav() {
     const chapterMatch = searchQuery.match(/\b(\d{2})\b/);
     if (chapterMatch) {
       // Navigate to logbook filtered by chapter
-      router.push(`/dashboard/apprentice/logbook?chapter=${chapterMatch[1]}`);
+      router.push(`/dashboard/student/logbook?chapter=${chapterMatch[1]}`);
       return;
     }
 
     // Check if it looks like a search for logbook entries
     if (searchQuery.toLowerCase().includes("log") || searchQuery.toLowerCase().includes("entry")) {
-      router.push(`/dashboard/apprentice/logbook?search=${encodeURIComponent(searchQuery)}`);
+      router.push(`/dashboard/student/logbook?search=${encodeURIComponent(searchQuery)}`);
       return;
     }
 
     // Check if it's a search for training material
     if (searchQuery.toLowerCase().includes("training") || searchQuery.toLowerCase().includes("chapter")) {
-      router.push(`/dashboard/apprentice/training?search=${encodeURIComponent(searchQuery)}`);
+      router.push(`/dashboard/student/training?search=${encodeURIComponent(searchQuery)}`);
       return;
     }
 
     // Default: search logbook
-    router.push(`/dashboard/apprentice/logbook?search=${encodeURIComponent(searchQuery)}`);
+    router.push(`/dashboard/student/logbook?search=${encodeURIComponent(searchQuery)}`);
   };
 
   return (

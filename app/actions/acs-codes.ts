@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import type { AtaChapter } from "@/app/actions/ata-chapters";
 import {
@@ -8,6 +7,7 @@ import {
   getDomainForAtaChapter,
   type AcsDomain,
 } from "@/lib/acs-utils";
+import { sortByAcsCode } from "@/lib/acs-code-sort";
 
 export type AcsCategory = "knowledge" | "risk_management" | "skill";
 
@@ -89,16 +89,18 @@ export async function getAcsCodesByDomain(domain: AcsDomain): Promise<AcsCode[]>
     return [];
   }
 
-  return (data ?? []).map((row: Record<string, unknown>) => ({
-    id: row.id as number,
-    code: row.code as string,
-    domain: row.domain as AcsDomain,
-    subject_letter: String(row.subject_letter ?? ""),
-    subject: String(row.subject ?? ""),
-    category: row.category as AcsCategory,
-    description: String(row.description ?? ""),
-    ata_chapters: (row.ata_chapters as number[]) ?? [],
-  }));
+  return sortByAcsCode(
+    (data ?? []).map((row: Record<string, unknown>) => ({
+      id: row.id as number,
+      code: row.code as string,
+      domain: row.domain as AcsDomain,
+      subject_letter: String(row.subject_letter ?? ""),
+      subject: String(row.subject ?? ""),
+      category: row.category as AcsCategory,
+      description: String(row.description ?? ""),
+      ata_chapters: (row.ata_chapters as number[]) ?? [],
+    }))
+  );
 }
 
 /** Get ACS codes for an ATA chapter by chapter number (e.g. "20", "09"). Returns codes with resolved ata_chapter_numbers for display. */
@@ -154,8 +156,11 @@ async function enrichWithChapterNumbers(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   codes: AcsCode[]
 ): Promise<AcsCodeWithChapters[]> {
-  const allIds = [...new Set(codes.flatMap((c) => c.ata_chapters))];
-  if (allIds.length === 0) return codes.map((c) => ({ ...c, ata_chapter_numbers: [] }));
+  const ordered = sortByAcsCode(codes);
+  const allIds = [...new Set(ordered.flatMap((c) => c.ata_chapters))];
+  if (allIds.length === 0) {
+    return ordered.map((c) => ({ ...c, ata_chapter_numbers: [] }));
+  }
   const { data: chapters } = await supabase
     .from("ata_chapter")
     .select("id, chapter_number")
@@ -163,7 +168,7 @@ async function enrichWithChapterNumbers(
   const idToNum = Object.fromEntries(
     (chapters ?? []).map((c) => [String(c.id), normalizeChapterNumber(c.chapter_number)])
   );
-  return codes.map((c) => ({
+  return ordered.map((c) => ({
     ...c,
     ata_chapter_numbers: c.ata_chapters
       .map((id) => idToNum[String(id)])
@@ -210,16 +215,18 @@ export async function getAcsCodesByAtaChapterId(ataChapterId: number): Promise<A
     console.error("Error fetching ACS codes by ata_chapter id:", error);
     return [];
   }
-  return (data ?? []).map((row: Record<string, unknown>) => ({
-    id: row.id as number,
-    code: row.code as string,
-    domain: row.domain as AcsDomain,
-    subject_letter: String(row.subject_letter ?? ""),
-    subject: String(row.subject ?? ""),
-    category: row.category as AcsCategory,
-    description: String(row.description ?? ""),
-    ata_chapters: (row.ata_chapters as number[]) ?? [],
-  }));
+  return sortByAcsCode(
+    (data ?? []).map((row: Record<string, unknown>) => ({
+      id: row.id as number,
+      code: row.code as string,
+      domain: row.domain as AcsDomain,
+      subject_letter: String(row.subject_letter ?? ""),
+      subject: String(row.subject ?? ""),
+      category: row.category as AcsCategory,
+      description: String(row.description ?? ""),
+      ata_chapters: (row.ata_chapters as number[]) ?? [],
+    }))
+  );
 }
 
 /** ACS coverage: satisfied count, total count, and IDs of satisfied codes */
@@ -264,21 +271,29 @@ export async function getAcsCoverageByDomain(
     .eq("status", "approved");
 
   const approvedIds = (approvedEntries ?? []).map((e) => e.id);
-  if (approvedIds.length === 0) {
-    return {
-      general: { satisfied: 0, total: totalByDomain.general, satisfiedCodeIds: [] },
-      airframe: { satisfied: 0, total: totalByDomain.airframe, satisfiedCodeIds: [] },
-      powerplant: { satisfied: 0, total: totalByDomain.powerplant, satisfiedCodeIds: [] },
-    };
-  }
-
-  const { data: approvedAcs } = await supabase
-    .from("logbook_entry_acs")
-    .select("logbook_entry_id, acs_code_id")
-    .in("logbook_entry_id", approvedIds);
 
   const satisfiedCodeIds = new Set<number>();
-  (approvedAcs ?? []).forEach((row) => satisfiedCodeIds.add(row.acs_code_id));
+
+  if (approvedIds.length > 0) {
+    const { data: approvedAcs } = await supabase
+      .from("logbook_entry_acs")
+      .select("logbook_entry_id, acs_code_id")
+      .in("logbook_entry_id", approvedIds);
+    (approvedAcs ?? []).forEach((row) => satisfiedCodeIds.add(row.acs_code_id));
+  }
+
+  const { data: approvedSubmissions } = await supabase
+    .from("lesson_submissions")
+    .select("lesson_id, lessons:lesson_id ( acs_codes )")
+    .eq("user_training_id", userTrainingId)
+    .eq("status", "approved")
+    .not("approved_by", "is", null);
+
+  (approvedSubmissions ?? []).forEach((row) => {
+    const lesson = row.lessons as { acs_codes?: number[] } | null;
+    const codes = Array.isArray(lesson?.acs_codes) ? lesson!.acs_codes! : [];
+    codes.forEach((id) => satisfiedCodeIds.add(id));
+  });
 
   const satisfiedByDomain: Record<AcsDomain, number[]> = {
     general: [],
@@ -342,6 +357,19 @@ export async function getAcsCoverageByChapter(
     (approvedAcs ?? []).forEach((row) => satisfiedCodeIds.add(row.acs_code_id));
   }
 
+  const { data: approvedSubCh } = await supabase
+    .from("lesson_submissions")
+    .select("lesson_id, lessons:lesson_id ( acs_codes )")
+    .eq("user_training_id", userTrainingId)
+    .eq("status", "approved")
+    .not("approved_by", "is", null);
+  (approvedSubCh ?? []).forEach((row) => {
+    const lesson = row.lessons as { acs_codes?: number[] } | null;
+    (Array.isArray(lesson?.acs_codes) ? lesson!.acs_codes! : []).forEach((id) =>
+      satisfiedCodeIds.add(id)
+    );
+  });
+
   const satisfiedByChapter: Record<string, number[]> = {};
   satisfiedCodeIds.forEach((acsId) => {
     const chapters = acsToChapters[acsId] ?? [];
@@ -366,114 +394,99 @@ export async function getAcsCoverageByChapter(
   return result;
 }
 
-/** ACS signoffs: acs_code_id -> { signed_at, signer_initials, signer_full_name } for an apprentice */
-export async function getAcsSignoffsByApprentice(
-  apprenticeUserId: string
+function initialsFromFullName(fullName: string): string {
+  return (
+    fullName
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "—"
+  );
+}
+
+type SignoffEvent = { acsCodeId: number; atMs: number; signerId: string };
+
+/** ACS “sign” display data from approved logbook lines and approved lesson submissions (earliest per code). */
+export async function getAcsSignoffsByStudent(
+  studentUserId: string
 ): Promise<Record<number, { signed_at: string; signer_initials: string; signer_full_name: string }>> {
   const supabase = await createServerSupabaseClient();
 
-  const { data: signoffs, error } = await supabase
-    .from("acs_signoff")
-    .select("acs_code_id, signed_at, signer_id")
-    .eq("apprentice_user_id", apprenticeUserId);
+  const { data: utRows } = await supabase
+    .from("user_trainings")
+    .select("id")
+    .eq("user_id", studentUserId);
+  if (!utRows?.length) return {};
+  const utIds = utRows.map((r) => r.id);
 
-  if (error || !signoffs?.length) {
-    if (error) console.error("Error fetching ACS signoffs:", error);
-    return {};
+  const events: SignoffEvent[] = [];
+
+  const { data: logEntries, error: logErr } = await supabase
+    .from("logbook_entries")
+    .select("id, approved_at, approved_by")
+    .in("user_training_id", utIds)
+    .eq("status", "approved")
+    .not("approved_by", "is", null);
+  if (logErr) console.error("Error fetching logbook entries for ACS signoffs:", logErr);
+
+  const logEntryIds = (logEntries ?? []).map((e) => e.id);
+  const logById = Object.fromEntries((logEntries ?? []).map((e) => [e.id, e]));
+  if (logEntryIds.length > 0) {
+    const { data: lea } = await supabase
+      .from("logbook_entry_acs")
+      .select("logbook_entry_id, acs_code_id")
+      .in("logbook_entry_id", logEntryIds);
+    (lea ?? []).forEach((row) => {
+      const e = logById[row.logbook_entry_id as string];
+      if (!e?.approved_at || !e.approved_by) return;
+      events.push({
+        acsCodeId: row.acs_code_id as number,
+        atMs: new Date(e.approved_at as string).getTime(),
+        signerId: e.approved_by as string,
+      });
+    });
   }
 
-  const signerIds = [...new Set(signoffs.map((s) => s.signer_id))];
-  const { data: signers } = await supabase
-    .from("users")
-    .select("id, full_name")
-    .in("id", signerIds);
+  const { data: subs, error: subErr } = await supabase
+    .from("lesson_submissions")
+    .select("approved_at, approved_by, status, lessons:lesson_id(acs_codes)")
+    .in("user_training_id", utIds)
+    .eq("status", "approved")
+    .not("approved_by", "is", null);
+  if (subErr) console.error("Error fetching lesson submissions for ACS signoffs:", subErr);
+  (subs ?? []).forEach((row) => {
+    const at = row.approved_at as string | null;
+    const by = row.approved_by as string | null;
+    if (!at || !by) return;
+    const lesson = row.lessons as { acs_codes?: number[] } | null;
+    const codes = Array.isArray(lesson?.acs_codes) ? lesson!.acs_codes! : [];
+    const atMs = new Date(at).getTime();
+    codes.forEach((acsId) => events.push({ acsCodeId: acsId, atMs, signerId: by }));
+  });
 
-  const profileMap = Object.fromEntries((signers ?? []).map((p) => [p.id, p.full_name ?? ""]));
+  const bestByAcs = new Map<number, SignoffEvent>();
+  for (const ev of events) {
+    const prev = bestByAcs.get(ev.acsCodeId);
+    if (!prev || ev.atMs < prev.atMs) bestByAcs.set(ev.acsCodeId, ev);
+  }
+  if (bestByAcs.size === 0) return {};
+
+  const signerIds = [...new Set([...bestByAcs.values()].map((e) => e.signerId))];
+  const { data: signers } = await supabase.from("users").select("id, full_name").in("id", signerIds);
+  const nameById = Object.fromEntries((signers ?? []).map((p) => [p.id, p.full_name ?? ""]));
 
   const result: Record<number, { signed_at: string; signer_initials: string; signer_full_name: string }> = {};
-  signoffs.forEach((row) => {
-    const fullName = profileMap[row.signer_id] ?? "";
-    const initials = fullName
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((part: string) => part[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) || "—";
-    result[row.acs_code_id] = {
-      signed_at: row.signed_at,
-      signer_initials: initials,
+  bestByAcs.forEach((ev, acsId) => {
+    const fullName = nameById[ev.signerId] ?? "";
+    result[acsId] = {
+      signed_at: new Date(ev.atMs).toISOString(),
+      signer_initials: initialsFromFullName(fullName),
       signer_full_name: fullName || "Unknown",
     };
   });
   return result;
-}
-
-/** Mentor signs an ACS code for an apprentice. Inserts into acs_signoff and notifies apprentice. */
-export async function signAcsCode(params: {
-  acsCodeId: number;
-  acsCode: string;
-  acsDescription: string;
-  apprenticeUserId: string;
-  userTrainingId: string;
-}): Promise<{ error?: string }> {
-  const supabase = await createServerSupabaseClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError || !user) {
-    return { error: "Not authenticated." };
-  }
-
-  const { data: userTraining } = await supabase
-    .from("user_trainings")
-    .select("mentor_id")
-    .eq("id", params.userTrainingId)
-    .single();
-
-  if (!userTraining || userTraining.mentor_id !== user.id) {
-    return { error: "Not authorized to sign for this apprentice." };
-  }
-
-  const { error: insertError } = await supabase.from("acs_signoff").insert({
-    acs_code_id: params.acsCodeId,
-    apprentice_user_id: params.apprenticeUserId,
-    signer_id: user.id,
-  });
-
-  if (insertError) {
-    if (insertError.code === "23505") {
-      return { error: "This ACS code is already signed." };
-    }
-    console.error("Error signing ACS code:", insertError);
-    return { error: insertError.message };
-  }
-
-  const { data: mentorProfile } = await supabase
-    .from("users")
-    .select("full_name")
-    .eq("id", user.id)
-    .single();
-
-  const mentorName = mentorProfile?.full_name ?? "Your mentor";
-  const message = `ACS code ${params.acsCode} signed by ${mentorName}`;
-
-  const { error: notifError } = await supabase.rpc("create_acs_signed_notification", {
-    p_recipient_user_id: params.apprenticeUserId,
-    p_subject_user_id: user.id,
-    p_subject_display_name: mentorName,
-    p_message: message,
-  });
-
-  if (notifError) {
-    console.error("Failed to create ACS signed notification:", notifError);
-  }
-
-  revalidatePath("/dashboard/mentor/mentees/progress");
-  revalidatePath("/dashboard/apprentice/progress");
-  return {};
 }
 
 export type LogbookEntryForAcs = {

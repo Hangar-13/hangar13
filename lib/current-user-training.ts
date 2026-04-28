@@ -10,9 +10,14 @@ export type UserTrainingRow = {
   end_date: string | null;
   status: string;
   notes: string | null;
-  training_plan_id: string | null;
+  training_path_id: string;
+  /** Sum of planned lesson hours for submitted lessons; maintained by DB trigger. */
+  hours_completed: number;
   created_at: string;
   updated_at: string;
+  enrollment_source?: string | null;
+  user_access_grant_id?: string | null;
+  seat_occupancy_id?: string | null;
 };
 
 /** Active enrollment + optional certification goal (both live on public.users). */
@@ -22,7 +27,7 @@ export type CurrentUserTrainingContext = {
 };
 
 /**
- * Resolves the trainee's active training from users.current_user_training_id.
+ * Resolves the trainee's active training from users.current_curriculum_id.
  * Dashboard, logbook, and progress should use this instead of picking any row by user_id.
  */
 export async function getCurrentUserTrainingContext(
@@ -31,7 +36,7 @@ export async function getCurrentUserTrainingContext(
 ): Promise<CurrentUserTrainingContext> {
   const { data: userRow, error: userErr } = await supabase
     .from("users")
-    .select("current_user_training_id, current_certification")
+    .select("current_curriculum_id, current_certification")
     .eq("id", userId)
     .single();
 
@@ -41,14 +46,14 @@ export async function getCurrentUserTrainingContext(
 
   const cert = (userRow.current_certification as Certification | null) ?? null;
 
-  if (!userRow.current_user_training_id) {
+  if (!userRow.current_curriculum_id) {
     return { userTraining: null, currentCertification: cert };
   }
 
   const { data: ut, error: utErr } = await supabase
     .from("user_trainings")
     .select("*")
-    .eq("id", userRow.current_user_training_id)
+    .eq("id", userRow.current_curriculum_id)
     .eq("user_id", userId)
     .maybeSingle();
 

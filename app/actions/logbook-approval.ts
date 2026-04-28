@@ -39,17 +39,17 @@ export async function approveLogbookEntry(
     .eq("id", entryId)
     .single();
 
-  const apprenticeId = (entry as { user_training_id?: string })?.user_training_id;
+  const studentId = (entry as { user_training_id?: string })?.user_training_id;
 
   // Notification created by database trigger on logbook_entries (approve_logbook_entry RPC updates status)
 
   revalidatePath("/dashboard/mentor");
   revalidatePath("/dashboard/mentor/review-logs");
-  if (apprenticeId) {
-    revalidatePath(`/dashboard/mentor/apprentice/${apprenticeId}`);
+  if (studentId) {
+    revalidatePath(`/dashboard/mentor/student/${studentId}`);
   }
-  revalidatePath("/dashboard/apprentice");
-  revalidatePath("/dashboard/apprentice/progress");
+  revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/student/progress");
 
   return { success: true };
 }
@@ -85,12 +85,12 @@ export async function rejectLogbookEntry(entryId: string, rejectReason: string) 
     return { error: "Entry not found." };
   }
 
-  const apprentice = entry.user_trainings as { id?: string; mentor_id?: string; user_id?: string } | null;
-  if (apprentice?.mentor_id !== user.id) {
+  const student = entry.user_trainings as { id?: string; mentor_id?: string; user_id?: string } | null;
+  if (student?.mentor_id !== user.id) {
     return { error: "You don't have permission to reject this entry." };
   }
 
-  const apprenticeId = apprentice?.id;
+  const studentId = student?.id;
 
   const { error: updateError } = await supabase
     .from("logbook_entries")
@@ -108,11 +108,11 @@ export async function rejectLogbookEntry(entryId: string, rejectReason: string) 
 
   revalidatePath("/dashboard/mentor");
   revalidatePath("/dashboard/mentor/review-logs");
-  if (apprenticeId) {
-    revalidatePath(`/dashboard/mentor/apprentice/${apprenticeId}`);
+  if (studentId) {
+    revalidatePath(`/dashboard/mentor/student/${studentId}`);
   }
-  revalidatePath("/dashboard/apprentice");
-  revalidatePath("/dashboard/apprentice/progress");
+  revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/student/progress");
 
   return { success: true };
 }

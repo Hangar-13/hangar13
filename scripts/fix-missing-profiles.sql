@@ -6,7 +6,7 @@ SELECT
     u.id,
     u.email,
     COALESCE(u.raw_user_meta_data->>'full_name', ''),
-    COALESCE(u.raw_user_meta_data->>'role', 'apprentice')
+    COALESCE(u.raw_user_meta_data->>'role', 'student')
 FROM auth.users u
 WHERE NOT EXISTS (SELECT 1 FROM public.users p WHERE p.id = u.id);
 
@@ -19,13 +19,13 @@ FROM public.users p
 WHERE NOT EXISTS (SELECT 1 FROM public.user_trainings ut WHERE ut.user_id = p.id);
 
 UPDATE public.users u
-SET current_user_training_id = (
+SET current_curriculum_id = (
   SELECT ut.id FROM public.user_trainings ut
   WHERE ut.user_id = u.id
   ORDER BY ut.created_at ASC
   LIMIT 1
 )
-WHERE u.current_user_training_id IS NULL
+WHERE u.current_curriculum_id IS NULL
   AND EXISTS (SELECT 1 FROM public.user_trainings ut WHERE ut.user_id = u.id);
 
 SELECT
@@ -34,7 +34,7 @@ SELECT
     p.full_name,
     p.role,
     ut.id AS user_training_id,
-    p.current_user_training_id,
+    p.current_curriculum_id,
     p.current_certification
 FROM auth.users u
 LEFT JOIN public.users p ON p.id = u.id

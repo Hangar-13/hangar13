@@ -1,25 +1,25 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import { ProgressTrackingDashboard } from "@/components/apprentice/progress-tracking-dashboard";
-import { ApprenticeProgressHeader } from "@/components/mentor/apprentice-progress-header";
+import { ProgressTrackingDashboard } from "@/components/student/progress-tracking-dashboard";
+import { StudentProgressHeader } from "@/components/mentor/student-progress-header";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
-import { getProgressDataForApprentice } from "@/app/actions/progress";
+import { getProgressDataForStudent } from "@/app/actions/progress";
 
-async function getMentorApprentices(mentorId: string) {
+async function getMentorStudents(mentorId: string) {
   const supabase = await createServerSupabaseClient();
 
-  const { data: apprentices, error } = await supabase
+  const { data: students, error } = await supabase
     .from("user_trainings")
     .select("id, user_id")
     .eq("mentor_id", mentorId)
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
-  if (error || !apprentices?.length) {
+  if (error || !students?.length) {
     return [];
   }
 
-  const userIds = apprentices.map((a) => a.user_id);
+  const userIds = students.map((a) => a.user_id);
   const { data: userRows } = await supabase
     .from("users")
     .select("id, full_name")
@@ -29,17 +29,17 @@ async function getMentorApprentices(mentorId: string) {
     (userRows ?? []).map((p) => [p.id, p.full_name])
   );
 
-  return apprentices.map((a) => ({
+  return students.map((a) => ({
     id: a.id,
     full_name: profileMap[a.user_id] ?? null,
   }));
 }
 
 interface PageProps {
-  searchParams: Promise<{ apprentice?: string }>;
+  searchParams: Promise<{ student?: string }>;
 }
 
-export default async function MentorApprenticeProgressPage({
+export default async function MentorStudentProgressPage({
   searchParams,
 }: PageProps) {
   const supabase = await createServerSupabaseClient();
@@ -52,55 +52,55 @@ export default async function MentorApprenticeProgressPage({
     redirect("/auth/login");
   }
 
-  const { apprentice: apprenticeIdParam } = await searchParams;
-  const apprentices = await getMentorApprentices(user.id);
+  const { student: studentIdParam } = await searchParams;
+  const students = await getMentorStudents(user.id);
 
-  if (apprentices.length === 0) {
+  if (students.length === 0) {
     return (
       <div className="space-y-6">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">
-            Apprentice Progress
+            Student Progress
           </h1>
           <p className="text-muted-foreground text-base">
-            You have no assigned apprentices. Assign apprentices from My
-            Apprentices to view their progress.
+            You have no assigned students. Assign students from My
+            Students to view their progress.
           </p>
         </div>
       </div>
     );
   }
 
-  const apprenticeId =
-    apprenticeIdParam && apprentices.some((a) => a.id === apprenticeIdParam)
-      ? apprenticeIdParam
-      : apprentices[0].id;
+  const studentId =
+    studentIdParam && students.some((a) => a.id === studentIdParam)
+      ? studentIdParam
+      : students[0].id;
 
-  if (!apprenticeIdParam || apprenticeIdParam !== apprenticeId) {
-    redirect(`/dashboard/mentor/mentees/progress?apprentice=${apprenticeId}`);
+  if (!studentIdParam || studentIdParam !== studentId) {
+    redirect(`/dashboard/mentor/mentees/progress?student=${studentId}`);
   }
 
-  const { data: apprentice, error: apprenticeError } = await supabase
+  const { data: student, error: studentError } = await supabase
     .from("user_trainings")
     .select("*")
-    .eq("id", apprenticeId)
+    .eq("id", studentId)
     .single();
 
-  if (apprenticeError || !apprentice || apprentice.mentor_id !== user.id) {
+  if (studentError || !student || student.mentor_id !== user.id) {
     redirect("/dashboard/mentor/mentees");
   }
 
   const [progressData, ataChapters] = await Promise.all([
-    getProgressDataForApprentice(apprentice),
+    getProgressDataForStudent(student),
     getAtaChapters(),
   ]);
 
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <ApprenticeProgressHeader
-          apprentices={apprentices}
-          currentApprenticeId={apprenticeId}
+        <StudentProgressHeader
+          students={students}
+          currentStudentId={studentId}
         />
         <p className="text-muted-foreground text-base">
           Track progress through the 30-month program

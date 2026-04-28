@@ -1,39 +1,39 @@
-export type TrainingPlanEmbed = {
+export type TrainingPathEmbed = {
+  id: string;
   name: string;
   description: string | null;
+  is_active?: boolean;
 };
 
-export type UserTrainingRowWithPlan = {
+/** Row shape for public.user_trainings (My Trainings list). */
+export type UserTrainingEnrollmentRow = {
   id: string;
   status: string;
   start_date: string;
   end_date: string | null;
-  notes: string | null;
-  training_plans: TrainingPlanEmbed | TrainingPlanEmbed[] | null;
+  training_path_id: string;
+  training_paths: TrainingPathEmbed | TrainingPathEmbed[] | null;
 };
 
-function normalizePlan(
-  raw: UserTrainingRowWithPlan["training_plans"]
-): TrainingPlanEmbed | null {
+function first<T>(raw: T | T[] | null): T | null {
   if (!raw) return null;
   if (Array.isArray(raw)) return raw[0] ?? null;
   return raw;
 }
 
-export function describeUserTraining(row: UserTrainingRowWithPlan): {
+export function describeUserTrainingEnrollment(row: UserTrainingEnrollmentRow): {
   title: string;
   detail: string | null;
 } {
-  const plan = normalizePlan(row.training_plans);
-  if (plan) {
+  const path = first(row.training_paths);
+  if (path) {
     return {
-      title: plan.name,
-      detail: plan.description?.trim() || null,
+      title: path.name,
+      detail: path.description?.trim() || null,
     };
   }
-  const notes = row.notes?.trim();
   return {
-    title: notes || "Training enrollment",
+    title: "Training program",
     detail: null,
   };
 }

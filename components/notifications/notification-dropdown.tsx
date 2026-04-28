@@ -11,6 +11,11 @@ import {
   type Notification,
 } from "@/app/actions/notifications";
 import { supabaseClient } from "@/lib/supabaseClient";
+import {
+  hasSystemRolePermission,
+  normalizeSystemRole,
+  type SystemRole,
+} from "@/lib/auth-shared";
 import { cn } from "@/lib/utils";
 
 function formatTimeAgo(dateStr: string): string {
@@ -32,7 +37,7 @@ export function NotificationDropdown() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<SystemRole | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = async () => {
@@ -48,7 +53,7 @@ export function NotificationDropdown() {
         .select("role")
         .eq("id", user.id)
         .single();
-      setUserRole(profile?.role ?? "apprentice");
+      setUserRole(normalizeSystemRole(profile?.role as string | undefined));
     }
   };
 
@@ -96,23 +101,43 @@ export function NotificationDropdown() {
   };
 
   const handleNotificationClick = async (n: Notification) => {
-    const isMentor = userRole === "mentor" || userRole === "manager" || userRole === "god";
+    const isMentor =
+      userRole != null && hasSystemRolePermission(userRole, "mentor");
     const logIds = n.log_entry_ids ?? [];
-    const singleLogId = logIds.length === 1 ? logIds[0] : null;
+    const singleId = logIds.length === 1 ? logIds[0] : null;
+
+    const isLessonType =
+      n.type === "lessons_awaiting" ||
+      n.type === "lessons_approved" ||
+      n.type === "lessons_rejected";
 
     let url: string;
-    if (n.type === "acs_signed") {
-      url = isMentor
-        ? "/dashboard/mentor/mentees/certification"
-        : "/dashboard/apprentice/certification";
+    if (isLessonType) {
+      if (singleId) {
+        const { data: sub } = await supabaseClient
+          .from("lesson_submissions")
+          .select("user_training_id")
+          .eq("id", singleId)
+          .maybeSingle();
+        const ut = sub?.user_training_id;
+        if (ut) {
+          url = isMentor
+            ? `/dashboard/mentor/student/${ut}?openSubmission=${singleId}`
+            : `/dashboard/student/training?openSubmission=${singleId}`;
+        } else {
+          url = isMentor ? "/dashboard/mentor/review-logs" : "/dashboard/student/training";
+        }
+      } else {
+        url = isMentor ? "/dashboard/mentor/review-logs" : "/dashboard/student/training";
+      }
     } else if (isMentor) {
-      url = singleLogId
-        ? `/dashboard/mentor/review-logs?openLog=${singleLogId}`
+      url = singleId
+        ? `/dashboard/mentor/review-logs?openLog=${singleId}`
         : "/dashboard/mentor/review-logs";
     } else {
-      url = singleLogId
-        ? `/dashboard/apprentice/logbook?openLog=${singleLogId}`
-        : "/dashboard/apprentice/logbook";
+      url = singleId
+        ? `/dashboard/student/logbook?openLog=${singleId}`
+        : "/dashboard/student/logbook";
     }
 
     // Delete notification from database and update UI

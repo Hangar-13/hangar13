@@ -2,7 +2,13 @@
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
-export type NotificationType = "logs_awaiting" | "logs_approved" | "logs_rejected" | "acs_signed";
+export type NotificationType =
+  | "logs_awaiting"
+  | "logs_approved"
+  | "logs_rejected"
+  | "lessons_awaiting"
+  | "lessons_approved"
+  | "lessons_rejected";
 
 export interface Notification {
   id: string;

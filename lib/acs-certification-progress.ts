@@ -18,10 +18,13 @@ export function domainsForCertification(certification: Certification | null): Ac
   }
 }
 
-/** Number of ACS codes the apprentice must complete in a section (75% of codes in that section). */
+/** Fraction of ACS codes in each section (and overall) that must be signed off. */
+export const ACS_REQUIRED_SECTION_FRACTION = 0.5;
+
+/** Number of ACS codes the student must complete in a section (50% of codes in that section). */
 export function requiredCodesForDomain(totalCodesInDomain: number): number {
   if (totalCodesInDomain <= 0) return 0;
-  return Math.ceil(totalCodesInDomain * 0.75);
+  return Math.ceil(totalCodesInDomain * ACS_REQUIRED_SECTION_FRACTION);
 }
 
 export const DOMAIN_SECTION_LABEL: Record<
@@ -37,7 +40,7 @@ export type DomainProgressStat = {
   domain: AcsDomain;
   sectionTitle: string;
   signed: number;
-  /** Target sign-offs (75% of codes in this section). */
+  /** Target sign-offs (50% of codes in this section). */
   required: number;
   totalCodesInDomain: number;
   percentage: number;

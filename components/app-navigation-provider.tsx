@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
-import type { UserRole } from "@/lib/auth";
+import { normalizeSystemRole, type SystemRole } from "@/lib/auth-shared";
 import { getNavigationSections, type NavSection } from "@/lib/navigation";
 
 type AppNavigationContextValue = {
@@ -18,7 +18,7 @@ type AppNavigationContextValue = {
   mobileNavOpen: boolean;
   setMobileNavOpen: (open: boolean) => void;
   openMobileNav: () => void;
-  /** Re-count user_trainings after enroll / purchase (apprentice & mentor trainee nav). */
+  /** Re-count user_trainings after enroll / purchase (student & mentor trainee nav). */
   refreshTraineeEnrollment: () => Promise<void>;
 };
 
@@ -31,8 +31,8 @@ export function AppNavigationProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
-  const [apprenticeHasTrainings, setApprenticeHasTrainings] = useState<
+  const [userRole, setUserRole] = useState<SystemRole | null>(null);
+  const [studentHasTrainings, setStudentHasTrainings] = useState<
     boolean | null
   >(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -46,7 +46,7 @@ export function AppNavigationProvider({
         } = await supabaseClient.auth.getUser();
         if (!user) {
           setUserRole(null);
-          setApprenticeHasTrainings(null);
+          setStudentHasTrainings(null);
           setIsLoading(false);
           return;
         }
@@ -57,28 +57,24 @@ export function AppNavigationProvider({
           .eq("id", user.id)
           .single();
 
-        const role = (profile?.role as UserRole) || "apprentice";
+        const role = normalizeSystemRole(profile?.role as string | undefined);
         setUserRole(role);
 
-        if (role === "apprentice" || role === "mentor") {
-          const { count, error } = await supabaseClient
-            .from("user_trainings")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", user.id);
+        const { count, error } = await supabaseClient
+          .from("user_trainings")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id);
 
-          if (error) {
-            console.error("Error counting user_trainings:", error);
-            setApprenticeHasTrainings(true);
-          } else {
-            setApprenticeHasTrainings((count ?? 0) > 0);
-          }
+        if (error) {
+          console.error("Error counting user_trainings:", error);
+          setStudentHasTrainings(true);
         } else {
-          setApprenticeHasTrainings(true);
+          setStudentHasTrainings((count ?? 0) > 0);
         }
       } catch (error) {
         console.error("Error fetching navigation context:", error);
-        setUserRole("apprentice");
-        setApprenticeHasTrainings(true);
+        setUserRole("student");
+        setStudentHasTrainings(true);
       } finally {
         setIsLoading(false);
       }
@@ -94,15 +90,6 @@ export function AppNavigationProvider({
       } = await supabaseClient.auth.getUser();
       if (!user) return;
 
-      const { data: profile } = await supabaseClient
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      const role = (profile?.role as UserRole) || "apprentice";
-      if (role !== "apprentice" && role !== "mentor") return;
-
       const { count, error } = await supabaseClient
         .from("user_trainings")
         .select("id", { count: "exact", head: true })
@@ -112,7 +99,7 @@ export function AppNavigationProvider({
         console.error("refreshTraineeEnrollment:", error);
         return;
       }
-      setApprenticeHasTrainings((count ?? 0) > 0);
+      setStudentHasTrainings((count ?? 0) > 0);
     } catch (e) {
       console.error("refreshTraineeEnrollment:", e);
     }
@@ -121,9 +108,9 @@ export function AppNavigationProvider({
   const navigationSections = useMemo(
     () =>
       getNavigationSections(userRole, {
-        apprenticeHasTrainings: apprenticeHasTrainings ?? true,
+        studentHasTrainings: studentHasTrainings ?? true,
       }),
-    [userRole, apprenticeHasTrainings]
+    [userRole, studentHasTrainings]
   );
 
   const openMobileNav = useCallback(() => setMobileNavOpen(true), []);

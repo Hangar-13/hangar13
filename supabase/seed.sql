@@ -441,26 +441,57 @@ VALUES
   ('AM.III.V.S1-S8', 'powerplant', 'V', 'Auxiliary Power Units (APUs)', 'skill', 'All APU skills (inspect, troubleshoot, start, shutdown, bleed air checks).', ARRAY[28]::integer[]);
 
 
--- 3. Training plan and weeks (excludes apprentice UPDATE - no apprentices yet)
--- Seed default training plan with first 10 weeks
--- Insert the default training plan
-INSERT INTO public.training_plans (id, name, description, total_weeks, is_active)
+-- 3. Course, module, and lessons (excludes apprentice UPDATE - no apprentices yet)
+-- Seed default course with first 10 weeks (single module contains all lessons)
+INSERT INTO public.courses (id, name, description, total_weeks, is_active, organization_id)
 VALUES (
     '00000000-0000-0000-0000-000000000001',
     'Aviation Maintenance Technician - Standard Program',
     'Standard 130-week training program for Aviation Maintenance Technicians covering safety, ground operations, systems, and advanced maintenance procedures.',
     130,
-    TRUE
+    TRUE,
+    (SELECT id FROM public.organizations ORDER BY created_at LIMIT 1)
 )
 ON CONFLICT DO NOTHING;
 
+-- Enrollable training path for the seeded course (managers create paths explicitly; no DB trigger)
+INSERT INTO public.training_paths (id, name, description, is_active, organization_id, created_by)
+VALUES (
+    'c0000000-0000-4000-8000-000000000001'::uuid,
+    'Aviation Maintenance Technician - Standard Program',
+    'Standard 130-week training program for Aviation Maintenance Technicians covering safety, ground operations, systems, and advanced maintenance procedures.',
+    TRUE,
+    (SELECT organization_id FROM public.courses WHERE id = '00000000-0000-0000-0000-000000000001'::uuid),
+    NULL
+)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.training_path_items (training_path_id, course_id, sort_order)
+VALUES (
+    'c0000000-0000-4000-8000-000000000001'::uuid,
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    0
+)
+ON CONFLICT (training_path_id, sort_order) DO NOTHING;
+
+SELECT public.recalculate_training_path_total_hours('c0000000-0000-4000-8000-000000000001'::uuid);
+
+INSERT INTO public.modules (id, course_id, title, number)
+VALUES (
+    'b0000000-0000-4000-8000-000000000001'::uuid,
+    '00000000-0000-0000-0000-000000000001'::uuid,
+    'Core content',
+    0
+)
+ON CONFLICT (id) DO NOTHING;
+
 -- Week 1: Safety, Ground Operations & Servicing
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 1,
+    'b0000000-0000-4000-8000-000000000001', 1,
     'Safety, Ground Operations & Servicing', '12',
     ARRAY[
         'Understand the fundamental safety protocols in aviation maintenance',
@@ -479,12 +510,12 @@ INSERT INTO public.training_plan_weeks (
 );
 
 -- Week 2: Aircraft Documentation and Record Keeping
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 2,
+    'b0000000-0000-4000-8000-000000000001', 2,
     'Aircraft Documentation and Record Keeping', '00',
     ARRAY[
         'Understand the importance of accurate aircraft documentation',
@@ -503,12 +534,12 @@ INSERT INTO public.training_plan_weeks (
 );
 
 -- Week 3: Tool Management and Calibration
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 3,
+    'b0000000-0000-4000-8000-000000000001', 3,
     'Tool Management and Calibration', '20',
     ARRAY[
         'Identify standard aviation maintenance tools',
@@ -527,12 +558,12 @@ INSERT INTO public.training_plan_weeks (
 );
 
 -- Week 4: Aircraft Hardware and Fasteners
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 4,
+    'b0000000-0000-4000-8000-000000000001', 4,
     'Aircraft Hardware and Fasteners', '20',
     ARRAY[
         'Identify common aircraft fasteners and their applications',
@@ -551,12 +582,12 @@ INSERT INTO public.training_plan_weeks (
 );
 
 -- Week 5: Aircraft Weight and Balance
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 5,
+    'b0000000-0000-4000-8000-000000000001', 5,
     'Aircraft Weight and Balance', '08',
     ARRAY[
         'Understand the importance of weight and balance calculations',
@@ -575,12 +606,12 @@ INSERT INTO public.training_plan_weeks (
 );
 
 -- Week 6: Fluid Systems - Hydraulics
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 6,
+    'b0000000-0000-4000-8000-000000000001', 6,
     'Fluid Systems - Hydraulics', '29',
     ARRAY[
         'Understand basic hydraulic system principles',
@@ -599,12 +630,12 @@ INSERT INTO public.training_plan_weeks (
 );
 
 -- Week 7: Fuel Systems
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 7,
+    'b0000000-0000-4000-8000-000000000001', 7,
     'Fuel Systems', '28',
     ARRAY[
         'Identify fuel system components and their functions',
@@ -623,12 +654,12 @@ INSERT INTO public.training_plan_weeks (
 );
 
 -- Week 8: Electrical Systems Fundamentals
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 8,
+    'b0000000-0000-4000-8000-000000000001', 8,
     'Electrical Systems Fundamentals', '24',
     ARRAY[
         'Understand basic electrical principles (voltage, current, resistance)',
@@ -647,12 +678,12 @@ INSERT INTO public.training_plan_weeks (
 );
 
 -- Week 9: Landing Gear Systems
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 9,
+    'b0000000-0000-4000-8000-000000000001', 9,
     'Landing Gear Systems', '32',
     ARRAY[
         'Identify landing gear system components',
@@ -671,12 +702,12 @@ INSERT INTO public.training_plan_weeks (
 );
 
 -- Week 10: Engine Fundamentals
-INSERT INTO public.training_plan_weeks (
-    training_plan_id, week_number, title, ata_chapter,
+INSERT INTO public.lessons (
+    module_id, number, title, ata_chapter,
     learning_objectives, study_materials, practical_application,
     mentor_discussion_questions, weekly_deliverable
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001', 10,
+    'b0000000-0000-4000-8000-000000000001', 10,
     'Engine Fundamentals', '72-80',
     ARRAY[
         'Understand basic engine operating principles',

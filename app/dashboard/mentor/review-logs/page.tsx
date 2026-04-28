@@ -7,53 +7,53 @@ import { getAtaChapters } from "@/app/actions/ata-chapters";
 async function getMentorData(userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Get assigned apprentices
-  const { data: apprentices } = await supabase
+  // Get assigned students
+  const { data: students } = await supabase
     .from("user_trainings")
     .select("id")
     .eq("mentor_id", userId)
     .eq("status", "active");
 
-  const apprenticeIds = apprentices?.map((a) => a.id) || [];
+  const studentIds = students?.map((a) => a.id) || [];
 
   let pendingEntries: any[] = [];
   let allEntries: any[] = [];
   
-  if (apprenticeIds.length > 0) {
-    // Get all logbook entries from assigned apprentices
+  if (studentIds.length > 0) {
+    // Get all logbook entries from assigned students
     const { data: entries } = await supabase
       .from("logbook_entries")
       .select("*")
-      .in("user_training_id", apprenticeIds)
+      .in("user_training_id", studentIds)
       .order("entry_date", { ascending: false });
 
     // Get pending entries
     pendingEntries = (entries || []).filter(e => e.status === "submitted");
 
-    // Get apprentice and profile info for each entry
+    // Get student and profile info for each entry
     allEntries = await Promise.all(
       (entries || []).map(async (entry) => {
-        const { data: apprentice } = await supabase
+        const { data: student } = await supabase
           .from("user_trainings")
           .select("id, user_id")
           .eq("id", entry.user_training_id)
           .single();
 
         let profile = null;
-        if (apprentice?.user_id) {
+        if (student?.user_id) {
           const { data: profileData } = await supabase
             .from("users")
             .select("id, full_name, email")
-            .eq("id", apprentice.user_id)
+            .eq("id", student.user_id)
             .single();
           profile = profileData;
         }
 
         return {
           ...entry,
-          user_trainings: apprentice
+          user_trainings: student
             ? {
-                ...apprentice,
+                ...student,
                 users: profile,
               }
             : null,
@@ -61,30 +61,30 @@ async function getMentorData(userId: string) {
       })
     );
 
-    // Get apprentice and profile info for pending entries
+    // Get student and profile info for pending entries
     pendingEntries = await Promise.all(
       pendingEntries.map(async (entry) => {
-        const { data: apprentice } = await supabase
+        const { data: student } = await supabase
           .from("user_trainings")
           .select("id, user_id")
           .eq("id", entry.user_training_id)
           .single();
 
         let profile = null;
-        if (apprentice?.user_id) {
+        if (student?.user_id) {
           const { data: profileData } = await supabase
             .from("users")
             .select("id, full_name, email")
-            .eq("id", apprentice.user_id)
+            .eq("id", student.user_id)
             .single();
           profile = profileData;
         }
 
         return {
           ...entry,
-          user_trainings: apprentice
+          user_trainings: student
             ? {
-                ...apprentice,
+                ...student,
                 users: profile,
               }
             : null,
@@ -101,7 +101,7 @@ async function getMentorData(userId: string) {
 
 interface PageProps {
   searchParams: Promise<{
-    apprentice?: string;
+    student?: string;
     openLog?: string;
   }>;
 }
@@ -118,7 +118,7 @@ export default async function ReviewLogsPage({ searchParams }: PageProps) {
   }
 
   const params = await searchParams;
-  const apprenticeName = params.apprentice || "";
+  const studentName = params.student || "";
   const openLogId = params.openLog || "";
 
   const [data, ataChapters] = await Promise.all([
@@ -147,7 +147,7 @@ export default async function ReviewLogsPage({ searchParams }: PageProps) {
           value: c.chapter_number,
           label: `${c.chapter_number} - ${c.title}`,
         }))}
-        initialNameFilter={apprenticeName}
+        initialNameFilter={studentName}
         initialOpenEntryId={openLogId}
       />
     </div>

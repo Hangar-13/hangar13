@@ -1,20 +1,20 @@
 import { createServerSupabaseClient } from "./supabase-server";
-import { UserRole, canManageRole } from "./auth";
+import { createAdminSupabaseClient } from "./supabase-admin";
+import { type SystemRole, canManageRole, normalizeSystemRole } from "./auth-shared";
 
 /**
- * Update a user's role
- * Only users with appropriate permissions can change roles:
- * - Managers and gods can upgrade/downgrade apprentices and mentors
- * - Only gods can upgrade/downgrade managers
+ * Updates the target user's **system** role (`public.users.role` only).
+ * Organization memberships are unchanged; manage those separately.
  */
 export async function updateUserRole(
   targetUserId: string,
-  newRole: UserRole,
+  newRole: SystemRole,
   managerUserId: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createServerSupabaseClient();
 
-  // Get the manager's role
+  const newRoleNorm = normalizeSystemRole(newRole);
+
   const { data: managerProfile } = await supabase
     .from("users")
     .select("role")
@@ -25,9 +25,8 @@ export async function updateUserRole(
     return { success: false, error: "Manager profile not found" };
   }
 
-  const managerRole = managerProfile.role as UserRole;
+  const managerRole = normalizeSystemRole(managerProfile.role as string);
 
-  // Get the target user's current role
   const { data: targetProfile } = await supabase
     .from("users")
     .select("role")
@@ -38,9 +37,8 @@ export async function updateUserRole(
     return { success: false, error: "Target user not found" };
   }
 
-  const currentRole = targetProfile.role as UserRole;
+  const currentRole = normalizeSystemRole(targetProfile.role as string);
 
-  // Check if manager can manage this role change
   if (!canManageRole(managerRole, currentRole)) {
     return {
       success: false,
@@ -48,15 +46,13 @@ export async function updateUserRole(
     };
   }
 
-  // Check if manager can set the new role
-  if (!canManageRole(managerRole, newRole)) {
+  if (!canManageRole(managerRole, newRoleNorm)) {
     return {
       success: false,
-      error: `You do not have permission to set role to ${newRole}`,
+      error: `You do not have permission to set role to ${newRoleNorm}`,
     };
   }
 
-  // Prevent downgrading gods (except other gods)
   if (currentRole === "god" && managerRole !== "god") {
     return {
       success: false,
@@ -64,40 +60,79 @@ export async function updateUserRole(
     };
   }
 
-  // Update the role
-  const { error: updateError } = await supabase
+  if (newRoleNorm === "god" || newRoleNorm === "admin") {
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        role: newRoleNorm,
+        platform_elevation: newRoleNorm,
+      })
+      .eq("id", targetUserId);
+
+    if (updateError) {
+      return {
+        success: false,
+        error: `Failed to update role: ${updateError.message}`,
+      };
+    }
+    return { success: true };
+  }
+
+  if (newRoleNorm === "guest") {
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ role: "guest", platform_elevation: null })
+      .eq("id", targetUserId);
+
+    if (updateError) {
+      return {
+        success: false,
+        error: `Failed to update role: ${updateError.message}`,
+      };
+    }
+    return { success: true };
+  }
+
+  const { error: peError } = await supabase
     .from("users")
-    .update({ role: newRole })
+    .update({ platform_elevation: null })
     .eq("id", targetUserId);
 
-  if (updateError) {
+  if (peError) {
     return {
       success: false,
-      error: `Failed to update role: ${updateError.message}`,
+      error: `Failed to update role: ${peError.message}`,
     };
   }
 
-  // Update user metadata in auth.users for JWT consistency
-  // Note: This requires admin access, so it may not work with RLS
-  // The profile update above is the source of truth
+  const admin = createAdminSupabaseClient();
+  const { error: rpcError } = await admin.rpc("recompute_effective_user_role", {
+    p_user_id: targetUserId,
+  });
+
+  if (rpcError) {
+    return {
+      success: false,
+      error: `Failed to recompute role: ${rpcError.message}`,
+    };
+  }
 
   return { success: true };
 }
 
 /**
- * Get all users that the current user can manage
+ * Get all users that the current user can manage (by **system** role).
  */
 export async function getManageableUsers(userId: string): Promise<
   Array<{
     id: string;
     email: string;
     full_name: string | null;
-    role: UserRole;
+    role: SystemRole;
   }>
 > {
   const supabase = await createServerSupabaseClient();
 
-  // Get the current user's role
   const { data: userProfile } = await supabase
     .from("users")
     .select("role")
@@ -108,22 +143,23 @@ export async function getManageableUsers(userId: string): Promise<
     return [];
   }
 
-  const userRole = userProfile.role as UserRole;
+  const userRole = normalizeSystemRole(userProfile.role as string);
 
-  // Determine which roles this user can manage
-  let manageableRoles: UserRole[] = [];
-  if (userRole === "manager" || userRole === "god") {
-    manageableRoles = ["apprentice", "mentor"];
+  let manageableRoles: SystemRole[] = [];
+  if (userRole === "manager") {
+    manageableRoles = ["guest", "student", "mentor"];
+  }
+  if (userRole === "admin") {
+    manageableRoles = ["guest", "student", "mentor", "manager"];
   }
   if (userRole === "god") {
-    manageableRoles = ["apprentice", "mentor", "manager"];
+    manageableRoles = ["guest", "student", "mentor", "manager", "admin"];
   }
 
   if (manageableRoles.length === 0) {
     return [];
   }
 
-  // Get all users with manageable roles
   const { data: profiles } = await supabase
     .from("users")
     .select("id, email, full_name, role")
@@ -134,7 +170,7 @@ export async function getManageableUsers(userId: string): Promise<
       id: profile.id,
       email: profile.email,
       full_name: profile.full_name,
-      role: profile.role as UserRole,
+      role: normalizeSystemRole(profile.role as string),
     })) || []
   );
 }

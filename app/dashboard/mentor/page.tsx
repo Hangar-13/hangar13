@@ -1,15 +1,16 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import { AssignedApprenticesList } from "@/components/mentor/assigned-apprentices-list";
+import { AssignedStudentsList } from "@/components/mentor/assigned-students-list";
 import { PendingLogbookEntries } from "@/components/mentor/pending-logbook-entries";
 import { getAcsCodesByEntry } from "@/app/actions/logbook";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
+import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
 
 async function getMentorData(userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Get assigned apprentices
-  const { data: apprentices, error: apprenticesError } = await supabase
+  // Get assigned students
+  const { data: students, error: studentsError } = await supabase
     .from("user_trainings")
     .select("*")
     .eq("mentor_id", userId)
@@ -18,19 +19,19 @@ async function getMentorData(userId: string) {
   const now = new Date();
   const targetHours = 5200;
 
-  // Get profiles and progress data for apprentices (for compact dashboard cards)
-  const apprenticesWithProfiles = await Promise.all(
-    (apprentices || []).map(async (apprentice) => {
+  // Get profiles and progress data for students (for compact dashboard cards)
+  const studentsWithProfiles = await Promise.all(
+    (students || []).map(async (student) => {
       const { data: profile } = await supabase
         .from("users")
         .select("id, email, full_name, avatar_url")
-        .eq("id", apprentice.user_id)
+        .eq("id", student.user_id)
         .single();
 
       const { data: logbookEntries } = await supabase
         .from("logbook_entries")
         .select("*")
-        .eq("user_training_id", apprentice.id);
+        .eq("user_training_id", student.id);
 
       const totalHours = logbookEntries?.reduce(
         (sum: number, entry: { hours_worked?: number }) => sum + Number(entry.hours_worked || 0),
@@ -41,7 +42,7 @@ async function getMentorData(userId: string) {
         (e: { status: string }) => e.status === "submitted"
       ).length || 0;
 
-      const startDate = new Date(apprentice.start_date);
+      const startDate = new Date(student.start_date);
       const daysSinceStart = Math.floor(
         (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -55,38 +56,20 @@ async function getMentorData(userId: string) {
       if (hoursProgress < expectedProgress - 10) progressStatus = "behind_pace";
       else if (hoursProgress > expectedProgress + 10) progressStatus = "ahead";
 
-      const { data: curriculumItems } = await supabase
-        .from("curriculum_items")
-        .select("*")
-        .eq("is_active", true)
-        .order("order_index", { ascending: true });
-
-      const { data: progressData } = await supabase
-        .from("apprentice_progress")
-        .select("*")
-        .eq("user_training_id", apprentice.id);
-
-      const progressMap = new Map(
-        progressData?.map((p: { curriculum_item_id: string }) => [p.curriculum_item_id, p]) || []
-      );
-
-      const itemsWithProgress =
-        curriculumItems?.map((item: { id: string }) => {
-          const progress = progressMap.get(item.id);
-          return { ...item, status: (progress as { status?: string })?.status || "not_started" };
-        }) || [];
-
-      const completedItems = itemsWithProgress.filter(
-        (item: { status: string }) => item.status === "completed" || item.status === "reviewed"
-      ).length;
-
-      const totalItems = itemsWithProgress.length;
-      const overallProgress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+      const {
+        hoursCompleted,
+        hoursRequired,
+        trainingProgressPercent,
+      } = await getEnrollmentLessonSnapshot(supabase, student.id, student);
 
       return {
-        ...apprentice,
+        ...student,
         users: profile,
-        progress: { overall: overallProgress, completed: completedItems, total: totalItems },
+        progress: {
+          overall: trainingProgressPercent,
+          hoursCompleted,
+          hoursRequired,
+        },
         hours: { total: totalHours, target: targetHours, progress: Math.round(hoursProgress) },
         weeks: { current: currentWeek },
         progressStatus,
@@ -95,42 +78,42 @@ async function getMentorData(userId: string) {
     })
   );
 
-  // Get pending logbook entries from assigned apprentices
-  const apprenticeIds = apprentices?.map((a) => a.id) || [];
+  // Get pending logbook entries from assigned students
+  const studentIds = students?.map((a) => a.id) || [];
 
   let pendingEntries: any[] = [];
-  if (apprenticeIds.length > 0) {
+  if (studentIds.length > 0) {
     const { data: entries, error: entriesError } = await supabase
       .from("logbook_entries")
       .select("*")
-      .in("user_training_id", apprenticeIds)
+      .in("user_training_id", studentIds)
       .eq("status", "submitted")
       .order("entry_date", { ascending: false });
 
-    // Get apprentice and profile info for each entry
+    // Get student and profile info for each entry
     pendingEntries = await Promise.all(
       (entries || []).map(async (entry) => {
-        const { data: apprentice } = await supabase
+        const { data: student } = await supabase
           .from("user_trainings")
           .select("id, user_id")
           .eq("id", entry.user_training_id)
           .single();
 
         let profile = null;
-        if (apprentice?.user_id) {
+        if (student?.user_id) {
           const { data: profileData } = await supabase
             .from("users")
             .select("id, full_name, email")
-            .eq("id", apprentice.user_id)
+            .eq("id", student.user_id)
             .single();
           profile = profileData;
         }
 
         return {
           ...entry,
-          user_trainings: apprentice
+          user_trainings: student
             ? {
-                ...apprentice,
+                ...student,
                 users: profile,
               }
             : null,
@@ -140,7 +123,7 @@ async function getMentorData(userId: string) {
   }
 
   return {
-    apprentices: apprenticesWithProfiles,
+    students: studentsWithProfiles,
     pendingEntries,
   };
 }
@@ -171,12 +154,12 @@ export default async function MentorDashboard() {
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Mentor Dashboard</h1>
         <p className="text-muted-foreground text-base">
-          Manage your apprentices and review their logbook entries.
+          Manage your students and review their logbook entries.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <AssignedApprenticesList apprentices={data.apprentices} compact />
+        <AssignedStudentsList students={data.students} compact />
         <PendingLogbookEntries
           entries={data.pendingEntries}
           acsCodesByEntry={acsCodesByEntry}

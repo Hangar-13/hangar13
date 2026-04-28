@@ -10,14 +10,6 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
 const signupSchema = z
   .object({
     firstName: z.string().min(1, "First name is required"),
@@ -31,7 +23,6 @@ const signupSchema = z
         "Password must contain at least one uppercase and one lowercase letter"
       ),
     confirmPassword: z.string(),
-    role: z.enum(["apprentice", "mentor"]),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -49,16 +40,9 @@ export default function SignupPage() {
     register,
     handleSubmit,
     formState: { errors },
-    setValue,
-    watch,
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
-    defaultValues: {
-      role: "apprentice",
-    },
   });
-
-  const selectedRole = watch("role");
 
   const onSubmit = async (data: SignupFormData) => {
     setError(null);
@@ -70,8 +54,8 @@ export default function SignupPage() {
         password: data.password,
         options: {
           data: {
-            role: data.role, // Use the selected role from the form
-            full_name: `${data.firstName} ${data.lastName}`, // Combine first and last name
+            role: "student",
+            full_name: `${data.firstName} ${data.lastName}`,
           },
         },
       });
@@ -205,34 +189,6 @@ export default function SignupPage() {
                 {errors.confirmPassword.message}
               </p>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Select
-              value={selectedRole}
-              onValueChange={(value: "apprentice" | "mentor") => {
-                setValue("role", value, { shouldValidate: true });
-              }}
-            >
-              <SelectTrigger
-                id="role"
-                className="w-full"
-                aria-invalid={errors.role ? "true" : "false"}
-              >
-                <SelectValue placeholder="Select your role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="apprentice">Apprentice</SelectItem>
-                <SelectItem value="mentor">Mentor</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.role && (
-              <p className="text-sm text-destructive">{errors.role.message}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Select your role in the training program
-            </p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>

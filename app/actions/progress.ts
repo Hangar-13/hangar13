@@ -1,11 +1,16 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getAcsCoverageByChapter, getLogbookEntriesByAcsCode, getAcsSignoffsByApprentice } from "@/app/actions/acs-codes";
+import { getAcsCoverageByChapter, getLogbookEntriesByAcsCode, getAcsSignoffsByStudent } from "@/app/actions/acs-codes";
+import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
 
 export type ProgressData = {
-  apprentice: { id: string; user_id: string; start_date: string; [key: string]: unknown };
+  student: { id: string; user_id: string; start_date: string; [key: string]: unknown };
   totalHours: number;
+  /** Curriculum: hours from submitted lessons vs program total (from DB). */
+  trainingHoursCompleted: number;
+  trainingHoursRequired: number;
+  trainingProgressPercent: number;
   currentWeek: number;
   totalWeeks: number;
   expectedHours: number;
@@ -22,27 +27,36 @@ export type ProgressData = {
     skills_practiced?: string[] | null;
     status: string;
     reject_reason?: string | null;
+    log_page_number?: number | null;
+    aircraft?: string | null;
+    additional_information?: unknown;
   }>;
   acsCoverageByChapter: Record<string, { satisfied: number; total: number; satisfiedCodeIds: number[] }>;
   entriesByAcsCode: Record<number, Array<{ id: string; entry_date: string; hours_worked: number; description: string; status: string }>>;
   acsSignoffs: Record<number, { signed_at: string; signer_initials: string; signer_full_name: string }>;
 };
 
-/** Get progress data for an apprentice (by apprentice record). Shared by apprentice and mentor pages. */
-export async function getProgressDataForApprentice(
-  apprentice: { id: string; user_id: string; start_date: string; [key: string]: unknown }
+/** Get progress data for a student (by enrollment record). Shared by student and mentor pages. */
+export async function getProgressDataForStudent(
+  student: {
+    id: string;
+    user_id: string;
+    start_date: string;
+    training_path_id: string;
+    [key: string]: unknown;
+  }
 ): Promise<ProgressData> {
   const supabase = await createServerSupabaseClient();
 
   const { data: logbookEntries } = await supabase
     .from("logbook_entries")
     .select("*")
-    .eq("user_training_id", apprentice.id);
+    .eq("user_training_id", student.id);
 
   const totalHours =
     logbookEntries?.reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0) || 0;
 
-  const startDate = new Date(apprentice.start_date);
+  const startDate = new Date(student.start_date);
   const now = new Date();
   const daysSinceStart = Math.floor(
     (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -94,15 +108,21 @@ export async function getProgressDataForApprentice(
     padChapter(c.chapter_number)
   );
 
-  const [acsCoverageByChapter, entriesByAcsCode, acsSignoffs] = await Promise.all([
-    getAcsCoverageByChapter(apprentice.id, ataChapterNumbers),
-    getLogbookEntriesByAcsCode(apprentice.id),
-    getAcsSignoffsByApprentice(apprentice.user_id),
+  const [acsCoverageByChapter, entriesByAcsCode, acsSignoffs, trainingSnap] = await Promise.all([
+    getAcsCoverageByChapter(student.id, ataChapterNumbers),
+    getLogbookEntriesByAcsCode(student.id),
+    getAcsSignoffsByStudent(student.user_id),
+    getEnrollmentLessonSnapshot(supabase, student.id, {
+      training_path_id: student.training_path_id,
+    }),
   ]);
 
   return {
-    apprentice,
+    student,
     totalHours,
+    trainingHoursCompleted: trainingSnap.hoursCompleted,
+    trainingHoursRequired: trainingSnap.hoursRequired,
+    trainingProgressPercent: trainingSnap.trainingProgressPercent,
     currentWeek,
     totalWeeks,
     expectedHours,

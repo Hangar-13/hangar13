@@ -6,7 +6,7 @@ DECLARE
     user_role TEXT;
     v_training_id UUID;
 BEGIN
-    user_role := COALESCE(NEW.raw_user_meta_data->>'role', 'apprentice');
+    user_role := COALESCE(NEW.raw_user_meta_data->>'role', 'student');
 
     INSERT INTO public.users (id, email, full_name, role)
     VALUES (
@@ -30,7 +30,7 @@ BEGIN
     END IF;
 
     IF v_training_id IS NOT NULL THEN
-        UPDATE public.users SET current_user_training_id = v_training_id WHERE id = NEW.id;
+        UPDATE public.users SET current_curriculum_id = v_training_id WHERE id = NEW.id;
     END IF;
 
     RETURN NEW;

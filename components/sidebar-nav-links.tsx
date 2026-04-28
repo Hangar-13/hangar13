@@ -84,7 +84,15 @@ export function SidebarNavLinks({
           );
 
           return (
-            <div key={sectionIndex} className={cn(sectionIndex > 0 && "mt-6")}>
+            <div
+              key={sectionIndex}
+              className={cn(
+                sectionIndex > 0 &&
+                  (section.separatorBefore
+                    ? "mt-4 border-t border-sidebar-border pt-6"
+                    : "mt-6")
+              )}
+            >
               {section.title && (
                 <div className="mb-2 px-3">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

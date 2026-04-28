@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { approveLogbookEntry, rejectLogbookEntry } from "@/app/actions/logbook-approval";
 import { useRouter } from "next/navigation";
-import { AddEntryModal } from "@/components/apprentice/add-entry-modal";
+import { AddEntryModal } from "@/components/student/add-entry-modal";
 import { RejectReasonDialog } from "@/components/mentor/reject-reason-dialog";
 import { cn } from "@/lib/utils";
 
@@ -100,14 +100,14 @@ export function PendingLogbookEntries({
       }
       // "all" shows all entries regardless of status
 
-      // Filter by apprentice name
+      // Filter by student name
       if (nameFilter.trim()) {
-        const apprenticeName =
+        const studentName =
           entry.user_trainings?.users?.full_name?.toLowerCase() ||
           entry.user_trainings?.users?.email?.toLowerCase() ||
           "";
         const searchTerm = nameFilter.toLowerCase().trim();
-        if (!apprenticeName.includes(searchTerm)) {
+        if (!studentName.includes(searchTerm)) {
           return false;
         }
       }
@@ -202,10 +202,10 @@ export function PendingLogbookEntries({
         ) : (
           filteredEntries.map((entry) => {
             const isProcessing = processingIds.has(entry.id);
-            const apprenticeName =
+            const studentName =
               entry.user_trainings?.users?.full_name ||
               entry.user_trainings?.users?.email ||
-              "Unknown Apprentice";
+              "Unknown Student";
             const statusDisplay = getStatusDisplay(entry.status);
             const isPending = entry.status === "submitted";
 
@@ -221,7 +221,7 @@ export function PendingLogbookEntries({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 text-sm">
                     <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{apprenticeName}</span>
+                    <span className="font-medium">{studentName}</span>
                     <span
                       className={cn(
                         "inline-flex items-center text-xs px-2 py-1 rounded-full font-medium",

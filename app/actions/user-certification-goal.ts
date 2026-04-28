@@ -31,8 +31,8 @@ export async function setCurrentCertificationGoal(
     return { error: error.message };
   }
 
-  revalidatePath("/dashboard/apprentice");
-  revalidatePath("/dashboard/apprentice/certification");
-  revalidatePath("/dashboard/apprentice/progress");
+  revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/student/certification");
+  revalidatePath("/dashboard/student/progress");
   return {};
 }

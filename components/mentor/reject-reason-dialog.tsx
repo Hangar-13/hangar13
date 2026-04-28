@@ -55,7 +55,7 @@ export function RejectReasonDialog({
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Please provide a reason for rejecting this entry. The apprentice will see this feedback and the entry will be returned to draft status.
+            Please provide a reason for rejecting this entry. The student will see this feedback and the entry will be returned to draft status.
           </p>
           {error && (
             <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">

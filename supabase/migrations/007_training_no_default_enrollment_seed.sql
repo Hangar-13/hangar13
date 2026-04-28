@@ -1,4 +1,4 @@
--- New signups: no automatic user_trainings row; no default current_user_training_id.
+-- New signups: no automatic user_trainings row; no default current_curriculum_id (see 010 for column name).
 -- Seed one training program for the catalog (dummy / placeholder using existing copy).
 
 CREATE OR REPLACE FUNCTION public.handle_new_user() RETURNS trigger

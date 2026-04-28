@@ -1,7 +1,7 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getAcsSignoffsByApprentice } from "@/app/actions/acs-codes";
+import { getAcsSignoffsByStudent } from "@/app/actions/acs-codes";
 import {
   computeAcsCertificationProgressStats,
   type AcsCertificationProgressStats,
@@ -12,11 +12,11 @@ import type { AcsDomain } from "@/lib/acs-utils";
 export type { AcsCertificationProgressStats } from "@/lib/acs-certification-progress";
 
 /**
- * ACS sign-off progress vs 75% thresholds per applicable section for the user’s certification goal.
- * Uses acs_code.domain and acs_signoff rows for the apprentice.
+ * ACS sign-off progress vs 50% thresholds per applicable section for the user’s certification goal.
+ * Uses acs_code.domain and satisfied codes derived from approved logbook lines and lesson submissions.
  */
 export async function getAcsCertificationProgressStats(
-  apprenticeUserId: string,
+  studentUserId: string,
   certification: Certification | null
 ): Promise<AcsCertificationProgressStats> {
   const supabase = await createServerSupabaseClient();
@@ -38,7 +38,7 @@ export async function getAcsCertificationProgressStats(
     }
   });
 
-  const signoffs = await getAcsSignoffsByApprentice(apprenticeUserId);
+  const signoffs = await getAcsSignoffsByStudent(studentUserId);
   const signedIds = Object.keys(signoffs).map((k) => Number(k));
 
   return computeAcsCertificationProgressStats(

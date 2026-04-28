@@ -48,10 +48,11 @@
 
 :root {
   --radius: 0.625rem;
-  /* Color Palette: #FFCF03, #1E1E38, #AE989A, #6C5067, #9CA69E, #0098C7, #94940E */
+  /* Color Palette: #FFCF03, #1E1E38, #d6cccd (card), #6C5067, #9CA69E, #0098C7, #94940E */
   --background: #ffffff;
   --foreground: #1E1E38;
-  --card: #AE989A;
+  /* ~2× brighter than legacy #AE989A (was often used at 50% opacity on white) */
+  --card: #d6cccd;
   --card-foreground: #1E1E38;
   --popover: #ffffff;
   --popover-foreground: #1E1E38;
@@ -71,7 +72,7 @@
   --chart-2: #0098C7;
   --chart-3: #6C5067;
   --chart-4: #1E1E38;
-  --chart-5: #AE989A;
+  --chart-5: #d6cccd;
   --sidebar: #1E1E38;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #FFCF03;
@@ -83,7 +84,7 @@
 }
 
 .dark {
-  /* Color Palette: #FFCF03, #1E1E38, #AE989A, #6C5067, #9CA69E, #0098C7, #94940E */
+  /* Color Palette: #FFCF03, #1E1E38, #d6cccd, #6C5067, #9CA69E, #0098C7, #94940E */
   --background: #1E1E38;
   --foreground: #ffffff;
   --card: #1E1E38;
@@ -106,7 +107,7 @@
   --chart-2: #0098C7;
   --chart-3: #6C5067;
   --chart-4: #1E1E38;
-  --chart-5: #AE989A;
+  --chart-5: #d6cccd;
   --sidebar: #1E1E38;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #FFCF03;
