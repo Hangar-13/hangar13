@@ -18,10 +18,7 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-/**
- * App Router client `router.push` is unreliable for `/api/*` GET with very long URLs
- * (Talent SAML redirects back with huge `SAMLRequest`). Use full navigation for SSO resume.
- */
+/** Full-page navigation for long `/api/*` SSO URLs (`router.push` is unreliable here). */
 function navigateAfterAuthenticated(router: ReturnType<typeof useRouter>, redirectRaw: string | null) {
   const fallback = "/";
   const target = redirectRaw?.trim() ? redirectRaw.trim() : fallback;

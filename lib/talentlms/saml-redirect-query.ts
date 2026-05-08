@@ -1,10 +1,4 @@
-/**
- * Query substring taken from the **literal** serialized request URL (everything after `?`
- * until `#`), without constructing `URLSearchParams`.
- *
- * `request.nextUrl.search` can differ from how the UA sent SAML parameters; SAML
- * HTTP-Redirect payloads are base64 and must preserve `+` unless encoded as `%2B`.
- */
+/** Raw `?foo=bar` segment from `request.url` (avoids `+` → space issues in `URLSearchParams`). */
 export function extractRawUrlQueryWithoutLeadingQuestion(fullUrlString: string): string {
   const q = fullUrlString.indexOf("?");
   if (q < 0) return "";
@@ -15,14 +9,7 @@ export function extractRawUrlQueryWithoutLeadingQuestion(fullUrlString: string):
   return fullUrlString.slice(q + 1, end);
 }
 
-/**
- * SAML HTTP-Redirect binding (`SAMLRequest`, `RelayState`, optional `SigAlg` / `Signature`).
- *
- * **Do not use `URLSearchParams`/`searchParams`** for SAML parameters: WHATWG parsers
- * treat `+` as space and corrupt deflate+base64 payloads.
- *
- * @param queryOnlyOrWithQuestion Query string (`foo=bar&...`) optionally with leading `?`
- */
+/** Parse redirect-binding query without `URLSearchParams` (preserves `+` in `SAMLRequest` base64). */
 export function parseSamlRedirectBindingQuery(
   queryOnlyOrWithQuestion: string
 ): Record<string, string> {

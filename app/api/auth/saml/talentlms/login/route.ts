@@ -37,15 +37,6 @@ export async function GET(request: NextRequest) {
   const relayState = relayStateRaw === undefined ? undefined : relayStateRaw;
 
   try {
-    if (process.env.TALENTLMS_SAML_DEBUG === "1") {
-      console.info("[talent saml] redirect binding", {
-        rawQueryLength: rawQuery.length,
-        decodedSamlReqHead: samlReq.slice(0, 64),
-        /** base64 should not contain ASCII space; presence usually means + was turned into space upstream */
-        suspiciousWhitespace: /\s/.test(samlReq),
-      });
-    }
-
     const env = getTalentLmsSamlEnvironment();
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
     "/api/auth/saml/talentlms/"
   );
 
-  /** Talent LMS SSO entry + metadata may be fetched without login; SAML login route redirects anon users */
+  /** SAML endpoints handle anonymous entry (login handler redirects signed-out users). */
   const isPublicPath =
     request.nextUrl.pathname === "/" ||
     isAuthPage ||

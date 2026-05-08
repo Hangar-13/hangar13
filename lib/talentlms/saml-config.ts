@@ -1,3 +1,8 @@
+import {
+  assertSigningCertificatePem,
+  toNormalizedPkcs1RsaPrivateKeyPem,
+} from "@/lib/talentlms/saml-pem";
+
 /** TalentLMS SAML (hangar IdP → TalentLMS SP). */
 
 export type TalentLmsSamlUsernameMode = "email" | "emailLocalPart";
@@ -18,10 +23,6 @@ export type TalentLmsSamlEnvironment = Readonly<{
   attrLastName: string;
   attrEmail: string;
 }>;
-
-export function normalizePem(value: string): string {
-  return value.replace(/\\n/g, "\n").trim();
-}
 
 function requireEnv(key: string): string {
   const v = process.env[key];
@@ -70,9 +71,13 @@ export function getTalentLmsSamlEnvironment(): TalentLmsSamlEnvironment {
   const idpEntityId =
     process.env.TALENTLMS_IDP_ENTITY_ID?.trim()?.length ? process.env.TALENTLMS_IDP_ENTITY_ID.trim() : idDefault;
 
-  const signingPrivateKeyPem = normalizePem(requireEnv("TALENTLMS_IDP_SIGNING_PRIVATE_KEY"));
+  const signingPrivateKeyPem = toNormalizedPkcs1RsaPrivateKeyPem(
+    requireEnv("TALENTLMS_IDP_SIGNING_PRIVATE_KEY")
+  );
 
-  const signingCertificatePem = normalizePem(requireEnv("TALENTLMS_IDP_SIGNING_CERTIFICATE"));
+  const signingCertificatePem = assertSigningCertificatePem(
+    requireEnv("TALENTLMS_IDP_SIGNING_CERTIFICATE")
+  );
 
   const modeRaw =
     process.env.TALENTLMS_SAML_USERNAME_MODE?.trim().toLowerCase() ?? "email";
