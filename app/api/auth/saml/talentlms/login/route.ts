@@ -3,7 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import { getTalentLmsSamlEnvironment } from "@/lib/talentlms/saml-config";
-import { parseSamlRedirectBindingQuery } from "@/lib/talentlms/saml-redirect-query";
+import {
+  extractRawUrlQueryWithoutLeadingQuestion,
+  parseSamlRedirectBindingQuery,
+} from "@/lib/talentlms/saml-redirect-query";
 import {
   executeTalentlmsSamlExchange,
   resolveTalentLmsUsername,
@@ -15,7 +18,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const query = parseSamlRedirectBindingQuery(request.nextUrl.search);
+  const rawQuery = extractRawUrlQueryWithoutLeadingQuestion(request.url);
+  const query = parseSamlRedirectBindingQuery(rawQuery);
   const samlReq = query.SAMLRequest;
   if (!samlReq) {
     return NextResponse.json(
@@ -33,6 +37,15 @@ export async function GET(request: NextRequest) {
   const relayState = relayStateRaw === undefined ? undefined : relayStateRaw;
 
   try {
+    if (process.env.TALENTLMS_SAML_DEBUG === "1") {
+      console.info("[talent saml] redirect binding", {
+        rawQueryLength: rawQuery.length,
+        decodedSamlReqHead: samlReq.slice(0, 64),
+        /** base64 should not contain ASCII space; presence usually means + was turned into space upstream */
+        suspiciousWhitespace: /\s/.test(samlReq),
+      });
+    }
+
     const env = getTalentLmsSamlEnvironment();
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -59,10 +72,11 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       const loginUrl = new URL("/auth/login", request.url);
-      loginUrl.searchParams.set(
-        "redirect",
-        `${request.nextUrl.pathname}${request.nextUrl.search}`
-      );
+      const redirectTarget =
+        rawQuery.length > 0
+          ? `${request.nextUrl.pathname}?${rawQuery}`
+          : request.nextUrl.pathname;
+      loginUrl.searchParams.set("redirect", redirectTarget);
       return NextResponse.redirect(loginUrl);
     }
 
