@@ -113,10 +113,18 @@ export async function GET(request: NextRequest) {
     });
   } catch (e) {
     console.error("Talent LMS SAML SSO error:", e);
-    const msg = e instanceof Error ? e.message : "SSO exchange failed.";
+    const msg =
+      e instanceof Error
+        ? e.message
+        : typeof e === "string"
+          ? e
+          : "SSO exchange failed.";
     const dev = process.env.NODE_ENV !== "production";
     return NextResponse.json(
-      { error: msg, ...(dev ? { detail: `${e}` } : {}) },
+      {
+        error: msg,
+        ...(dev ? { detail: e === null || e === undefined ? "" : String(e) } : {}),
+      },
       { status: 500 }
     );
   }

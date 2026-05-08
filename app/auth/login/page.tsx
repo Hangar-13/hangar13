@@ -18,6 +18,34 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+/**
+ * App Router client `router.push` is unreliable for `/api/*` GET with very long URLs
+ * (Talent SAML redirects back with huge `SAMLRequest`). Use full navigation for SSO resume.
+ */
+function navigateAfterAuthenticated(router: ReturnType<typeof useRouter>, redirectRaw: string | null) {
+  const fallback = "/";
+  const target = redirectRaw?.trim() ? redirectRaw.trim() : fallback;
+
+  if (!target.startsWith("/") || target.startsWith("//")) {
+    router.push(fallback);
+    router.refresh();
+    return;
+  }
+
+  const needsFullPageNavigation =
+    target.startsWith("/api/auth/saml/") ||
+    target.includes("SAMLRequest=") ||
+    target.length > 2048;
+
+  if (needsFullPageNavigation) {
+    window.location.assign(target);
+    return;
+  }
+
+  router.push(target);
+  router.refresh();
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,16 +56,15 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check if user is already logged in
+  // If already signed in (e.g. opened login in another tab), honor ?redirect= including SAML resume
   useEffect(() => {
+    const redirect = searchParams.get("redirect");
     supabaseClient.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        // User is already logged in, redirect to dashboard
-        router.push("/");
-        router.refresh();
+        navigateAfterAuthenticated(router, redirect);
       }
     });
-  }, [router]);
+  }, [router, searchParams]);
 
   const {
     register,
@@ -63,10 +90,7 @@ function LoginForm() {
         return;
       }
 
-      // Redirect to the page they were trying to access, or dashboard
-      const redirectTo = searchParams.get("redirect") || "/";
-      router.push(redirectTo);
-      router.refresh();
+      navigateAfterAuthenticated(router, searchParams.get("redirect"));
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
