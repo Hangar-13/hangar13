@@ -1,22 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileText, BarChart3, Users, TrendingUp } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 import { redirect } from "next/navigation";
 
 async function getUserProfile(userId: string) {
   const supabase = await createServerSupabaseClient();
-  
-  const { data: profile, error } = await supabase
-    .from("users")
-    .select("full_name")
-    .eq("id", userId)
-    .single();
-
-  if (error || !profile) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || user.id !== userId) {
     return null;
   }
-
-  return profile;
+  const profile = await fetchSessionUserProfile(supabase);
+  if (!profile) return null;
+  return { full_name: profile.full_name };
 }
 
 export default async function Home() {

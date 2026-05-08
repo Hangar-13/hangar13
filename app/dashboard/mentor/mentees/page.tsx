@@ -1,20 +1,40 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { AssignedStudentsList } from "@/components/mentor/assigned-students-list";
 import { AddStudentButton } from "@/components/mentor/add-student-button";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
+import {
+  fetchActiveEnrollmentIdsForMentor,
+  fetchCurrentCurriculumIdsForUsers,
+  pickOneEnrollmentPerTrainee,
+} from "@/lib/mentor-enrollments";
+import type { UserTrainingRow } from "@/lib/current-user-training";
+import { getActiveOrgDashboardContext } from "@/lib/org-dashboard-context";
 
 async function getMentees(userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Get assigned students
-  const { data: students, error: studentsError } = await supabase
+  const enrollmentIds = await fetchActiveEnrollmentIdsForMentor(supabase, userId);
+  if (enrollmentIds.length === 0) {
+    return { mentees: [] };
+  }
+
+  const { data: studentsRaw, error: studentsError } = await supabase
     .from("user_trainings")
     .select("*")
-    .eq("mentor_id", userId)
+    .in("id", enrollmentIds)
     .eq("status", "active")
     .order("created_at", { ascending: false });
+
+  if (studentsError) {
+    console.error("getMentees:", studentsError);
+    return { mentees: [] };
+  }
+
+  const activeRows = (studentsRaw ?? []) as UserTrainingRow[];
+  const traineeIds = [...new Set(activeRows.map((r) => r.user_id))];
+  const curriculumMap = await fetchCurrentCurriculumIdsForUsers(supabase, traineeIds);
+  const students = pickOneEnrollmentPerTrainee(activeRows, curriculumMap);
 
   const now = new Date();
   const targetHours = 5200; // Program target hours
@@ -33,7 +53,7 @@ async function getMentees(userId: string) {
       const { data: logbookEntries } = await supabase
         .from("logbook_entries")
         .select("*")
-        .eq("user_training_id", student.id);
+        .eq("user_id", student.user_id);
 
       // Calculate total hours
       const totalHours = logbookEntries?.reduce(
@@ -113,6 +133,7 @@ export default async function MenteeListPage() {
   }
 
   const data = await getMentees(user.id);
+  const orgCtx = await getActiveOrgDashboardContext();
 
   return (
     <div className="space-y-8">
@@ -123,7 +144,7 @@ export default async function MenteeListPage() {
             View and manage all your assigned students.
           </p>
         </div>
-        <AddStudentButton mentorId={user.id} />
+        <AddStudentButton mentorId={user.id} organizationId={orgCtx?.organizationId ?? null} />
       </div>
 
       <AssignedStudentsList students={data.mentees} />

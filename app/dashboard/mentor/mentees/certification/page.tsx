@@ -7,14 +7,20 @@ import { getProgressDataForStudent } from "@/app/actions/progress";
 import { getCertificationAwardsForUser } from "@/app/actions/user-credentials";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { getAcsCertificationProgressStats } from "@/app/actions/acs-certification-progress";
+import { fetchActiveEnrollmentIdsForMentor, mentorHasAccessToEnrollment } from "@/lib/mentor-enrollments";
 
 async function getMentorStudents(mentorId: string) {
   const supabase = await createServerSupabaseClient();
 
+  const enrollmentIds = await fetchActiveEnrollmentIdsForMentor(supabase, mentorId);
+  if (enrollmentIds.length === 0) {
+    return [];
+  }
+
   const { data: students, error } = await supabase
     .from("user_trainings")
     .select("id, user_id")
-    .eq("mentor_id", mentorId)
+    .in("id", enrollmentIds)
     .eq("status", "active")
     .order("created_at", { ascending: false });
 
@@ -82,7 +88,7 @@ export default async function MentorStudentCertificationPage({ searchParams }: P
     .eq("id", studentId)
     .single();
 
-  if (studentError || !student || student.mentor_id !== user.id) {
+  if (studentError || !student || !(await mentorHasAccessToEnrollment(supabase, user.id, studentId))) {
     redirect("/dashboard/mentor/mentees");
   }
 

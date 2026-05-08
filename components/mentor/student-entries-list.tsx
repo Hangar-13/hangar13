@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { approveLogbookEntry, rejectLogbookEntry } from "@/app/actions/logbook-approval";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { formatUiDate } from "@/lib/format-ui-date";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddEntryModal } from "@/components/student/add-entry-modal";
 import { RejectReasonDialog } from "@/components/mentor/reject-reason-dialog";
@@ -49,14 +50,6 @@ export function StudentEntriesList({
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [selectedEntry, setSelectedEntry] = useState<LogbookEntry | null>(null);
   const [rejectingEntryId, setRejectingEntryId] = useState<string | null>(null);
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   const handleApprove = async (entryId: string) => {
     setProcessingIds((prev) => new Set(prev).add(entryId));
@@ -118,7 +111,7 @@ export function StudentEntriesList({
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 text-sm">
             <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">{formatDate(entry.entry_date)}</span>
+            <span className="font-medium">{formatUiDate(entry.entry_date)}</span>
             <Clock className="h-4 w-4 ml-2 text-muted-foreground" />
             <span>{entry.hours_worked} hrs</span>
           </div>
@@ -181,9 +174,9 @@ export function StudentEntriesList({
         {entry.approved_at && (
           <p className="text-xs text-muted-foreground">
             {entry.status === "approved"
-              ? `Approved on ${formatDate(entry.approved_at)}`
+              ? `Approved on ${formatUiDate(entry.approved_at)}`
               : entry.status === "rejected"
-              ? `Rejected on ${formatDate(entry.approved_at)}`
+              ? `Rejected on ${formatUiDate(entry.approved_at)}`
               : null}
           </p>
         )}

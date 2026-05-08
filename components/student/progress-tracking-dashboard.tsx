@@ -10,6 +10,7 @@ import { MilestonesTimeline } from "./milestones-timeline";
 import { AddEntryModal } from "./add-entry-modal";
 import { cn } from "@/lib/utils";
 import type { ProgressData } from "@/app/actions/progress";
+import { formatUiDate } from "@/lib/format-ui-date";
 
 interface ProgressTrackingDashboardProps {
   progressData: ProgressData;
@@ -256,11 +257,7 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
                             className="border-b cursor-pointer transition-colors hover:bg-secondary/10 last:border-b-0"
                           >
                             <td className="py-2 px-3 text-sm border-r border-border/60 whitespace-nowrap w-24">
-                              {new Date(entry.entry_date).toLocaleDateString("en-US", {
-                                month: "2-digit",
-                                day: "2-digit",
-                                year: "2-digit",
-                              })}
+                              {formatUiDate(entry.entry_date)}
                             </td>
                             <td className="py-2 px-3 text-sm font-medium border-r border-border/60">
                               {entry.description}

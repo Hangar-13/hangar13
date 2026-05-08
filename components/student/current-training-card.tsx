@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { formatUiDate } from "@/lib/format-ui-date";
 
 interface CurrentTrainingCardProps {
   currentWeek: number;
@@ -16,14 +17,6 @@ export function CurrentTrainingCard({
   topic,
   dueDate,
 }: CurrentTrainingCardProps) {
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   return (
     <Card className="bg-primary/50 text-primary-foreground border-primary">
       <CardContent className="p-6">
@@ -35,7 +28,7 @@ export function CurrentTrainingCard({
             <h3 className="text-2xl font-bold mb-2">{topic}</h3>
             {dueDate && (
               <p className="text-primary-foreground/80 text-sm">
-                Due: {formatDate(dueDate)}
+                Due: {formatUiDate(dueDate)}
               </p>
             )}
           </div>

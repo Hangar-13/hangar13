@@ -1,97 +1,76 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import { PendingLogbookEntries } from "@/components/mentor/pending-logbook-entries";
+import { PendingLogbookEntries, type PendingLogbookEntry } from "@/components/mentor/pending-logbook-entries";
 import { getAcsCodesByEntry } from "@/app/actions/logbook";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
+import {
+  fetchActiveEnrollmentIdsForMentor,
+  fetchTraineeUserIdsForMentor,
+} from "@/lib/mentor-enrollments";
 
 async function getMentorData(userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Get assigned students
-  const { data: students } = await supabase
-    .from("user_trainings")
-    .select("id")
-    .eq("mentor_id", userId)
-    .eq("status", "active");
+  const [traineeUserIds, enrollmentIds] = await Promise.all([
+    fetchTraineeUserIdsForMentor(supabase, userId),
+    fetchActiveEnrollmentIdsForMentor(supabase, userId),
+  ]);
 
-  const studentIds = students?.map((a) => a.id) || [];
-
-  let pendingEntries: any[] = [];
-  let allEntries: any[] = [];
-  
-  if (studentIds.length > 0) {
-    // Get all logbook entries from assigned students
-    const { data: entries } = await supabase
-      .from("logbook_entries")
-      .select("*")
-      .in("user_training_id", studentIds)
-      .order("entry_date", { ascending: false });
-
-    // Get pending entries
-    pendingEntries = (entries || []).filter(e => e.status === "submitted");
-
-    // Get student and profile info for each entry
-    allEntries = await Promise.all(
-      (entries || []).map(async (entry) => {
-        const { data: student } = await supabase
-          .from("user_trainings")
-          .select("id, user_id")
-          .eq("id", entry.user_training_id)
-          .single();
-
-        let profile = null;
-        if (student?.user_id) {
-          const { data: profileData } = await supabase
-            .from("users")
-            .select("id, full_name, email")
-            .eq("id", student.user_id)
-            .single();
-          profile = profileData;
-        }
-
-        return {
-          ...entry,
-          user_trainings: student
-            ? {
-                ...student,
-                users: profile,
-              }
-            : null,
-        };
-      })
-    );
-
-    // Get student and profile info for pending entries
-    pendingEntries = await Promise.all(
-      pendingEntries.map(async (entry) => {
-        const { data: student } = await supabase
-          .from("user_trainings")
-          .select("id, user_id")
-          .eq("id", entry.user_training_id)
-          .single();
-
-        let profile = null;
-        if (student?.user_id) {
-          const { data: profileData } = await supabase
-            .from("users")
-            .select("id, full_name, email")
-            .eq("id", student.user_id)
-            .single();
-          profile = profileData;
-        }
-
-        return {
-          ...entry,
-          user_trainings: student
-            ? {
-                ...student,
-                users: profile,
-              }
-            : null,
-        };
-      })
-    );
+  const enrollmentByTraineeUserId = new Map<string, string>();
+  if (enrollmentIds.length > 0) {
+    const { data: utRows } = await supabase
+      .from("user_trainings")
+      .select("id, user_id")
+      .in("id", enrollmentIds);
+    for (const r of utRows ?? []) {
+      if (!enrollmentByTraineeUserId.has(r.user_id)) {
+        enrollmentByTraineeUserId.set(r.user_id, r.id);
+      }
+    }
   }
+
+  async function attachEntryContext(
+    entry: Record<string, unknown> & { user_id: string }
+  ): Promise<PendingLogbookEntry> {
+    let utId = enrollmentByTraineeUserId.get(entry.user_id) ?? null;
+    if (!utId) {
+      const { data: ut } = await supabase
+        .from("user_trainings")
+        .select("id")
+        .eq("user_id", entry.user_id)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+      utId = ut?.id ?? null;
+    }
+    const { data: profile } = await supabase
+      .from("users")
+      .select("id, full_name, email")
+      .eq("id", entry.user_id)
+      .single();
+
+    return {
+      ...entry,
+      user_trainings: {
+        id: utId ?? "",
+        user_id: entry.user_id,
+        users: profile,
+      },
+    } as unknown as PendingLogbookEntry;
+  }
+
+  if (traineeUserIds.length === 0) {
+    return { pendingEntries: [], allEntries: [] };
+  }
+
+  const { data: entries } = await supabase
+    .from("logbook_entries")
+    .select("*")
+    .in("user_id", traineeUserIds)
+    .order("entry_date", { ascending: false });
+
+  const allEntries = await Promise.all((entries ?? []).map(attachEntryContext));
+  const pendingEntries = allEntries.filter((e) => e.status === "submitted");
 
   return {
     pendingEntries,

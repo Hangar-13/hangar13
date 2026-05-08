@@ -3,6 +3,8 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Plus } from "lucide-react";
 import { godCreateOrganizationWithUsers, godLookupUserByEmail } from "@/app/actions/god-organizations";
+import type { OrganizationRole } from "@/lib/auth-shared";
+import { GOD_UI_ORG_ROLES } from "@/lib/god-user-constants";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +15,22 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+
+const orgRoleLabels: Record<OrganizationRole, string> = {
+  student: "Student",
+  mentor: "Mentor",
+  manager: "Manager",
+  supervisor: "Supervisor",
+  lead: "Lead",
+};
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,6 +43,7 @@ type Row = {
   email: string;
   firstName: string;
   lastName: string;
+  organizationRole: OrganizationRole;
   isNew: boolean | null;
   lookup: "idle" | "checking" | "done";
   /** Set when server lookup failed (shown next to email). */
@@ -38,6 +56,7 @@ function newRow(overrides: Partial<Row> = {}): Row {
     email: "",
     firstName: "",
     lastName: "",
+    organizationRole: "student",
     isNew: null,
     lookup: "idle",
     lookupError: null,
@@ -47,13 +66,11 @@ function newRow(overrides: Partial<Row> = {}): Row {
 
 type OrgUserRowBlockProps = {
   row: Row;
-  isLead: boolean;
-  onLead: () => void;
   onPatch: (patch: Partial<Row>) => void;
   onReplace: (updater: (r: Row) => Row) => void;
 };
 
-function OrgUserRowBlock({ row, isLead, onLead, onPatch, onReplace }: OrgUserRowBlockProps) {
+function OrgUserRowBlock({ row, onPatch, onReplace }: OrgUserRowBlockProps) {
   const onReplaceRef = useRef(onReplace);
   const lookupSeqRef = useRef(0);
   useLayoutEffect(() => {
@@ -153,16 +170,6 @@ function OrgUserRowBlock({ row, isLead, onLead, onPatch, onReplace }: OrgUserRow
   return (
     <tr className="border-b last:border-0">
       <td className="p-2 align-middle">
-        <input
-          type="radio"
-          name="org-lead"
-          checked={isLead}
-          onChange={onLead}
-          className="h-4 w-4 accent-primary"
-          aria-label="Lead"
-        />
-      </td>
-      <td className="p-2 align-middle">
         <div className="flex items-center gap-2">
           <Input
             className="min-w-0"
@@ -224,6 +231,23 @@ function OrgUserRowBlock({ row, isLead, onLead, onPatch, onReplace }: OrgUserRow
           required={row.isNew === true}
         />
       </td>
+      <td className="p-2 align-middle">
+        <Select
+          value={row.organizationRole}
+          onValueChange={(v) => onPatch({ organizationRole: v as OrganizationRole })}
+        >
+          <SelectTrigger className="w-[140px] h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {GOD_UI_ORG_ROLES.map((r) => (
+              <SelectItem key={r} value={r}>
+                {orgRoleLabels[r]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
     </tr>
   );
 }
@@ -241,15 +265,13 @@ export function CreateOrganizationDialog({
 }: CreateOrganizationDialogProps) {
   const formId = useId();
   const [orgName, setOrgName] = useState("");
-  const [rows, setRows] = useState<Row[]>(() => [newRow()]);
-  const [leadIndex, setLeadIndex] = useState(0);
+  const [rows, setRows] = useState<Row[]>(() => [newRow({ organizationRole: "lead" })]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
     setOrgName("");
-    setRows([newRow()]);
-    setLeadIndex(0);
+    setRows([newRow({ organizationRole: "lead" })]);
     setError(null);
     setSubmitting(false);
   };
@@ -296,15 +318,21 @@ export function CreateOrganizationDialog({
       }
     }
 
+    const leadRows = rows.filter((r) => r.organizationRole === "lead");
+    if (leadRows.length !== 1) {
+      setError("Exactly one user must have the Lead organization role.");
+      return;
+    }
+
     setSubmitting(true);
     const payload = {
       name: orgName.trim(),
-      users: rows.map((r, i) => ({
+      users: rows.map((r) => ({
         email: r.email.trim(),
         firstName: r.firstName,
         lastName: r.lastName,
         isNew: r.isNew === true,
-        lead: i === leadIndex,
+        organizationRole: r.organizationRole,
       })),
     };
     const res = await godCreateOrganizationWithUsers(payload);
@@ -341,10 +369,10 @@ export function CreateOrganizationDialog({
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50 text-left">
-                    <th className="p-2 font-medium w-20">Lead</th>
                     <th className="p-2 font-medium">Email address</th>
                     <th className="p-2 font-medium">First name</th>
                     <th className="p-2 font-medium">Last name</th>
+                    <th className="p-2 font-medium">Org role</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -352,8 +380,6 @@ export function CreateOrganizationDialog({
                     <OrgUserRowBlock
                       key={row.id}
                       row={row}
-                      isLead={leadIndex === i}
-                      onLead={() => setLeadIndex(i)}
                       onPatch={(p) => updateRow(i, (r) => ({ ...r, ...p }))}
                       onReplace={(u) => updateRow(i, u)}
                     />

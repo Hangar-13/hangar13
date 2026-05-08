@@ -80,7 +80,7 @@ export function VisibilitySectionEditor({
           <span className="text-sm font-medium text-muted-foreground shrink-0">
             Visibility
           </span>
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="group flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <CatalogVisibilityBadge visibility={visibility} />
             <span className="text-sm text-muted-foreground" aria-hidden>
               -
@@ -91,13 +91,12 @@ export function VisibilitySectionEditor({
             <Button
               type="button"
               variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground"
+              className="h-5 w-5 shrink-0 p-0 opacity-60 group-hover:opacity-100 text-muted-foreground"
               onClick={startEdit}
               aria-label="Edit visibility"
               title="Edit visibility"
             >
-              <Pencil className="size-4" aria-hidden />
+              <Pencil className="size-2" aria-hidden />
             </Button>
           </div>
         </div>

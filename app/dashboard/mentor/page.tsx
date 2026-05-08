@@ -1,27 +1,109 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import { AssignedStudentsList } from "@/components/mentor/assigned-students-list";
+import { AssignedStudentsList, type AssignedStudent } from "@/components/mentor/assigned-students-list";
 import { PendingLogbookEntries } from "@/components/mentor/pending-logbook-entries";
 import { getAcsCodesByEntry } from "@/app/actions/logbook";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
+import {
+  fetchActiveEnrollmentIdsForMentor,
+  fetchCurrentCurriculumIdsForUsers,
+  fetchTraineeUserIdsForMentor,
+  pickOneEnrollmentPerTrainee,
+} from "@/lib/mentor-enrollments";
+import type { UserTrainingRow } from "@/lib/current-user-training";
 
 async function getMentorData(userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Get assigned students
-  const { data: students, error: studentsError } = await supabase
-    .from("user_trainings")
-    .select("*")
-    .eq("mentor_id", userId)
-    .eq("status", "active");
+  const [enrollmentIds, traineeUserIds] = await Promise.all([
+    fetchActiveEnrollmentIdsForMentor(supabase, userId),
+    fetchTraineeUserIdsForMentor(supabase, userId),
+  ]);
+
+  const enrollmentByTraineeUserId = new Map<string, string>();
+  let canonicalEnrollments: UserTrainingRow[] = [];
+  if (enrollmentIds.length > 0) {
+    const { data: utRows, error: utErr } = await supabase
+      .from("user_trainings")
+      .select("*")
+      .in("id", enrollmentIds)
+      .eq("status", "active");
+    if (utErr) {
+      console.error("getMentorData enrollments:", utErr);
+    }
+    const activeRows = (utRows ?? []) as UserTrainingRow[];
+    const userIds = [...new Set(activeRows.map((r) => r.user_id))];
+    const curriculumMap = await fetchCurrentCurriculumIdsForUsers(supabase, userIds);
+    canonicalEnrollments = pickOneEnrollmentPerTrainee(activeRows, curriculumMap);
+    for (const r of canonicalEnrollments) {
+      enrollmentByTraineeUserId.set(r.user_id, r.id);
+    }
+  }
+
+  async function attachEntryContext(entry: Record<string, unknown> & { user_id: string }) {
+    let utId = enrollmentByTraineeUserId.get(entry.user_id) ?? null;
+    if (!utId) {
+      const { data: ut } = await supabase
+        .from("user_trainings")
+        .select("id")
+        .eq("user_id", entry.user_id)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+      utId = ut?.id ?? null;
+    }
+    const { data: profile } = await supabase
+      .from("users")
+      .select("id, full_name, email")
+      .eq("id", entry.user_id)
+      .single();
+
+    return {
+      ...entry,
+      user_trainings: {
+        id: utId ?? "",
+        user_id: entry.user_id,
+        users: profile,
+      },
+    };
+  }
 
   const now = new Date();
   const targetHours = 5200;
 
-  // Get profiles and progress data for students (for compact dashboard cards)
-  const studentsWithProfiles = await Promise.all(
-    (students || []).map(async (student) => {
+  let studentsWithProfiles: AssignedStudent[] = [];
+
+  if (canonicalEnrollments.length > 0) {
+    studentsWithProfiles = await buildStudentCards(supabase, canonicalEnrollments, now, targetHours);
+  }
+
+  let pendingEntries: any[] = [];
+  if (traineeUserIds.length > 0) {
+    const { data: entries } = await supabase
+      .from("logbook_entries")
+      .select("*")
+      .in("user_id", traineeUserIds)
+      .eq("status", "submitted")
+      .order("entry_date", { ascending: false });
+
+    pendingEntries = await Promise.all((entries ?? []).map(attachEntryContext));
+  }
+
+  return {
+    students: studentsWithProfiles,
+    pendingEntries,
+  };
+}
+
+async function buildStudentCards(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  students: UserTrainingRow[],
+  now: Date,
+  targetHours: number
+): Promise<AssignedStudent[]> {
+  return Promise.all(
+    students.map(async (student) => {
       const { data: profile } = await supabase
         .from("users")
         .select("id, email, full_name, avatar_url")
@@ -31,7 +113,7 @@ async function getMentorData(userId: string) {
       const { data: logbookEntries } = await supabase
         .from("logbook_entries")
         .select("*")
-        .eq("user_training_id", student.id);
+        .eq("user_id", student.user_id);
 
       const totalHours = logbookEntries?.reduce(
         (sum: number, entry: { hours_worked?: number }) => sum + Number(entry.hours_worked || 0),
@@ -74,58 +156,9 @@ async function getMentorData(userId: string) {
         weeks: { current: currentWeek },
         progressStatus,
         pendingEntries,
-      };
+      } as AssignedStudent;
     })
   );
-
-  // Get pending logbook entries from assigned students
-  const studentIds = students?.map((a) => a.id) || [];
-
-  let pendingEntries: any[] = [];
-  if (studentIds.length > 0) {
-    const { data: entries, error: entriesError } = await supabase
-      .from("logbook_entries")
-      .select("*")
-      .in("user_training_id", studentIds)
-      .eq("status", "submitted")
-      .order("entry_date", { ascending: false });
-
-    // Get student and profile info for each entry
-    pendingEntries = await Promise.all(
-      (entries || []).map(async (entry) => {
-        const { data: student } = await supabase
-          .from("user_trainings")
-          .select("id, user_id")
-          .eq("id", entry.user_training_id)
-          .single();
-
-        let profile = null;
-        if (student?.user_id) {
-          const { data: profileData } = await supabase
-            .from("users")
-            .select("id, full_name, email")
-            .eq("id", student.user_id)
-            .single();
-          profile = profileData;
-        }
-
-        return {
-          ...entry,
-          user_trainings: student
-            ? {
-                ...student,
-                users: profile,
-              }
-            : null,
-        };
-      })
-    );
-  }
-
-  return {
-    students: studentsWithProfiles,
-    pendingEntries,
-  };
 }
 
 export default async function MentorDashboard() {

@@ -39,6 +39,13 @@ export async function updateUserRole(
 
   const currentRole = normalizeSystemRole(targetProfile.role as string);
 
+  if (managerUserId === targetUserId && managerRole !== "god") {
+    return {
+      success: false,
+      error: "You cannot change your own role.",
+    };
+  }
+
   if (!canManageRole(managerRole, currentRole)) {
     return {
       success: false,
@@ -50,13 +57,6 @@ export async function updateUserRole(
     return {
       success: false,
       error: `You do not have permission to set role to ${newRoleNorm}`,
-    };
-  }
-
-  if (currentRole === "god" && managerRole !== "god") {
-    return {
-      success: false,
-      error: "Only god users can modify other god users",
     };
   }
 
@@ -93,6 +93,7 @@ export async function updateUserRole(
     return { success: true };
   }
 
+  /* standard */
   const { error: peError } = await supabase
     .from("users")
     .update({ platform_elevation: null })
@@ -146,14 +147,11 @@ export async function getManageableUsers(userId: string): Promise<
   const userRole = normalizeSystemRole(userProfile.role as string);
 
   let manageableRoles: SystemRole[] = [];
-  if (userRole === "manager") {
-    manageableRoles = ["guest", "student", "mentor"];
-  }
   if (userRole === "admin") {
-    manageableRoles = ["guest", "student", "mentor", "manager"];
+    manageableRoles = ["guest", "standard"];
   }
   if (userRole === "god") {
-    manageableRoles = ["guest", "student", "mentor", "manager", "admin"];
+    manageableRoles = ["guest", "standard", "admin"];
   }
 
   if (manageableRoles.length === 0) {

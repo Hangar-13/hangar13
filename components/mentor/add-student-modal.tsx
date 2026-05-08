@@ -11,11 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase-browser";
 import { User, Mail, Clock, Plus } from "lucide-react";
+import { assignEnrollmentMentorAction } from "@/app/actions/assign-enrollment-mentor";
 
 interface Student {
   id: string;
   user_id: string;
-  mentor_id: string | null;
+  profile_mentor_id: string | null;
   full_name: string;
   email: string;
   total_hours: number;
@@ -26,6 +27,8 @@ interface AddStudentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentMentorId: string;
+  /** Scope candidates to an org (program ownership + org student role). */
+  organizationId?: string | null;
   onSuccess?: () => void;
 }
 
@@ -33,6 +36,7 @@ export function AddStudentModal({
   open,
   onOpenChange,
   currentMentorId,
+  organizationId = null,
   onSuccess,
 }: AddStudentModalProps) {
   const [students, setStudents] = useState<Student[]>([]);
@@ -42,9 +46,9 @@ export function AddStudentModal({
 
   useEffect(() => {
     if (open) {
-      fetchStudents();
+      void fetchStudents();
     }
-  }, [open, currentMentorId]);
+  }, [open, currentMentorId, organizationId]);
 
   async function fetchStudents() {
     setLoading(true);
@@ -52,75 +56,142 @@ export function AddStudentModal({
     try {
       const supabase = createClient();
 
-      // Get all students with their profiles
-      // Note: This requires RLS policy that allows mentors to view all students
-      const { data: allStudents, error: studentsError } = await supabase
+      let query = supabase
         .from("user_trainings")
-        .select("id, user_id, mentor_id, status")
+        .select("id, user_id, mentor_id, status, training_paths(organization_id)")
         .eq("status", "active");
+
+      const { data: rawRows, error: studentsError } = await query;
+
+      const allStudents =
+        organizationId && rawRows
+          ? rawRows.filter((r) => {
+              const tp = r.training_paths;
+              const org =
+                Array.isArray(tp) && tp[0]
+                  ? (tp[0] as { organization_id: string }).organization_id
+                  : tp &&
+                      typeof tp === "object" &&
+                      "organization_id" in tp
+                    ? (tp as { organization_id: string }).organization_id
+                    : null;
+              return org === organizationId;
+            })
+          : rawRows;
 
       if (studentsError) {
         console.error("Error fetching students:", studentsError);
-        setError(`Failed to load students: ${studentsError.message}. Make sure the RLS policy allows mentors to view all students.`);
+        setError(
+          `Failed to load students: ${studentsError.message}. Make sure the RLS policy allows mentors to view enrollments.`
+        );
         setLoading(false);
         return;
       }
 
-      // Get profiles and calculate hours for each student
-      // Filter to only include students (role='student'), not mentors/managers or the current mentor
+      const enrollmentRows = allStudents ?? [];
+      const enrollmentUserIds = [
+        ...new Set(enrollmentRows.map((r) => r.user_id as string)),
+      ];
+
+      let orgStudentIds = new Set<string>(enrollmentUserIds);
+      let userIdsWithStudentRole = new Set<string>();
+
+      if (organizationId && enrollmentUserIds.length > 0) {
+        const { data: memRows, error: memErr } = await supabase
+          .from("user_organizations")
+          .select("user_id, role")
+          .in("user_id", enrollmentUserIds)
+          .eq("organization_id", organizationId);
+
+        if (memErr) {
+          console.error("Error fetching memberships:", memErr);
+          setError(`Failed to load organization memberships: ${memErr.message}`);
+          setLoading(false);
+          return;
+        }
+
+        orgStudentIds = new Set(
+          (memRows ?? [])
+            .filter((m) => m.role === "student")
+            .map((m) => m.user_id as string)
+        );
+        userIdsWithStudentRole = orgStudentIds;
+      } else if (enrollmentUserIds.length > 0) {
+        const { data: sm, error: smErr } = await supabase
+          .from("user_organizations")
+          .select("user_id")
+          .in("user_id", enrollmentUserIds)
+          .eq("role", "student");
+
+        if (smErr) {
+          console.error("Error fetching student memberships:", smErr);
+          setError(`Failed to load student roles: ${smErr.message}`);
+          setLoading(false);
+          return;
+        }
+        userIdsWithStudentRole = new Set((sm ?? []).map((m) => m.user_id as string));
+      }
+
       const studentsWithDetails = await Promise.all(
-        (allStudents || []).map(async (student) => {
-          // Skip if it's the current mentor
+        enrollmentRows.map(async (student) => {
           if (student.user_id === currentMentorId) {
             return null;
           }
 
-          // Get profile with role check
+          if (!organizationId && !userIdsWithStudentRole.has(student.user_id as string)) {
+            return null;
+          }
+
+          if (organizationId && !orgStudentIds.has(student.user_id as string)) {
+            return null;
+          }
+
           const { data: profile, error: profileError } = await supabase
             .from("users")
-            .select("id, email, full_name, role")
+            .select("id, email, full_name, role, mentor_id")
             .eq("id", student.user_id)
             .single();
 
           if (profileError) {
             console.error(`Error fetching profile for student ${student.id}:`, profileError);
-            return null; // Skip this student if profile fetch fails
-          }
-
-          // Only include users with role='student', exclude mentors, managers, etc.
-          if (profile?.role !== 'student') {
             return null;
           }
 
-          // Get total hours from logbook entries
-          // Note: This should work with the existing mentor RLS policy for logbook_entries
+          if (profile?.role === "admin" || profile?.role === "god") {
+            return null;
+          }
+
           const { data: entries, error: entriesError } = await supabase
             .from("logbook_entries")
             .select("hours_worked")
-            .eq("user_training_id", student.id);
+            .eq("user_id", student.user_id as string);
 
           if (entriesError) {
             console.error(`Error fetching entries for student ${student.id}:`, entriesError);
           }
 
-          const totalHours = entries?.reduce(
-            (sum, entry) => sum + (parseFloat(entry.hours_worked?.toString() || "0") || 0),
-            0
-          ) || 0;
+          const totalHours =
+            entries?.reduce(
+              (sum, entry) =>
+                sum + (parseFloat(entry.hours_worked?.toString() || "0") || 0),
+              0
+            ) || 0;
+
+          const profileMentorId = (profile?.mentor_id as string | null) ?? null;
+          const isAssigned = profileMentorId === currentMentorId;
 
           return {
-            id: student.id,
-            user_id: student.user_id,
-            mentor_id: student.mentor_id,
+            id: student.id as string,
+            user_id: student.user_id as string,
+            profile_mentor_id: profileMentorId,
             full_name: profile.full_name || "Unknown",
             email: profile.email || "",
             total_hours: totalHours,
-            is_assigned: student.mentor_id === currentMentorId,
+            is_assigned: isAssigned,
           };
         })
       );
 
-      // Filter out null values (non-students or the current mentor)
       const validStudents = studentsWithDetails.filter((a): a is Student => a !== null);
       setStudents(validStudents);
     } catch (err) {
@@ -131,33 +202,34 @@ export function AddStudentModal({
     }
   }
 
-  async function assignStudent(studentId: string) {
-    setAssigning(studentId);
+  async function assignStudent(enrollmentId: string) {
+    setAssigning(enrollmentId);
     setError(null);
 
     try {
-      const supabase = createClient();
+      const res = await assignEnrollmentMentorAction({
+        userTrainingId: enrollmentId,
+        mentorUserId: currentMentorId,
+      });
 
-      const { error: updateError } = await supabase
-        .from("user_trainings")
-        .update({ mentor_id: currentMentorId })
-        .eq("id", studentId);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
 
-      if (updateError) throw updateError;
-
-      // Update local state
       setStudents((prev) =>
         prev.map((a) =>
-          a.id === studentId
-            ? { ...a, mentor_id: currentMentorId, is_assigned: true }
+          a.id === enrollmentId
+            ? {
+                ...a,
+                profile_mentor_id: currentMentorId,
+                is_assigned: true,
+              }
             : a
         )
       );
 
-      // Call success callback
-      if (onSuccess) {
-        onSuccess();
-      }
+      onSuccess?.();
     } catch (err) {
       console.error("Error assigning student:", err);
       setError("Failed to assign student. Please try again.");
@@ -174,7 +246,9 @@ export function AddStudentModal({
         <DialogHeader>
           <DialogTitle>Add Student</DialogTitle>
           <DialogDescription>
-            Select a student to assign to your mentoring list.
+            Assign yourself as this learner’s mentor. They can only have one mentor; that mentor
+            receives logbook and lesson submission notifications and is the only role that can
+            sign off their work (aside from platform administrators).
           </DialogDescription>
         </DialogHeader>
 
@@ -192,13 +266,17 @@ export function AddStudentModal({
           ) : students.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-sm text-muted-foreground">
-                No students found in the system.
+                {organizationId
+                  ? "No eligible learners found for this organization."
+                  : "No students found in the system."}
               </p>
             </div>
           ) : unassignedStudents.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-sm text-muted-foreground">
-                No unassigned students available. All students are already assigned to mentors.
+                Everyone shown here already has you as their mentor. If someone is missing, change
+                the active organization (top of the app) or ask an administrator to confirm their
+                enrollment and org role.
               </p>
             </div>
           ) : (

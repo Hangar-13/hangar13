@@ -45,14 +45,13 @@ const orgRoleLabel: Record<OrganizationRole, string> = {
   student: "Student",
   mentor: "Mentor",
   manager: "Manager",
-  admin: "Admin",
+  supervisor: "Supervisor",
+  lead: "Lead",
 };
 
 const systemRoleLabel: Record<SystemRole, string> = {
   guest: "Guest",
-  student: "Student",
-  mentor: "Mentor",
-  manager: "Manager",
+  standard: "Standard",
   admin: "Admin",
   god: "God",
 };
@@ -71,7 +70,7 @@ export function AddGodUserDialog({ open, onOpenChange, orgOptions, onCreated }: 
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [systemRole, setSystemRole] = useState<SystemRole>("student");
+  const [systemRole, setSystemRole] = useState<SystemRole>("standard");
   const [orgRows, setOrgRows] = useState<OrgRow[]>([]);
   const [lookup, setLookup] = useState<"idle" | "checking" | "done">("idle");
   const [emailAvailable, setEmailAvailable] = useState<boolean | null>(null);
@@ -83,7 +82,7 @@ export function AddGodUserDialog({ open, onOpenChange, orgOptions, onCreated }: 
     setEmail("");
     setFirstName("");
     setLastName("");
-    setSystemRole("student");
+    setSystemRole("standard");
     setOrgRows([]);
     setLookup("idle");
     setEmailAvailable(null);

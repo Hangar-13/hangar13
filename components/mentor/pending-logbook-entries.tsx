@@ -1,18 +1,27 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { Calendar, Clock, User, CheckCircle2, XCircle } from "lucide-react";
+import { useState, useMemo, useEffect, useTransition } from "react";
+import { Calendar, Clock, User, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { approveLogbookEntry, rejectLogbookEntry } from "@/app/actions/logbook-approval";
+import { approveLogbookEntry, approveAllPendingLogbookEntries, rejectLogbookEntry } from "@/app/actions/logbook-approval";
 import { useRouter } from "next/navigation";
 import { AddEntryModal } from "@/components/student/add-entry-modal";
 import { RejectReasonDialog } from "@/components/mentor/reject-reason-dialog";
 import { cn } from "@/lib/utils";
+import { formatUiDate } from "@/lib/format-ui-date";
 
-interface PendingLogbookEntry {
+export interface PendingLogbookEntry {
   id: string;
   entry_date: string;
   hours_worked: number;
@@ -50,11 +59,17 @@ export function PendingLogbookEntries({
   initialOpenEntryId,
 }: PendingLogbookEntriesProps) {
   const router = useRouter();
+  const [isBulkApproving, startBulkTransition] = useTransition();
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const [selectedEntry, setSelectedEntry] = useState<PendingLogbookEntry | null>(null);
   const [rejectingEntryId, setRejectingEntryId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"draft" | "pending" | "all">("pending");
   const [nameFilter, setNameFilter] = useState<string>(initialNameFilter);
+  const [bulkReviewOpen, setBulkReviewOpen] = useState(false);
+  const [bulkFeedback, setBulkFeedback] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
 
   // Open modal for specific entry when navigating from notification.
   // Only open if entry is still pending (submitted) - don't re-open after approve/reject.
@@ -67,13 +82,28 @@ export function PendingLogbookEntries({
     }
   }, [initialOpenEntryId, entries]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
+  const pendingSubmitted = useMemo(
+    () => entries.filter((e) => e.status === "submitted"),
+    [entries]
+  );
+  const pendingCount = pendingSubmitted.length;
+
+  const bulkLinesSorted = useMemo(() => {
+    return [...pendingSubmitted].sort((a, b) => {
+      const an = (
+        a.user_trainings?.users?.full_name ||
+        a.user_trainings?.users?.email ||
+        ""
+      ).toLowerCase();
+      const bn = (
+        b.user_trainings?.users?.full_name ||
+        b.user_trainings?.users?.email ||
+        ""
+      ).toLowerCase();
+      if (an !== bn) return an.localeCompare(bn);
+      return (b.entry_date || "").localeCompare(a.entry_date || "");
     });
-  };
+  }, [pendingSubmitted]);
 
   const getStatusDisplay = (status: string) => {
     switch (status) {
@@ -160,8 +190,152 @@ export function PendingLogbookEntries({
     }
   };
 
+  function confirmSignAllFromReviewModal() {
+    if (pendingCount === 0) return;
+    setBulkFeedback(null);
+    startBulkTransition(async () => {
+      const result = await approveAllPendingLogbookEntries();
+      if ("error" in result) {
+        setBulkFeedback({ type: "error", message: result.error });
+        return;
+      }
+      setBulkReviewOpen(false);
+      if (result.warning) {
+        setBulkFeedback({
+          type: "warning",
+          message: `Signed ${result.approvedCount} log entr${result.approvedCount === 1 ? "y" : "ies"}. ${result.warning}`,
+        });
+      } else if (result.approvedCount > 0) {
+        setBulkFeedback({
+          type: "success",
+          message: `Signed ${result.approvedCount} log entr${result.approvedCount === 1 ? "y" : "ies"}.`,
+        });
+      }
+      router.refresh();
+    });
+  }
+
+  useEffect(() => {
+    if (pendingCount === 0) setBulkReviewOpen(false);
+  }, [pendingCount]);
+
   return (
     <div className="space-y-6">
+      {pendingCount > 0 && (
+        <div
+          className={cn(
+            "flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between",
+            "border-primary/25 bg-primary/[0.06] dark:bg-primary/10"
+          )}
+        >
+          <div className="space-y-1">
+            <p className="font-medium text-foreground">
+              {pendingCount} log entr{pendingCount === 1 ? "y" : "ies"} awaiting your signature
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Open the list to confirm every entry, then sign all at once. Pending ACS on each row is
+              applied the same as signing individually.
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="lg"
+            className="shrink-0 gap-2"
+            onClick={() => setBulkReviewOpen(true)}
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Review and sign all…
+          </Button>
+        </div>
+      )}
+
+      <Dialog open={bulkReviewOpen} onOpenChange={setBulkReviewOpen}>
+        <DialogContent className="flex max-h-[min(90vh,720px)] flex-col sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Sign all pending logs</DialogTitle>
+            <DialogDescription>
+              {pendingCount} entr{pendingCount === 1 ? "y" : "ies"} will be signed. Sorted by student,
+              then newest date first within each student.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-md border">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 border-b bg-muted/50 text-left">
+                <tr>
+                  <th className="p-2 font-medium">Student</th>
+                  <th className="p-2 font-medium whitespace-nowrap">Date</th>
+                  <th className="p-2 font-medium">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bulkLinesSorted.map((row) => (
+                  <tr key={row.id} className="border-b border-border/80 last:border-0 align-top">
+                    <td className="p-2 font-medium">
+                      {row.user_trainings?.users?.full_name ||
+                        row.user_trainings?.users?.email ||
+                        "—"}
+                    </td>
+                    <td className="p-2 whitespace-nowrap text-muted-foreground">
+                      {formatUiDate(row.entry_date)}
+                    </td>
+                    <td className="p-2 text-muted-foreground">
+                      <span className="line-clamp-3" title={row.description}>
+                        {row.description}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isBulkApproving}
+              onClick={() => setBulkReviewOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isBulkApproving || pendingCount === 0}
+              className="gap-2"
+              onClick={() => confirmSignAllFromReviewModal()}
+            >
+              {isBulkApproving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Signing…
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Sign all
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {bulkFeedback && (
+        <p
+          className={cn(
+            "text-sm rounded-md border px-3 py-2",
+            bulkFeedback.type === "error" &&
+              "border-destructive/30 bg-destructive/10 text-destructive",
+            bulkFeedback.type === "warning" &&
+              "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100",
+            bulkFeedback.type === "success" &&
+              "border-emerald-500/25 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
+          )}
+          role="status"
+        >
+          {bulkFeedback.message}
+        </p>
+      )}
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
@@ -233,7 +407,7 @@ export function PendingLogbookEntries({
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Calendar className="h-3 w-3" />
-                    <span>{formatDate(entry.entry_date)}</span>
+                    <span>{formatUiDate(entry.entry_date)}</span>
                     <Clock className="h-3 w-3 ml-2" />
                     <span>{entry.hours_worked} hrs</span>
                   </div>

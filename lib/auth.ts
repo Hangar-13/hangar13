@@ -1,4 +1,5 @@
 import { createServerSupabaseClient } from "./supabase-server";
+import { fetchSessionUserProfile } from "./session-user-profile";
 import { type ActiveUser, normalizeSystemRole } from "./auth-shared";
 
 /** Server-only: session + Supabase. For types and role helpers use `@/lib/auth-shared`. */
@@ -13,12 +14,7 @@ export async function getActiveUser(): Promise<ActiveUser | null> {
     return null;
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("full_name, email, role")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await fetchSessionUserProfile(supabase);
   if (!profile) {
     return null;
   }

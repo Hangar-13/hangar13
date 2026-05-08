@@ -1,16 +1,15 @@
 /** Client-safe types and helpers. System roles ≠ organization roles. */
 
 /** Platform-wide role (`public.users.role`). */
-export type SystemRole =
-  | "guest"
+export type SystemRole = "guest" | "standard" | "admin" | "god";
+
+/** Role within one organization (`public.user_organizations.role`). */
+export type OrganizationRole =
   | "student"
   | "mentor"
   | "manager"
-  | "admin"
-  | "god";
-
-/** Role within one organization (`public.user_organizations.role`). */
-export type OrganizationRole = "student" | "mentor" | "manager" | "admin";
+  | "supervisor"
+  | "lead";
 
 /** @deprecated Use `SystemRole`; kept for gradual rename in call sites. */
 export type UserRole = SystemRole;
@@ -24,18 +23,17 @@ export interface ActiveUser {
 
 export const SYSTEM_ROLE_HIERARCHY: Record<SystemRole, number> = {
   guest: 0,
-  student: 1,
-  mentor: 2,
-  manager: 3,
-  admin: 4,
-  god: 5,
+  standard: 1,
+  admin: 2,
+  god: 3,
 };
 
 export const ORGANIZATION_ROLE_HIERARCHY: Record<OrganizationRole, number> = {
   student: 1,
   mentor: 2,
   manager: 3,
-  admin: 4,
+  supervisor: 4,
+  lead: 5,
 };
 
 export function hasSystemRolePermission(
@@ -48,6 +46,11 @@ export function hasSystemRolePermission(
 /** System roles that can open platform admin (Users, Organizations) and super routes. */
 export function hasPlatformAdminAccess(role: SystemRole): boolean {
   return role === "admin" || role === "god";
+}
+
+/** Authenticated non-guest accounts (normal users). */
+export function isStandardOrElevated(role: SystemRole): boolean {
+  return role === "standard" || hasPlatformAdminAccess(role);
 }
 
 /** @deprecated Use `hasSystemRolePermission`. */
@@ -73,15 +76,21 @@ export function normalizeSystemRole(
 ): SystemRole {
   if (
     value === "guest" ||
-    value === "student" ||
-    value === "mentor" ||
-    value === "manager" ||
+    value === "standard" ||
     value === "admin" ||
     value === "god"
   ) {
     return value;
   }
-  return "student";
+  /* Legacy rows / cached values */
+  if (
+    value === "student" ||
+    value === "mentor" ||
+    value === "manager"
+  ) {
+    return "standard";
+  }
+  return "standard";
 }
 
 export function normalizeOrganizationRole(
@@ -91,12 +100,13 @@ export function normalizeOrganizationRole(
     value === "student" ||
     value === "mentor" ||
     value === "manager" ||
-    value === "admin"
+    value === "supervisor" ||
+    value === "lead"
   ) {
     return value;
   }
-  if (value === "god") {
-    return "admin";
+  if (value === "admin" || value === "god") {
+    return "supervisor";
   }
   return "student";
 }
@@ -121,7 +131,7 @@ export function highestOrganizationRole(
 /** @deprecated Use `highestOrganizationRole` for org membership lists only. */
 export function highestUserRole(roles: SystemRole[]): SystemRole {
   if (roles.length === 0) {
-    return "student";
+    return "standard";
   }
   return roles.reduce((a, b) =>
     SYSTEM_ROLE_HIERARCHY[a] >= SYSTEM_ROLE_HIERARCHY[b] ? a : b
@@ -129,27 +139,37 @@ export function highestUserRole(roles: SystemRole[]): SystemRole {
 }
 
 /**
- * Who may change another user's **system** role (rough rules; refine with god UI).
+ * Who may change another user's **system** role (god UI).
  */
 export function canManageRole(
   managerRole: SystemRole,
   targetRole: SystemRole
 ): boolean {
-  if (targetRole === "god") {
-    return managerRole === "god";
+  if (managerRole !== "god" && managerRole !== "admin") {
+    return false;
   }
-  if (targetRole === "admin") {
-    return managerRole === "god";
+  if (managerRole === "god") {
+    return true;
   }
-  if (targetRole === "manager") {
-    return managerRole === "god" || managerRole === "admin";
+  /* Admin may manage any non-god role (including other admins); gods are god-only. */
+  return targetRole !== "god";
+}
+
+/** Default dashboard path from org role (active organization). */
+export function defaultDashboardPathForOrgRole(
+  orgRole: OrganizationRole | null
+): string {
+  if (!orgRole) {
+    return "/dashboard/student";
   }
-  if (targetRole === "guest") {
-    return managerRole === "god" || managerRole === "admin";
+  if (orgRole === "supervisor" || orgRole === "lead") {
+    return "/dashboard/organization";
   }
-  return (
-    managerRole === "god" ||
-    managerRole === "admin" ||
-    managerRole === "manager"
-  );
+  if (hasOrganizationRolePermission(orgRole, "manager")) {
+    return "/dashboard/manager";
+  }
+  if (hasOrganizationRolePermission(orgRole, "mentor")) {
+    return "/dashboard/mentor";
+  }
+  return "/dashboard/student";
 }

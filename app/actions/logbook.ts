@@ -1,11 +1,15 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
-import { noActiveTrainingServerError } from "@/lib/training-enrollment-messages";
+import { mentorHasAccessToTrainee } from "@/lib/mentor-enrollments";
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { sortByAcsCode, sortStringArrayByAcsCode } from "@/lib/acs-code-sort";
-import type { LogbookAdditionalInformation } from "@/lib/logbook-additional-information";
+import {
+  parseLogbookAdditionalInformation,
+  type LogbookAdditionalInformation,
+} from "@/lib/logbook-additional-information";
+import { recordLogbookEquipmentTermsUsed } from "@/app/actions/logbook-equipment-catalog";
 
 function normalizeLogPageNumber(
   n: number | null | undefined
@@ -13,6 +17,82 @@ function normalizeLogPageNumber(
   if (n == null) return null;
   if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return null;
   return n;
+}
+
+async function recordEquipmentCatalogForEntry(
+  aircraft: string | null,
+  additionalInformation: LogbookAdditionalInformation | null
+) {
+  const addl = parseLogbookAdditionalInformation(additionalInformation);
+  await recordLogbookEquipmentTermsUsed({
+    aircraft,
+    engine: typeof addl.engine === "string" ? addl.engine : null,
+    propeller: typeof addl.propeller === "string" ? addl.propeller : null,
+  });
+}
+
+type MentorSigningOptions = {
+  certified: boolean;
+  mentorSigningEnabled: boolean;
+  selectedMentorUserId: string | null;
+};
+
+async function applyMentorSigningBeforeLogbookSubmit(
+  supabase: SupabaseClient,
+  traineeUserId: string,
+  opts: MentorSigningOptions
+): Promise<{ error?: string }> {
+  if (!opts.certified) {
+    return {};
+  }
+
+  const ctxRes = await supabase.rpc("get_logbook_mentor_display_context");
+  if (ctxRes.error) {
+    return { error: ctxRes.error.message };
+  }
+  const payload = ctxRes.data as { hasAssignedMentor?: boolean } | null;
+  if (payload?.hasAssignedMentor) {
+    return {};
+  }
+
+  if (!opts.mentorSigningEnabled) {
+    return {};
+  }
+
+  if (!opts.selectedMentorUserId) {
+    return { error: "Select a mentor from the list or use Create Mentor." };
+  }
+
+  const { data, error } = await supabase.rpc("assign_self_mentor", {
+    p_mentor_id: opts.selectedMentorUserId,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  const res = data as { error?: string };
+  if (res?.error) {
+    return { error: res.error };
+  }
+
+  return {};
+}
+
+async function maybeSyncLogbookPendingAcs(
+  supabase: SupabaseClient,
+  entryId: string,
+  status: string | unknown
+) {
+  if (status !== "approved") {
+    return;
+  }
+  const { error } = await supabase.rpc("sync_logbook_pending_acs_to_approved", {
+    p_entry_id: entryId,
+  });
+  if (error) {
+    console.error("sync_logbook_pending_acs_to_approved:", error);
+  }
 }
 
 export async function createLogbookEntry(formData: {
@@ -27,6 +107,9 @@ export async function createLogbookEntry(formData: {
   logPageNumber?: number | null;
   aircraft?: string | null;
   additionalInformation?: LogbookAdditionalInformation | null;
+  /** When the student has no assigned mentor and certifies, require mentor signing. */
+  mentorSigningEnabled?: boolean;
+  selectedMentorUserId?: string | null;
 }) {
   const supabase = await createServerSupabaseClient();
 
@@ -40,12 +123,19 @@ export async function createLogbookEntry(formData: {
     return { error: "You must be logged in to create logbook entries." };
   }
 
-  const { userTraining: student } = await getCurrentUserTrainingContext(supabase, user.id);
+  const signingOpts = {
+    certified: formData.certified,
+    mentorSigningEnabled: formData.mentorSigningEnabled ?? false,
+    selectedMentorUserId: formData.selectedMentorUserId ?? null,
+  };
 
-  if (!student) {
-    return {
-      error: "No active training selected. Choose a training in Find Training or contact your administrator.",
-    };
+  const mentorErr = await applyMentorSigningBeforeLogbookSubmit(
+    supabase,
+    user.id,
+    signingOpts
+  );
+  if (mentorErr.error) {
+    return { error: mentorErr.error };
   }
 
   // Fetch ATA chapter label from database
@@ -78,7 +168,7 @@ export async function createLogbookEntry(formData: {
   const { data: entry, error: entryError } = await supabase
     .from("logbook_entries")
     .insert({
-      user_training_id: student.id,
+      user_id: user.id,
       entry_date: formData.entryDate,
       hours_worked: formData.hoursWorked,
       description: formData.taskDescription,
@@ -110,6 +200,10 @@ export async function createLogbookEntry(formData: {
     }
   }
 
+  await maybeSyncLogbookPendingAcs(supabase, entry.id, entry.status);
+
+  await recordEquipmentCatalogForEntry(aircraft, additional);
+
   // Notification created by database trigger on logbook_entries
 
   // Revalidate the logbook and dashboard pages to show new entry
@@ -134,6 +228,8 @@ export async function updateLogbookEntry(
     logPageNumber?: number | null;
     aircraft?: string | null;
     additionalInformation?: LogbookAdditionalInformation | null;
+    mentorSigningEnabled?: boolean;
+    selectedMentorUserId?: string | null;
   }
 ) {
   const supabase = await createServerSupabaseClient();
@@ -148,18 +244,10 @@ export async function updateLogbookEntry(
     return { error: "You must be logged in to update logbook entries." };
   }
 
-  const { userTraining: student } = await getCurrentUserTrainingContext(supabase, user.id);
-
-  if (!student) {
-    return {
-      error: "No active training selected. Choose a training in Find Training or contact your administrator.",
-    };
-  }
-
   // Verify the entry belongs to this student and is draft or rejected
   const { data: existingEntry, error: fetchError } = await supabase
     .from("logbook_entries")
-    .select("user_training_id, status")
+    .select("user_id, status")
     .eq("id", entryId)
     .single();
 
@@ -167,7 +255,7 @@ export async function updateLogbookEntry(
     return { error: "Entry not found." };
   }
 
-  if (existingEntry.user_training_id !== student.id) {
+  if (existingEntry.user_id !== user.id) {
     return {
       error: "You don't have permission to update this entry.",
     };
@@ -177,6 +265,21 @@ export async function updateLogbookEntry(
     return {
       error: "Only draft or rejected entries can be edited.",
     };
+  }
+
+  const signingOpts = {
+    certified: formData.certified,
+    mentorSigningEnabled: formData.mentorSigningEnabled ?? false,
+    selectedMentorUserId: formData.selectedMentorUserId ?? null,
+  };
+
+  const mentorErr = await applyMentorSigningBeforeLogbookSubmit(
+    supabase,
+    user.id,
+    signingOpts
+  );
+  if (mentorErr.error) {
+    return { error: mentorErr.error };
   }
 
   // Fetch ATA chapter label from database
@@ -248,6 +351,10 @@ export async function updateLogbookEntry(
     }
   }
 
+  await maybeSyncLogbookPendingAcs(supabase, entryId, entry.status);
+
+  await recordEquipmentCatalogForEntry(aircraft, additional);
+
   // Notification created by database trigger on logbook_entries
 
   // Revalidate the logbook and dashboard pages to show updated entry
@@ -276,7 +383,7 @@ export async function updateLogbookEntryAcsCodesForMentor(
 
   const { data: entry, error: fetchError } = await supabase
     .from("logbook_entries")
-    .select("id, user_training_id")
+    .select("id, user_id")
     .eq("id", entryId)
     .single();
 
@@ -284,13 +391,7 @@ export async function updateLogbookEntryAcsCodesForMentor(
     return { error: "Entry not found." };
   }
 
-  const { data: student } = await supabase
-    .from("user_trainings")
-    .select("mentor_id")
-    .eq("id", entry.user_training_id)
-    .single();
-
-  if (!student || student.mentor_id !== user.id) {
+  if (!(await mentorHasAccessToTrainee(supabase, user.id, entry.user_id))) {
     return { error: "You don't have permission to edit this entry." };
   }
 
@@ -315,7 +416,15 @@ export async function updateLogbookEntryAcsCodesForMentor(
 
   revalidatePath("/dashboard/mentor");
   revalidatePath("/dashboard/mentor/review-logs");
-  revalidatePath(`/dashboard/mentor/student/${entry.user_training_id}`);
+  {
+    const { data: uts } = await supabase
+      .from("user_trainings")
+      .select("id")
+      .eq("user_id", entry.user_id);
+    for (const ut of uts ?? []) {
+      revalidatePath(`/dashboard/mentor/student/${ut.id}`);
+    }
+  }
 
   return { success: true };
 }
@@ -332,19 +441,17 @@ export async function clearPendingAcsForLogbookEntry(entryId: string) {
     return { error: "You must be logged in." };
   }
 
-  const { userTraining: student } = await getCurrentUserTrainingContext(supabase, user.id);
-
-  if (!student) {
-    return { error: noActiveTrainingServerError() };
-  }
-
   const { data: existingEntry } = await supabase
     .from("logbook_entries")
-    .select("user_training_id")
+    .select("user_id")
     .eq("id", entryId)
     .single();
 
-  if (!existingEntry || existingEntry.user_training_id !== student.id) {
+  if (!existingEntry) {
+    return { error: "Entry not found or access denied." };
+  }
+
+  if (existingEntry.user_id !== user.id) {
     return { error: "Entry not found or access denied." };
   }
 
@@ -368,19 +475,17 @@ export async function getPendingAcsCodesForLogbookEntry(entryId: string): Promis
     return [];
   }
 
-  const { userTraining: student } = await getCurrentUserTrainingContext(supabase, user.id);
-
-  if (!student) {
-    return [];
-  }
-
   const { data: existingEntry } = await supabase
     .from("logbook_entries")
-    .select("user_training_id")
+    .select("user_id")
     .eq("id", entryId)
     .single();
 
-  if (!existingEntry || existingEntry.user_training_id !== student.id) {
+  if (!existingEntry) {
+    return [];
+  }
+
+  if (existingEntry.user_id !== user.id) {
     return [];
   }
 
@@ -413,6 +518,62 @@ export async function getPendingAcsCodesForLogbookEntryForReview(
     .eq("logbook_entry_id", entryId);
 
   return (pending ?? []).map((p) => p.acs_code_id);
+}
+
+/** Mentor: replace pending ACS on a submitted entry (for review UI). Requires migration `072_mentor_set_logbook_pending_acs.sql`. */
+export async function setLogbookEntryPendingAcsForMentorReview(
+  entryId: string,
+  acsCodeIds: number[]
+): Promise<{ success: true } | { error: string }> {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "You must be logged in." };
+  }
+
+  const { data: result, error: rpcError } = await supabase.rpc(
+    "mentor_set_logbook_entry_pending_acs",
+    {
+      p_entry_id: entryId,
+      p_acs_code_ids: acsCodeIds,
+    }
+  );
+
+  if (rpcError) {
+    return { error: rpcError.message };
+  }
+
+  const res = result as { error?: string; success?: boolean };
+  if (res?.error) {
+    return { error: res.error };
+  }
+
+  const { data: entryRow } = await supabase
+    .from("logbook_entries")
+    .select("user_id")
+    .eq("id", entryId)
+    .maybeSingle();
+
+  const traineeUserId = entryRow?.user_id;
+  revalidatePath("/dashboard/mentor/review-logs");
+  if (traineeUserId) {
+    const { data: uts } = await supabase
+      .from("user_trainings")
+      .select("id")
+      .eq("user_id", traineeUserId);
+    for (const ut of uts ?? []) {
+      revalidatePath(`/dashboard/mentor/student/${ut.id}`);
+    }
+  }
+  revalidatePath("/dashboard/student");
+  revalidatePath("/dashboard/student/logbook");
+
+  return { success: true };
 }
 
 /** Get ACS code strings per logbook entry (for display in lists). Fetches from both pending and approved. */
@@ -515,6 +676,8 @@ export type LogbookEntryStudentViewMeta = {
   submittedAt: string | null;
   approvedAt: string | null;
   lastSavedAt: string;
+  /** Full formatted signature when present (preferred over approverName + date). */
+  signatureText: string | null;
 };
 
 export async function getLogbookEntryStudentViewMeta(
@@ -531,15 +694,10 @@ export async function getLogbookEntryStudentViewMeta(
     return { error: "Not authenticated." };
   }
 
-  const { userTraining: ut } = await getCurrentUserTrainingContext(supabase, user.id);
-  if (!ut) {
-    return { error: "No active training." };
-  }
-
   const { data: entry, error: entErr } = await supabase
     .from("logbook_entries")
     .select(
-      "id, user_training_id, status, created_at, updated_at, submitted_at, approved_at, approved_by"
+      "id, user_id, status, created_at, updated_at, submitted_at, approved_at, approved_by, signature_text"
     )
     .eq("id", entryId)
     .maybeSingle();
@@ -548,28 +706,23 @@ export async function getLogbookEntryStudentViewMeta(
     return { error: "Entry not found." };
   }
 
-  if (entry.user_training_id !== ut.id) {
+  if (entry.user_id !== user.id) {
     return { error: "Access denied." };
   }
 
   const { data: studentUser } = await supabase
     .from("users")
-    .select("full_name")
+    .select("full_name, mentor_id")
     .eq("id", user.id)
     .maybeSingle();
 
-  const { data: utRow } = await supabase
-    .from("user_trainings")
-    .select("mentor_id")
-    .eq("id", ut.id)
-    .maybeSingle();
-
+  const mentorUserId = studentUser?.mentor_id ?? null;
   let mentorName = "Mentor";
-  if (utRow?.mentor_id) {
+  if (mentorUserId) {
     const { data: m } = await supabase
       .from("users")
       .select("full_name")
-      .eq("id", utRow.mentor_id)
+      .eq("id", mentorUserId)
       .maybeSingle();
     if (m?.full_name?.trim()) mentorName = m.full_name.trim();
   }
@@ -596,5 +749,6 @@ export async function getLogbookEntryStudentViewMeta(
     submittedAt: (entry as { submitted_at?: string | null }).submitted_at ?? null,
     approvedAt: entry.approved_at ?? null,
     lastSavedAt: entry.updated_at ?? entry.created_at,
+    signatureText: (entry as { signature_text?: string | null }).signature_text ?? null,
   };
 }

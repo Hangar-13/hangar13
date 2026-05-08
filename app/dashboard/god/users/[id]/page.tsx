@@ -10,7 +10,7 @@ type PageProps = {
 };
 
 export default async function GodUserDetailPage({ params }: PageProps) {
-  await requirePlatformAdmin();
+  const viewer = await requirePlatformAdmin();
   const { id } = await params;
   const res = await godGetUserDetail(id);
   if (!res.ok) {
@@ -34,7 +34,11 @@ export default async function GodUserDetailPage({ params }: PageProps) {
           {res.user.fullName?.trim() || res.user.email || "User"}
         </h1>
       </div>
-      <GodUserDetailClient user={res.user} />
+      <GodUserDetailClient
+        user={res.user}
+        viewerUserId={viewer.id}
+        viewerRole={viewer.role}
+      />
     </div>
   );
 }

@@ -54,7 +54,7 @@ export default function SignupPage() {
         password: data.password,
         options: {
           data: {
-            role: "student",
+            role: "standard",
             full_name: `${data.firstName} ${data.lastName}`,
           },
         },

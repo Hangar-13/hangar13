@@ -10,6 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { formatUiDate } from "@/lib/format-ui-date";
+import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 
 export default async function ManagerDashboardPage() {
   const supabase = await createServerSupabaseClient();
@@ -21,11 +23,7 @@ export default async function ManagerDashboardPage() {
     redirect("/auth/login");
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("full_name")
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await fetchSessionUserProfile(supabase);
 
   if (!profile) {
     return (
@@ -121,16 +119,7 @@ export default async function ManagerDashboardPage() {
                         {row.studentCount}
                       </td>
                       <td className="py-3 align-top text-muted-foreground whitespace-nowrap">
-                        {row.lastUpdate
-                          ? new Date(row.lastUpdate).toLocaleDateString(
-                              undefined,
-                              {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              }
-                            )
-                          : "—"}
+                        {row.lastUpdate ? formatUiDate(row.lastUpdate) : "—"}
                       </td>
                     </tr>
                   ))}

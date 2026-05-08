@@ -66,34 +66,24 @@ export async function setCurrentUserTraining(
     return { error: "Not authenticated." };
   }
 
-  const { data: row, error: aErr } = await supabase
-    .from("user_trainings")
-    .select("id, status")
-    .eq("id", userTrainingId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (aErr || !row) {
-    return { error: "Enrollment not found." };
-  }
-  if (row.status === "completed") {
-    return { error: "Completed training cannot be set as current." };
-  }
-
-  const { error } = await supabase
-    .from("users")
-    .update({ current_curriculum_id: userTrainingId })
-    .eq("id", user.id);
+  const { error } = await supabase.rpc("set_current_curriculum_id", {
+    p_user_training_id: userTrainingId,
+  });
 
   if (error) {
-    return { error: error.message };
+    const msg = error.message ?? "";
+    if (msg.includes("Not authenticated")) {
+      return { error: "Not authenticated." };
+    }
+    if (msg.includes("Enrollment not found")) {
+      return { error: "Enrollment not found." };
+    }
+    if (msg.includes("Completed training cannot be set")) {
+      return { error: "Completed training cannot be set as current." };
+    }
+    return { error: msg || "Could not update current training." };
   }
 
-  revalidatePath("/dashboard/student/credentials");
-  revalidatePath("/dashboard/student");
-  revalidatePath("/dashboard/student/training");
-  revalidatePath("/dashboard/student/progress");
-  revalidatePath("/dashboard/student/logbook");
-  revalidatePath("/dashboard/student/certification");
+  revalidatePath("/dashboard/student", "layout");
   return {};
 }

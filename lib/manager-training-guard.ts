@@ -27,7 +27,7 @@ export async function assertManagerOrGodRole(
     .from("user_organizations")
     .select("role")
     .eq("user_id", userId)
-    .in("role", ["manager", "admin"])
+    .in("role", ["manager", "supervisor"])
     .limit(1)
     .maybeSingle();
 
@@ -46,7 +46,7 @@ export async function assertMentorOrAboveInAnyOrg(
     .from("user_organizations")
     .select("id")
     .eq("user_id", userId)
-    .in("role", ["mentor", "manager", "admin"])
+    .in("role", ["mentor", "manager", "supervisor"])
     .limit(1)
     .maybeSingle();
 

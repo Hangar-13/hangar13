@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Clock, CheckCircle2, XCircle, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { formatUiDate } from "@/lib/format-ui-date";
 
 interface LogbookEntry {
   id: string;
@@ -46,14 +47,6 @@ export function LogbookEntriesList({ entries }: LogbookEntriesListProps) {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
   return (
     <Card className="bg-card">
       <CardHeader>
@@ -76,7 +69,7 @@ export function LogbookEntriesList({ entries }: LogbookEntriesListProps) {
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>{formatDate(entry.entry_date)}</span>
+                      <span>{formatUiDate(entry.entry_date)}</span>
                       <Clock className="h-4 w-4 ml-2" />
                       <span>{entry.hours_worked} hrs</span>
                     </div>

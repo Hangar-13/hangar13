@@ -11,12 +11,10 @@ import {
   type Notification,
 } from "@/app/actions/notifications";
 import { supabaseClient } from "@/lib/supabaseClient";
-import {
-  hasSystemRolePermission,
-  normalizeSystemRole,
-  type SystemRole,
-} from "@/lib/auth-shared";
+import { useAppNavigation } from "@/components/app-navigation-provider";
+import { hasOrganizationRolePermission } from "@/lib/auth-shared";
 import { cn } from "@/lib/utils";
+import { formatUiDate } from "@/lib/format-ui-date";
 
 function formatTimeAgo(dateStr: string): string {
   const date = new Date(dateStr);
@@ -30,14 +28,14 @@ function formatTimeAgo(dateStr: string): string {
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
+  return formatUiDate(date);
 }
 
 export function NotificationDropdown() {
   const router = useRouter();
+  const { organizationRole } = useAppNavigation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [userRole, setUserRole] = useState<SystemRole | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = async () => {
@@ -45,23 +43,6 @@ export function NotificationDropdown() {
     setNotifications(data);
   };
 
-  const fetchUserRole = async () => {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabaseClient
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-      setUserRole(normalizeSystemRole(profile?.role as string | undefined));
-    }
-  };
-
-  useEffect(() => {
-    fetchUserRole();
-  }, []);
-
-  // Fetch on mount so badge shows immediately
   useEffect(() => {
     fetchNotifications();
   }, []);
@@ -75,7 +56,9 @@ export function NotificationDropdown() {
 
   // Refetch when auth changes (e.g. after login) so badge appears right away
   useEffect(() => {
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(() => {
+    const {
+      data: { subscription },
+    } = supabaseClient.auth.onAuthStateChange(() => {
       fetchNotifications();
     });
     return () => subscription.unsubscribe();
@@ -102,7 +85,8 @@ export function NotificationDropdown() {
 
   const handleNotificationClick = async (n: Notification) => {
     const isMentor =
-      userRole != null && hasSystemRolePermission(userRole, "mentor");
+      organizationRole != null &&
+      hasOrganizationRolePermission(organizationRole, "mentor");
     const logIds = n.log_entry_ids ?? [];
     const singleId = logIds.length === 1 ? logIds[0] : null;
 

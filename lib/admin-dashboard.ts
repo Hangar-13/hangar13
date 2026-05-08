@@ -43,7 +43,10 @@ export async function getAdminDashboardData(supabase: SupabaseClient): Promise<{
 }> {
   const [{ count: totalOrgs }, { count: totalUsers }] = await Promise.all([
     supabase.from("organizations").select("*", { count: "exact", head: true }),
-    supabase.from("users").select("*", { count: "exact", head: true }),
+    supabase
+      .from("users")
+      .select("*", { count: "exact", head: true })
+      .eq("visible", true),
   ]);
 
   const { data: memberships, error: memErr } = await supabase
@@ -87,7 +90,10 @@ export async function getAdminDashboardData(supabase: SupabaseClient): Promise<{
     memberCount,
   }));
 
-  const { data: allUserRows } = await supabase.from("users").select("id");
+  const { data: allUserRows } = await supabase
+    .from("users")
+    .select("id")
+    .eq("visible", true);
   const allUserIds = (allUserRows ?? []).map((u) => u.id as string);
   const userIdsWithAnyMembership = new Set(
     rows.map((r) => r.user_id as string)

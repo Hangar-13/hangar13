@@ -6,7 +6,8 @@ import { Check, Pencil, X } from "lucide-react";
 import { godUpdateUserSystemRole, type GodUserDetail } from "@/app/actions/god-users";
 import { LeadBadge } from "@/components/god/lead-badge";
 import { GOD_UI_SYSTEM_ROLES } from "@/lib/god-user-constants";
-import type { SystemRole } from "@/lib/auth-shared";
+import { normalizeSystemRole, type SystemRole } from "@/lib/auth-shared";
+import { formatUiDate } from "@/lib/format-ui-date";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -18,9 +19,7 @@ import {
 
 const systemRoleLabel: Record<SystemRole, string> = {
   guest: "Guest",
-  student: "Student",
-  mentor: "Mentor",
-  manager: "Manager",
+  standard: "Standard",
   admin: "Admin",
   god: "God",
 };
@@ -29,23 +28,20 @@ const orgRoleLabel: Record<string, string> = {
   student: "Student",
   mentor: "Mentor",
   manager: "Manager",
-  admin: "Admin",
+  supervisor: "Supervisor",
 };
 
 type GodUserDetailClientProps = {
   user: GodUserDetail;
+  viewerUserId: string;
+  viewerRole: SystemRole;
 };
 
-function formatDate(s: string | null) {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) {
-    return "—";
-  }
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-}
-
-export function GodUserDetailClient({ user: initial }: GodUserDetailClientProps) {
+export function GodUserDetailClient({
+  user: initial,
+  viewerUserId,
+  viewerRole,
+}: GodUserDetailClientProps) {
   const id = useId();
   const router = useRouter();
   const [user, setUser] = useState(initial);
@@ -64,6 +60,13 @@ export function GodUserDetailClient({ user: initial }: GodUserDetailClientProps)
     setEditing(false);
     setError(null);
   };
+
+  const targetRoleNorm = normalizeSystemRole(user.role) as SystemRole;
+  const canEditSystemRole =
+    viewerRole === "god" ||
+    (viewerRole === "admin" &&
+      viewerUserId !== user.id &&
+      targetRoleNorm !== "god");
 
   const saveRole = () => {
     setError(null);
@@ -132,18 +135,27 @@ export function GodUserDetailClient({ user: initial }: GodUserDetailClientProps)
               </Button>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-1.5">
-              <span className="font-medium capitalize">{user.role}</span>
-              <Button
-                type="button"
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                onClick={beginEdit}
-                aria-label="Edit system role"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
+            <div
+              className={
+                canEditSystemRole
+                  ? "group inline-flex items-center gap-1"
+                  : "inline-flex items-center gap-1"
+              }
+            >
+              <span className="font-medium">
+                {systemRoleLabel[targetRoleNorm] ?? user.role}
+              </span>
+              {canEditSystemRole ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-5 w-5 shrink-0 p-0 opacity-60 group-hover:opacity-100"
+                  onClick={beginEdit}
+                  aria-label="Edit system role"
+                >
+                  <Pencil className="size-2" aria-hidden />
+                </Button>
+              ) : null}
             </div>
           )}
         </div>
@@ -154,7 +166,7 @@ export function GodUserDetailClient({ user: initial }: GodUserDetailClientProps)
         )}
         <p>
           <span className="text-muted-foreground">Joined </span>
-          <span className="font-medium">{formatDate(user.createdAt)}</span>
+          <span className="font-medium">{formatUiDate(user.createdAt)}</span>
         </p>
       </div>
 
@@ -187,7 +199,7 @@ export function GodUserDetailClient({ user: initial }: GodUserDetailClientProps)
                       </span>
                     </td>
                     <td className="p-3 text-muted-foreground tabular-nums">
-                      {formatDate(o.dateJoined)}
+                      {formatUiDate(o.dateJoined)}
                     </td>
                   </tr>
                 ))
@@ -222,9 +234,9 @@ export function GodUserDetailClient({ user: initial }: GodUserDetailClientProps)
                   <tr key={t.id} className="border-b last:border-0">
                     <td className="p-3 font-medium">{t.name}</td>
                     <td className="p-3 text-muted-foreground">{t.statusLabel}</td>
-                    <td className="p-3 text-muted-foreground">{formatDate(t.dateEnrolled)}</td>
+                    <td className="p-3 text-muted-foreground">{formatUiDate(t.dateEnrolled)}</td>
                     <td className="p-3 text-muted-foreground">{t.enrolledBy}</td>
-                    <td className="p-3 text-muted-foreground">{formatDate(t.dateCompleted)}</td>
+                    <td className="p-3 text-muted-foreground">{formatUiDate(t.dateCompleted)}</td>
                   </tr>
                 ))
               )}

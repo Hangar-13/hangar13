@@ -3,16 +3,23 @@
 import { useState, FormEvent } from "react";
 import { Menu, Search, User, LogOut } from "lucide-react";
 import { useAppNavigation } from "@/components/app-navigation-provider";
+import { OrganizationSwitcher } from "@/components/organization-switcher";
 import { NotificationDropdown } from "@/components/notifications/notification-dropdown";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TrainingSwitcherDock } from "@/components/training-switcher-dock";
 
 export function TopNav() {
   const router = useRouter();
-  const { openMobileNav } = useAppNavigation();
+  const {
+    openMobileNav,
+    memberships,
+    activeOrganizationId,
+    refreshOrganizations,
+  } = useAppNavigation();
   const [searchQuery, setSearchQuery] = useState("");
 
   async function handleSignOut() {
@@ -53,52 +60,60 @@ export function TopNav() {
   };
 
   return (
-    <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:px-6 shadow-sm">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-9 w-9 shrink-0 lg:hidden"
-        onClick={openMobileNav}
-        aria-label="Open menu"
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
-      <div className="flex flex-1 items-center gap-4 min-w-0">
-        <form onSubmit={handleSearch} className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-          <Input
-            type="search"
-            placeholder="Search training material, logs, users..."
-            className="w-full pl-9 pr-4 h-9 bg-background"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+    <header className="sticky top-0 z-50 flex flex-col border-b border-border bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-16 shrink-0 items-center gap-4 px-4 sm:px-6">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 shrink-0 lg:hidden"
+          onClick={openMobileNav}
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <OrganizationSwitcher
+            memberships={memberships}
+            activeOrganizationId={activeOrganizationId}
+            onChanged={() => void refreshOrganizations()}
           />
-        </form>
+          <form onSubmit={handleSearch} className="relative max-w-md flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search training material, logs, users..."
+              className="h-9 w-full bg-background pl-9 pr-4"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </form>
+        </div>
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
+          <NotificationDropdown />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            title="User menu"
+          >
+            <User className="h-5 w-5" />
+            <span className="sr-only">User menu</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9"
+            title="Sign out"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-5 w-5" />
+            <span className="sr-only">Sign out</span>
+          </Button>
+        </div>
       </div>
-      <div className="flex items-center gap-1 sm:gap-2">
-        <ThemeToggle />
-        <NotificationDropdown />
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-9 w-9"
-          title="User menu"
-        >
-          <User className="h-5 w-5" />
-          <span className="sr-only">User menu</span>
-        </Button>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          className="h-9 w-9"
-          title="Sign out"
-          onClick={handleSignOut}
-        >
-          <LogOut className="h-5 w-5" />
-          <span className="sr-only">Sign out</span>
-        </Button>
-      </div>
+      <TrainingSwitcherDock />
     </header>
   );
 }

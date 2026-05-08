@@ -6,6 +6,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { getActiveUser } from "@/lib/auth";
 import {
   hasPlatformAdminAccess,
+  normalizeOrganizationRole,
   type OrganizationRole,
   type SystemRole,
 } from "@/lib/auth-shared";
@@ -153,6 +154,7 @@ export async function godCreateUser(input: {
     .from("users")
     .select("id")
     .ilike("email", emailNorm)
+    .eq("visible", true)
     .limit(1);
 
   if (findErr) {
@@ -274,8 +276,8 @@ export async function godGetUserDetail(
   const uoList = uo || [];
   const orgIds = [...new Set(uoList.map((r) => r.organization_id))];
   const { data: orgRows, error: orgErr } = orgIds.length
-    ? await supabase.from("organizations").select("id, name, lead_user_id").in("id", orgIds)
-    : { data: [] as { id: string; name: string; lead_user_id: string | null }[], error: null };
+    ? await supabase.from("organizations").select("id, name").in("id", orgIds)
+    : { data: [] as { id: string; name: string }[], error: null };
 
   if (orgErr) {
     return { ok: false, error: orgErr.message };
@@ -289,8 +291,8 @@ export async function godGetUserDetail(
       return {
         organizationId: o.id,
         name: o.name,
-        role: r.role as OrganizationRole,
-        isLead: o.lead_user_id === userId,
+        role: normalizeOrganizationRole(r.role as string),
+        isLead: normalizeOrganizationRole(r.role as string) === "lead",
         dateJoined: r.created_at,
       };
     })

@@ -8,9 +8,14 @@ import { Plus } from "lucide-react";
 
 interface AddStudentButtonProps {
   mentorId: string;
+  /** When set, only learners in this org’s programs (and org student role) are listed. */
+  organizationId?: string | null;
 }
 
-export function AddStudentButton({ mentorId }: AddStudentButtonProps) {
+export function AddStudentButton({
+  mentorId,
+  organizationId = null,
+}: AddStudentButtonProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -29,6 +34,7 @@ export function AddStudentButton({ mentorId }: AddStudentButtonProps) {
         open={open}
         onOpenChange={setOpen}
         currentMentorId={mentorId}
+        organizationId={organizationId}
         onSuccess={handleSuccess}
       />
     </>

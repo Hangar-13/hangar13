@@ -5,7 +5,7 @@ import { User, Mail, Calendar, Clock, Target, CheckCircle, AlertCircle, Trending
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 
-interface AssignedStudent {
+export interface AssignedStudent {
   id: string;
   user_id: string;
   start_date: string;
@@ -44,14 +44,6 @@ export function AssignedStudentsList({
   compact = false,
 }: AssignedStudentsListProps) {
   const router = useRouter();
-  
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
 
   const handleCardClick = (studentId: string) => {
     router.push(`/dashboard/mentor/student/${studentId}`);

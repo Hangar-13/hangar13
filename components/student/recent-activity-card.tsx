@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatUiDate } from "@/lib/format-ui-date";
 
 interface RecentActivityCardProps {
   entries: Array<{
@@ -30,11 +31,7 @@ export function RecentActivityCard({ entries }: RecentActivityCardProps) {
                 <div className="flex-1">
                   <p className="text-sm font-medium">{entry.description}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(entry.entry_date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {formatUiDate(entry.entry_date)}
                   </p>
                 </div>
                 <div className="text-sm font-semibold ml-4">

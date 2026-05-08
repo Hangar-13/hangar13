@@ -37,3 +37,9 @@ export function describeUserTrainingEnrollment(row: UserTrainingEnrollmentRow): 
     detail: null,
   };
 }
+
+/** Payload for the active-training switcher (top bar). */
+export type TrainingProgramSwitcherInitialData = {
+  currentUserTrainingId: string | null;
+  inProgress: UserTrainingEnrollmentRow[];
+};

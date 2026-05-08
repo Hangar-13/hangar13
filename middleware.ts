@@ -1,10 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import {
+  defaultDashboardPathForOrgRole,
   hasPlatformAdminAccess,
+  highestOrganizationRole,
+  normalizeOrganizationRole,
   normalizeSystemRole,
+  type OrganizationRole,
   type SystemRole,
 } from "@/lib/auth-shared";
+import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -27,7 +32,7 @@ export async function middleware(request: NextRequest) {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
+        cookiesToSet.forEach(({ name, value }) => {
           request.cookies.set(name, value);
         });
         response = NextResponse.next({
@@ -45,58 +50,89 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthPage = request.nextUrl.pathname.startsWith("/auth");
-  const isPublicPath = request.nextUrl.pathname === "/" || isAuthPage;
+  const isTalentLmsSamlApi = request.nextUrl.pathname.startsWith(
+    "/api/auth/saml/talentlms/"
+  );
+
+  /** Talent LMS SSO entry + metadata may be fetched without login; SAML login route redirects anon users */
+  const isPublicPath =
+    request.nextUrl.pathname === "/" ||
+    isAuthPage ||
+    isTalentLmsSamlApi;
+
+  const isApiRoute = request.nextUrl.pathname.startsWith("/api/");
+
+  async function loadUserContext(uid: string): Promise<{
+    systemRole: SystemRole;
+    lastActiveOrgId: string | null;
+    memberships: { organization_id: string; role: string }[];
+  }> {
+    const profile = await fetchSessionUserProfile(supabase);
+
+    const { data: mem } = await supabase
+      .from("user_organizations")
+      .select("organization_id, role")
+      .eq("user_id", uid);
+
+    return {
+      systemRole: normalizeSystemRole(profile?.role as string | undefined),
+      lastActiveOrgId:
+        (profile?.last_active_organization_id as string | undefined) ?? null,
+      memberships: mem ?? [],
+    };
+  }
+
+  function redirectForUserContext(
+    systemRole: SystemRole,
+    orgRole: OrganizationRole | null,
+    baseUrl: string
+  ) {
+    if (hasPlatformAdminAccess(systemRole)) {
+      return NextResponse.redirect(new URL("/dashboard/god", baseUrl));
+    }
+    const path = defaultDashboardPathForOrgRole(orgRole);
+    return NextResponse.redirect(new URL(path, baseUrl));
+  }
+
+  /** Prefer the strongest role across orgs so mentors aren’t sent to /student when their active org is student-only. */
+  function effectiveOrgRoleForRedirect(
+    memberships: { organization_id: string; role: string }[]
+  ): OrganizationRole | null {
+    if (memberships.length === 0) return null;
+    const roles = memberships.map((m) =>
+      normalizeOrganizationRole(m.role as string)
+    );
+    return highestOrganizationRole(roles);
+  }
 
   const isGodRoute = request.nextUrl.pathname.startsWith("/dashboard/god");
   if (user && isGodRoute) {
-    const role = await systemRoleForUser(user.id);
-    if (!hasPlatformAdminAccess(role)) {
-      return NextResponse.redirect(new URL("/dashboard/mentor", request.url));
+    const ctx = await loadUserContext(user.id);
+    if (!hasPlatformAdminAccess(ctx.systemRole)) {
+      const orgRole = effectiveOrgRoleForRedirect(ctx.memberships);
+      return redirectForUserContext(ctx.systemRole, orgRole, request.url);
     }
   }
 
   // If no user and trying to access protected route, redirect to login
-  if (!user && !isPublicPath) {
+  if (!user && !isPublicPath && !isApiRoute) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("redirect", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  async function systemRoleForUser(uid: string): Promise<SystemRole> {
-    const { data: row } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", uid)
-      .maybeSingle();
-    return normalizeSystemRole(row?.role as string | undefined);
-  }
-
-  function redirectForSystemRole(role: SystemRole, baseUrl: string) {
-    if (role === "guest" || role === "student") {
-      return NextResponse.redirect(new URL("/dashboard/student", baseUrl));
-    }
-    if (role === "manager") {
-      return NextResponse.redirect(new URL("/dashboard/manager", baseUrl));
-    }
-    if (role === "admin" || role === "god") {
-      return NextResponse.redirect(new URL("/dashboard/god", baseUrl));
-    }
-    if (role === "mentor") {
-      return NextResponse.redirect(new URL("/dashboard/mentor", baseUrl));
-    }
-    return NextResponse.redirect(new URL("/", baseUrl));
-  }
-
   // If user is authenticated and on auth pages, redirect to dashboard
   if (user && isAuthPage) {
-    const role = await systemRoleForUser(user.id);
-    return redirectForSystemRole(role, request.url);
+    const ctx = await loadUserContext(user.id);
+    const orgRole = effectiveOrgRoleForRedirect(ctx.memberships);
+    return redirectForUserContext(ctx.systemRole, orgRole, request.url);
   }
 
-  // If user is authenticated and on root path, redirect based on role
+  // If user is authenticated and on root path, redirect based on role + org memberships
   if (user && request.nextUrl.pathname === "/") {
-    const role = await systemRoleForUser(user.id);
-    return redirectForSystemRole(role, request.url);
+    const ctx = await loadUserContext(user.id);
+    const orgRole = effectiveOrgRoleForRedirect(ctx.memberships);
+    return redirectForUserContext(ctx.systemRole, orgRole, request.url);
   }
 
   return response;

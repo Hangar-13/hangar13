@@ -13,23 +13,27 @@ import { User, Mail, Calendar, ArrowLeft, Clock, Target, CheckCircle, AlertCircl
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
+import { formatUiDate } from "@/lib/format-ui-date";
+import { mentorHasAccessToTrainee } from "@/lib/mentor-enrollments";
 
 async function getStudentData(studentId: string, mentorId: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Get student record and verify mentor relationship
+  // Avoid users(...) embed here: RLS on users can fail when assignment is profile-only
+  // (users.mentor_id) but enrollment.mentor_id is null, which can empty the whole row.
   const { data: student, error: studentError } = await supabase
     .from("user_trainings")
     .select("*")
     .eq("id", studentId)
-    .single();
+    .maybeSingle();
 
   if (studentError || !student) {
     return null;
   }
 
   // Verify the mentor has permission to view this student
-  if (student.mentor_id !== mentorId) {
+  const allowed = await mentorHasAccessToTrainee(supabase, mentorId, student.user_id);
+  if (!allowed) {
     return { unauthorized: true };
   }
 
@@ -44,7 +48,7 @@ async function getStudentData(studentId: string, mentorId: string) {
   const { data: entries, error: entriesError } = await supabase
     .from("logbook_entries")
     .select("*")
-    .eq("user_training_id", studentId)
+    .eq("user_id", student.user_id)
     .order("entry_date", { ascending: false });
 
   // Categorize entries by status
@@ -157,14 +161,6 @@ export default async function StudentDetailPage({ params }: PageProps) {
   ]);
   const profile = student.profile;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
   const getStatusBadge = (status?: "on_track" | "behind_pace" | "ahead") => {
     switch (status) {
       case "on_track":
@@ -215,12 +211,12 @@ export default async function StudentDetailPage({ params }: PageProps) {
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    <span>Started {formatDate(student.start_date)}</span>
+                    <span>Started {formatUiDate(student.start_date)}</span>
                   </div>
                   {student.end_date && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      <span>Ended {formatDate(student.end_date)}</span>
+                      <span>Ended {formatUiDate(student.end_date)}</span>
                     </div>
                   )}
                   <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs">
@@ -288,7 +284,7 @@ export default async function StudentDetailPage({ params }: PageProps) {
                 <span className="font-semibold text-lg">Week {weeks?.current ?? 0}</span>
               </div>
               <div className="text-xs text-muted-foreground mt-2">
-                Started {formatDate(student.start_date)}
+                Started {formatUiDate(student.start_date)}
               </div>
             </CardContent>
           </Card>

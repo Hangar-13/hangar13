@@ -13,9 +13,10 @@ import {
 } from "@/components/ui/select";
 import { Search, Clock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatUiDate } from "@/lib/format-ui-date";
 import { AddEntryModal, type AtaChapterOption } from "./add-entry-modal";
 
-interface LogbookEntry {
+export interface LogbookEntry {
   id: string;
   entry_date: string;
   hours_worked: number;
@@ -78,14 +79,6 @@ export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEnt
       chapterFilter === "all" || entryChapters.includes(chapterFilter);
     return matchesSearch && matchesStatus && matchesChapter;
   });
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "2-digit",
-      day: "2-digit",
-      year: "2-digit",
-    });
-  };
 
   const getStatusDisplay = (status: string) => {
     switch (status) {
@@ -191,7 +184,7 @@ export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEnt
                         className="border-b hover:bg-accent/50 transition-colors cursor-pointer"
                         onClick={() => setSelectedEntry(entry)}
                       >
-                        <td className="py-3 px-4 text-sm">{formatDate(entry.entry_date)}</td>
+                        <td className="py-3 px-4 text-sm">{formatUiDate(entry.entry_date)}</td>
                         <td className="py-3 px-4 text-sm font-medium">{taskDescription}</td>
                         <td className="py-3 px-4 text-sm text-[#0098C7] font-semibold">
                           {entry.hours_worked}h

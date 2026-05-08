@@ -10,7 +10,7 @@ export function createAdminSupabaseClient(): SupabaseClient {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) {
     throw new Error(
-      "Missing SUPABASE_SERVICE_ROLE_KEY. Add it to .env.local to create or invite org users from the God dashboard."
+      "Missing SUPABASE_SERVICE_ROLE_KEY. Add it to .env.local (Supabase → Project Settings → API → service_role secret). Required to send email invitations to people who do not yet have an account. Linking existing users does not use this key."
     );
   }
   return createClient(supabaseUrl, key, {

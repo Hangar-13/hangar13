@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { ProgressData } from "@/app/actions/progress";
 import type { AcsCertificationProgressStats } from "@/lib/acs-certification-progress";
 import { CertificationAcsProgressBars } from "./certification-acs-progress-bars";
+import { formatUiDate } from "@/lib/format-ui-date";
 
 interface CertificationAcsProgressProps {
   progressData: ProgressData;
@@ -226,20 +227,12 @@ export function CertificationAcsProgress({
                                 {signoff ? (
                                   <span
                                     className="inline-block text-xs px-2 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 cursor-default w-fit text-center leading-tight"
-                                    title={`Signed by ${signoff.signer_full_name} on ${new Date(signoff.signed_at).toLocaleDateString("en-US", {
-                                      month: "2-digit",
-                                      day: "2-digit",
-                                      year: "numeric",
-                                    })}`}
+                                    title={`Signed by ${signoff.signer_full_name} on ${formatUiDate(signoff.signed_at)}`}
                                   >
                                     Signed by {signoff.signer_initials}
                                     <br />
                                     on{" "}
-                                    {new Date(signoff.signed_at).toLocaleDateString("en-US", {
-                                      month: "2-digit",
-                                      day: "2-digit",
-                                      year: "2-digit",
-                                    })}
+                                    {formatUiDate(signoff.signed_at)}
                                   </span>
                                 ) : null}
                               </div>
@@ -264,11 +257,7 @@ export function CertificationAcsProgress({
                                       }}
                                     >
                                       <span className="w-24 flex-shrink-0">
-                                        {new Date(entry.entry_date).toLocaleDateString("en-US", {
-                                          month: "2-digit",
-                                          day: "2-digit",
-                                          year: "2-digit",
-                                        })}
+                                        {formatUiDate(entry.entry_date)}
                                       </span>
                                       <span className="flex-1 min-w-0 font-medium truncate">{entry.description}</span>
                                       <span className="w-16 flex-shrink-0">{entry.hours_worked} hrs</span>

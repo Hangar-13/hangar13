@@ -25,6 +25,7 @@ import {
   fetchLessonsForTrainingPath,
   resolveLessonIdForProgramWeek,
 } from "@/lib/training-lessons";
+import { formatUiDate } from "@/lib/format-ui-date";
 
 async function getStudentTrainingData(userId: string, week?: number) {
   const supabase = await createServerSupabaseClient();
@@ -177,14 +178,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         .maybeSingle()
     : { data: null };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-    });
-  };
-
   const prevWeek = data.currentWeek > 1 ? data.currentWeek - 1 : null;
   const nextWeek = data.currentWeek < data.totalWeeks ? data.currentWeek + 1 : null;
 
@@ -298,7 +291,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
               </h2>
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4" />
-                <span>Due: {formatDate(data.dueDate)}</span>
+                <span>Due: {formatUiDate(data.dueDate)}</span>
               </div>
             </div>
           </div>

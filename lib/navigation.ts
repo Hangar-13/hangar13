@@ -11,9 +11,14 @@ import {
   Library,
   Building2,
   LayoutDashboard,
+  CreditCard,
+  Landmark,
 } from "lucide-react";
 import {
-  hasSystemRolePermission,
+  hasOrganizationRolePermission,
+  hasPlatformAdminAccess,
+  highestOrganizationRole,
+  type OrganizationRole,
   type SystemRole,
 } from "@/lib/auth-shared";
 
@@ -87,14 +92,37 @@ function buildStudentTrainingGroup(hasTrainings: boolean): NavGroup {
 export type NavigationOptions = {
   /** When false, Training group defaults to Find Training and disables trainee-only links. */
   studentHasTrainings?: boolean;
+  /**
+   * Highest role across all org memberships. Used for Mentoring / Training Manager (and “My Training”)
+   * so mentors who are students in the active org still see mentor tools. Organization supervisor nav
+   * still keys off the active org role only.
+   */
+  highestOrganizationRole?: OrganizationRole | null;
 };
 
+function showStudentNavShell(systemRole: SystemRole | null): boolean {
+  if (systemRole == null) {
+    return true;
+  }
+  if (systemRole === "guest") {
+    return true;
+  }
+  return (
+    systemRole === "standard" ||
+    systemRole === "admin" ||
+    systemRole === "god"
+  );
+}
+
 export function getNavigationSections(
-  userRole: SystemRole | null,
+  systemRole: SystemRole | null,
+  activeOrganizationRole: OrganizationRole | null,
   options?: NavigationOptions
 ): NavSection[] {
   const hasTrainings = options?.studentHasTrainings ?? true;
   const trainingGroup = buildStudentTrainingGroup(hasTrainings);
+  const capabilityRole =
+    options?.highestOrganizationRole ?? activeOrganizationRole;
 
   const mentorMentoringNavigation: NavEntry[] = [
     { name: "Dashboard", href: "/dashboard/mentor", icon: LayoutDashboard },
@@ -130,32 +158,55 @@ export function getNavigationSections(
     { name: "Organizations", href: "/dashboard/god/organizations", icon: Building2 },
   ];
 
-  const canViewStudentStyleNav = (r: SystemRole | null) =>
-    r == null || r === "guest" || hasSystemRolePermission(r, "student");
+  const organizationSupervisorNavigation: NavItem[] = [
+    { name: "Overview", href: "/dashboard/organization", icon: Landmark },
+    { name: "Members", href: "/dashboard/organization/members", icon: Users },
+    {
+      name: "Subscriptions",
+      href: "/dashboard/organization/subscriptions",
+      icon: CreditCard,
+    },
+    {
+      name: "Progress",
+      href: "/dashboard/organization/progress",
+      icon: TrendingUp,
+    },
+  ];
 
-  if (!canViewStudentStyleNav(userRole)) {
+  if (!showStudentNavShell(systemRole)) {
     return [];
   }
 
   const sections: NavSection[] = [];
 
-  const myTrainingLabel =
-    userRole != null &&
-    userRole !== "guest" &&
-    hasSystemRolePermission(userRole, "mentor")
-      ? "My Training"
-      : null;
+  const showMyTrainingLabel =
+    capabilityRole != null &&
+    hasOrganizationRolePermission(capabilityRole, "mentor");
 
   const myTrainingSection: NavSection = {
-    title: myTrainingLabel,
+    title: showMyTrainingLabel ? "My Training" : null,
     items: mentorTrainingNavigation,
   };
 
-  if (userRole && hasSystemRolePermission(userRole, "admin")) {
+  if (systemRole && hasPlatformAdminAccess(systemRole)) {
     sections.push({ title: "Admin", items: godAdminNavigation });
   }
 
-  if (userRole && hasSystemRolePermission(userRole, "manager")) {
+  if (
+    activeOrganizationRole != null &&
+    hasOrganizationRolePermission(activeOrganizationRole, "supervisor")
+  ) {
+    sections.push({
+      title: "Organization",
+      items: organizationSupervisorNavigation,
+      separatorBefore: sections.length > 0,
+    });
+  }
+
+  if (
+    capabilityRole &&
+    hasOrganizationRolePermission(capabilityRole, "manager")
+  ) {
     sections.push({
       title: "Training Manager",
       items: managerContentNavigation,
@@ -163,7 +214,10 @@ export function getNavigationSections(
     });
   }
 
-  if (userRole && hasSystemRolePermission(userRole, "mentor")) {
+  if (
+    capabilityRole &&
+    hasOrganizationRolePermission(capabilityRole, "mentor")
+  ) {
     sections.push({
       title: "Mentoring",
       items: mentorMentoringNavigation,

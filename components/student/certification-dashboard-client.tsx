@@ -9,6 +9,7 @@ import type { AtaChapterItem } from "./ata-chapter-coverage";
 import { CollapsibleSection } from "./collapsible-section";
 import { CertificationGoalSelector } from "./certification-goal-selector";
 import { CertificationAcsProgress } from "./certification-acs-progress";
+import { formatUiDate } from "@/lib/format-ui-date";
 
 const titleClass = "text-lg font-bold tracking-tight text-foreground";
 
@@ -53,10 +54,7 @@ export function CertificationDashboardClient({
                 <div className="font-medium text-foreground">{row.certification_name}</div>
                 <div className="text-muted-foreground text-xs mt-0.5">
                   Awarded{" "}
-                  {new Date(row.awarded_on + (row.awarded_on.length === 10 ? "T12:00:00" : "")).toLocaleDateString(
-                    "en-US",
-                    { month: "short", day: "numeric", year: "numeric" }
-                  )}
+                  {formatUiDate(row.awarded_on)}
                 </div>
                 {row.notes ? <p className="text-muted-foreground text-xs mt-1.5">{row.notes}</p> : null}
               </li>

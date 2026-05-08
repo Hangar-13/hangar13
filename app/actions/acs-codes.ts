@@ -8,6 +8,8 @@ import {
   type AcsDomain,
 } from "@/lib/acs-utils";
 import { sortByAcsCode } from "@/lib/acs-code-sort";
+import { traineeUserIdsFromEnrollmentIds } from "@/lib/mentor-enrollments";
+import { queryLogbookEntriesForOwner } from "@/lib/logbook-entries-query";
 
 export type AcsCategory = "knowledge" | "risk_management" | "skill";
 
@@ -241,7 +243,7 @@ export type AcsCoverageByDomain = Record<AcsDomain, AcsCoverage>;
 
 /** Get ACS coverage by domain (general, airframe, powerplant) */
 export async function getAcsCoverageByDomain(
-  userTrainingId: string
+  userTrainingIds: string[]
 ): Promise<AcsCoverageByDomain> {
   const supabase = await createServerSupabaseClient();
 
@@ -264,36 +266,42 @@ export async function getAcsCoverageByDomain(
     }
   });
 
-  const { data: approvedEntries } = await supabase
-    .from("logbook_entries")
-    .select("id")
-    .eq("user_training_id", userTrainingId)
-    .eq("status", "approved");
-
-  const approvedIds = (approvedEntries ?? []).map((e) => e.id);
-
   const satisfiedCodeIds = new Set<number>();
 
-  if (approvedIds.length > 0) {
-    const { data: approvedAcs } = await supabase
-      .from("logbook_entry_acs")
-      .select("logbook_entry_id, acs_code_id")
-      .in("logbook_entry_id", approvedIds);
-    (approvedAcs ?? []).forEach((row) => satisfiedCodeIds.add(row.acs_code_id));
+  if (userTrainingIds.length > 0) {
+    const traineeUserIds = await traineeUserIdsFromEnrollmentIds(supabase, userTrainingIds);
+
+    if (traineeUserIds.length > 0) {
+      const { data: approvedEntries } = await supabase
+        .from("logbook_entries")
+        .select("id")
+        .in("user_id", traineeUserIds)
+        .eq("status", "approved");
+
+      const approvedIds = (approvedEntries ?? []).map((e) => e.id);
+
+      if (approvedIds.length > 0) {
+        const { data: approvedAcs } = await supabase
+          .from("logbook_entry_acs")
+          .select("logbook_entry_id, acs_code_id")
+          .in("logbook_entry_id", approvedIds);
+        (approvedAcs ?? []).forEach((row) => satisfiedCodeIds.add(row.acs_code_id));
+      }
+    }
+
+    const { data: approvedSubmissions } = await supabase
+      .from("lesson_submissions")
+      .select("lesson_id, lessons:lesson_id ( acs_codes )")
+      .in("user_training_id", userTrainingIds)
+      .eq("status", "approved")
+      .not("approved_by", "is", null);
+
+    (approvedSubmissions ?? []).forEach((row) => {
+      const lesson = row.lessons as { acs_codes?: number[] } | null;
+      const codes = Array.isArray(lesson?.acs_codes) ? lesson!.acs_codes! : [];
+      codes.forEach((id) => satisfiedCodeIds.add(id));
+    });
   }
-
-  const { data: approvedSubmissions } = await supabase
-    .from("lesson_submissions")
-    .select("lesson_id, lessons:lesson_id ( acs_codes )")
-    .eq("user_training_id", userTrainingId)
-    .eq("status", "approved")
-    .not("approved_by", "is", null);
-
-  (approvedSubmissions ?? []).forEach((row) => {
-    const lesson = row.lessons as { acs_codes?: number[] } | null;
-    const codes = Array.isArray(lesson?.acs_codes) ? lesson!.acs_codes! : [];
-    codes.forEach((id) => satisfiedCodeIds.add(id));
-  });
 
   const satisfiedByDomain: Record<AcsDomain, number[]> = {
     general: [],
@@ -314,7 +322,7 @@ export async function getAcsCoverageByDomain(
 
 /** Get ACS coverage keyed by ATA chapter (codes can appear in multiple chapters via ata_chapters) */
 export async function getAcsCoverageByChapter(
-  userTrainingId: string,
+  userTrainingIds: string[],
   ataChapterNumbers: string[]
 ): Promise<AcsCoverageByChapter> {
   const supabase = await createServerSupabaseClient();
@@ -341,34 +349,40 @@ export async function getAcsCoverageByChapter(
     });
   });
 
-  const { data: approvedEntries } = await supabase
-    .from("logbook_entries")
-    .select("id")
-    .eq("user_training_id", userTrainingId)
-    .eq("status", "approved");
-
-  const approvedIds = (approvedEntries ?? []).map((e) => e.id);
   const satisfiedCodeIds = new Set<number>();
-  if (approvedIds.length > 0) {
-    const { data: approvedAcs } = await supabase
-      .from("logbook_entry_acs")
-      .select("logbook_entry_id, acs_code_id")
-      .in("logbook_entry_id", approvedIds);
-    (approvedAcs ?? []).forEach((row) => satisfiedCodeIds.add(row.acs_code_id));
-  }
+  if (userTrainingIds.length > 0) {
+    const traineeUserIds = await traineeUserIdsFromEnrollmentIds(supabase, userTrainingIds);
 
-  const { data: approvedSubCh } = await supabase
-    .from("lesson_submissions")
-    .select("lesson_id, lessons:lesson_id ( acs_codes )")
-    .eq("user_training_id", userTrainingId)
-    .eq("status", "approved")
-    .not("approved_by", "is", null);
-  (approvedSubCh ?? []).forEach((row) => {
-    const lesson = row.lessons as { acs_codes?: number[] } | null;
-    (Array.isArray(lesson?.acs_codes) ? lesson!.acs_codes! : []).forEach((id) =>
-      satisfiedCodeIds.add(id)
-    );
-  });
+    if (traineeUserIds.length > 0) {
+      const { data: approvedEntries } = await supabase
+        .from("logbook_entries")
+        .select("id")
+        .in("user_id", traineeUserIds)
+        .eq("status", "approved");
+
+      const approvedIds = (approvedEntries ?? []).map((e) => e.id);
+      if (approvedIds.length > 0) {
+        const { data: approvedAcs } = await supabase
+          .from("logbook_entry_acs")
+          .select("logbook_entry_id, acs_code_id")
+          .in("logbook_entry_id", approvedIds);
+        (approvedAcs ?? []).forEach((row) => satisfiedCodeIds.add(row.acs_code_id));
+      }
+    }
+
+    const { data: approvedSubCh } = await supabase
+      .from("lesson_submissions")
+      .select("lesson_id, lessons:lesson_id ( acs_codes )")
+      .in("user_training_id", userTrainingIds)
+      .eq("status", "approved")
+      .not("approved_by", "is", null);
+    (approvedSubCh ?? []).forEach((row) => {
+      const lesson = row.lessons as { acs_codes?: number[] } | null;
+      (Array.isArray(lesson?.acs_codes) ? lesson!.acs_codes! : []).forEach((id) =>
+        satisfiedCodeIds.add(id)
+      );
+    });
+  }
 
   const satisfiedByChapter: Record<string, number[]> = {};
   satisfiedCodeIds.forEach((acsId) => {
@@ -379,7 +393,7 @@ export async function getAcsCoverageByChapter(
     });
   });
 
-  const byDomain = await getAcsCoverageByDomain(userTrainingId);
+  const byDomain = await getAcsCoverageByDomain(userTrainingIds);
 
   const result: AcsCoverageByChapter = {};
   for (const ch of ataChapterNumbers) {
@@ -418,18 +432,45 @@ export async function getAcsSignoffsByStudent(
     .from("user_trainings")
     .select("id")
     .eq("user_id", studentUserId);
-  if (!utRows?.length) return {};
-  const utIds = utRows.map((r) => r.id);
+  const utIds = (utRows ?? []).map((r) => r.id);
 
   const events: SignoffEvent[] = [];
 
-  const { data: logEntries, error: logErr } = await supabase
-    .from("logbook_entries")
-    .select("id, approved_at, approved_by")
-    .in("user_training_id", utIds)
-    .eq("status", "approved")
-    .not("approved_by", "is", null);
-  if (logErr) console.error("Error fetching logbook entries for ACS signoffs:", logErr);
+  const { data: auth } = await supabase.auth.getUser();
+
+  let logEntries:
+    | { id: string; approved_at: string | null; approved_by: string | null }[]
+    | null = null;
+
+  if (auth.user?.id === studentUserId) {
+    const { data: fullRows, error: logErr } = await queryLogbookEntriesForOwner(
+      supabase,
+      studentUserId
+    );
+    if (logErr)
+      console.error("Error fetching logbook entries for ACS signoffs:", logErr.message);
+    logEntries = (fullRows ?? [])
+      .filter(
+        (e) =>
+          e.status === "approved" &&
+          e.approved_by != null
+      )
+      .map((e) => ({
+        id: String(e.id),
+        approved_at: (e.approved_at as string) ?? null,
+        approved_by: (e.approved_by as string) ?? null,
+      }));
+  } else {
+    const { data, error: logErr } = await supabase
+      .from("logbook_entries")
+      .select("id, approved_at, approved_by")
+      .eq("user_id", studentUserId)
+      .eq("status", "approved")
+      .not("approved_by", "is", null);
+    if (logErr)
+      console.error("Error fetching logbook entries for ACS signoffs:", logErr);
+    logEntries = data as typeof logEntries;
+  }
 
   const logEntryIds = (logEntries ?? []).map((e) => e.id);
   const logById = Object.fromEntries((logEntries ?? []).map((e) => [e.id, e]));
@@ -449,22 +490,24 @@ export async function getAcsSignoffsByStudent(
     });
   }
 
-  const { data: subs, error: subErr } = await supabase
-    .from("lesson_submissions")
-    .select("approved_at, approved_by, status, lessons:lesson_id(acs_codes)")
-    .in("user_training_id", utIds)
-    .eq("status", "approved")
-    .not("approved_by", "is", null);
-  if (subErr) console.error("Error fetching lesson submissions for ACS signoffs:", subErr);
-  (subs ?? []).forEach((row) => {
-    const at = row.approved_at as string | null;
-    const by = row.approved_by as string | null;
-    if (!at || !by) return;
-    const lesson = row.lessons as { acs_codes?: number[] } | null;
-    const codes = Array.isArray(lesson?.acs_codes) ? lesson!.acs_codes! : [];
-    const atMs = new Date(at).getTime();
-    codes.forEach((acsId) => events.push({ acsCodeId: acsId, atMs, signerId: by }));
-  });
+  if (utIds.length > 0) {
+    const { data: subs, error: subErr } = await supabase
+      .from("lesson_submissions")
+      .select("approved_at, approved_by, status, lessons:lesson_id(acs_codes)")
+      .in("user_training_id", utIds)
+      .eq("status", "approved")
+      .not("approved_by", "is", null);
+    if (subErr) console.error("Error fetching lesson submissions for ACS signoffs:", subErr);
+    (subs ?? []).forEach((row) => {
+      const at = row.approved_at as string | null;
+      const by = row.approved_by as string | null;
+      if (!at || !by) return;
+      const lesson = row.lessons as { acs_codes?: number[] } | null;
+      const codes = Array.isArray(lesson?.acs_codes) ? lesson!.acs_codes! : [];
+      const atMs = new Date(at).getTime();
+      codes.forEach((acsId) => events.push({ acsCodeId: acsId, atMs, signerId: by }));
+    });
+  }
 
   const bestByAcs = new Map<number, SignoffEvent>();
   for (const ev of events) {
@@ -499,14 +542,53 @@ export type LogbookEntryForAcs = {
 
 /** Returns logbook entries grouped by ACS code ID (from both approved and pending) */
 export async function getLogbookEntriesByAcsCode(
-  userTrainingId: string
+  userTrainingIds: string[]
 ): Promise<Record<number, LogbookEntryForAcs[]>> {
   const supabase = await createServerSupabaseClient();
 
-  const { data: entries } = await supabase
-    .from("logbook_entries")
-    .select("id, entry_date, hours_worked, description, status")
-    .eq("user_training_id", userTrainingId);
+  if (userTrainingIds.length === 0) {
+    return {};
+  }
+
+  const traineeUserIds = await traineeUserIdsFromEnrollmentIds(supabase, userTrainingIds);
+  if (traineeUserIds.length === 0) {
+    return {};
+  }
+
+  const { data: auth } = await supabase.auth.getUser();
+
+  let entries: Array<{
+    id: string;
+    entry_date: string;
+    hours_worked: number;
+    description: string;
+    status: string;
+  }> | null = null;
+
+  if (
+    traineeUserIds.length === 1 &&
+    auth.user?.id === traineeUserIds[0]
+  ) {
+    const { data: fullRows, error } = await queryLogbookEntriesForOwner(
+      supabase,
+      traineeUserIds[0]
+    );
+    if (error) console.error("getLogbookEntriesByAcsCode:", error.message);
+    entries = (fullRows ?? []).map((row) => ({
+      id: String(row.id),
+      entry_date: String(row.entry_date ?? ""),
+      hours_worked: Number(row.hours_worked ?? 0),
+      description: String(row.description ?? ""),
+      status: String(row.status ?? ""),
+    }));
+  } else {
+    const { data, error } = await supabase
+      .from("logbook_entries")
+      .select("id, entry_date, hours_worked, description, status")
+      .in("user_id", traineeUserIds);
+    if (error) console.error("getLogbookEntriesByAcsCode:", error.message);
+    entries = data;
+  }
 
   if (!entries || entries.length === 0) {
     return {};

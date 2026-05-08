@@ -2,12 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { setCurrentUserTraining } from "@/app/actions/my-trainings";
+import { useAppNavigation } from "@/components/app-navigation-provider";
+import { Button } from "@/components/ui/button";
 import {
   describeUserTrainingEnrollment,
   type UserTrainingEnrollmentRow,
 } from "@/lib/my-trainings-display";
+import { formatUiDate } from "@/lib/format-ui-date";
 
 type Props = {
   inProgress: UserTrainingEnrollmentRow[];
@@ -15,18 +17,13 @@ type Props = {
   currentUserTrainingId: string | null;
 };
 
-function formatDate(iso: string): string {
-  return new Date(iso + "T12:00:00").toLocaleDateString(undefined, {
-    dateStyle: "medium",
-  });
-}
-
 export function MyTrainingsClient({
   inProgress,
   completed,
   currentUserTrainingId,
 }: Props) {
   const router = useRouter();
+  const { refreshTrainingSwitcher } = useAppNavigation();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +36,7 @@ export function MyTrainingsClient({
       setError(res.error);
       return;
     }
+    await refreshTrainingSwitcher();
     router.refresh();
   }
 
@@ -132,7 +130,7 @@ export function MyTrainingsClient({
                     </div>
                     <p className="shrink-0 text-sm text-muted-foreground tabular-nums sm:pt-0.5">
                       {row.status === "completed" ? "Completed " : "Ended "}
-                      {formatDate(when)}
+                      {formatUiDate(when)}
                     </p>
                   </div>
                 </li>

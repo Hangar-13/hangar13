@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
@@ -15,6 +15,7 @@ import {
   type LogbookEntryStudentViewMeta,
   getPendingAcsCodesForLogbookEntry,
   getPendingAcsCodesForLogbookEntryForReview,
+  setLogbookEntryPendingAcsForMentorReview,
 } from "@/app/actions/logbook";
 import { approveLogbookEntry, rejectLogbookEntry } from "@/app/actions/logbook-approval";
 import { getAcsCodesByChapter } from "@/app/actions/acs-codes";
@@ -32,18 +33,66 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Check, Plus, Clock, Calendar, Save, Pencil, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatUiDateTime } from "@/lib/format-ui-date";
 import { SearchableChapterSelect } from "./searchable-chapter-select";
+import { SearchableEquipmentCombobox } from "./searchable-equipment-combobox";
 import { AcsInclusionSwitchRow } from "@/components/manager/manager-acs-inclusion-toggle-row";
 import {
   mergeLogbookAdditionalInformation,
   parseLogbookAdditionalInformation,
 } from "@/lib/logbook-additional-information";
+import { Switch } from "@/components/ui/switch";
+import {
+  getLogbookMentorContext,
+  searchMechanicMentorsForLogbook,
+  createInvisibleMechanicMentorAndAssignAction,
+  isMechanicCertificateNumberTakenAction,
+  clearInvisibleAssignedMentorAction,
+  type LogbookMentorContext,
+  type MechanicMentorSearchRow,
+} from "@/app/actions/logbook-mentor";
+
+function formatMechanicDisplayLine(m: {
+  full_name: string | null;
+  mechanic_certificate_type: string | null;
+  mechanic_certificate_number: string | null;
+}) {
+  const name = (m.full_name && m.full_name.trim()) || "Mentor";
+  const t = (m.mechanic_certificate_type && m.mechanic_certificate_type.trim()) || "A&P";
+  const n = m.mechanic_certificate_number?.trim();
+  if (n) return `${name} (${t} ${n})`;
+  return `${name} (${t})`;
+}
+
+/** One letter A–Z followed by exactly 7 digits (e.g. A1234567). */
+const MECHANIC_CERT_NUMBER_REGEX = /^[A-Z][0-9]{7}$/;
+
+function isValidMechanicCertNumber(value: string): boolean {
+  return MECHANIC_CERT_NUMBER_REGEX.test(value.trim().toUpperCase());
+}
+
+function sanitizeMechanicCertNumberInput(raw: string): string {
+  const u = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (u.length === 0) return "";
+  let letter = "";
+  let digits = "";
+  for (const ch of u) {
+    if (!letter) {
+      if (/[A-Z]/.test(ch)) letter = ch;
+      continue;
+    }
+    if (/\d/.test(ch) && digits.length < 7) digits += ch;
+  }
+  return letter + digits;
+}
 
 const logbookEntrySchema = z
   .object({
@@ -110,7 +159,7 @@ function extractATAChapterCode(ataLabel: string | null | undefined): string {
 
 function formatBadgeDate(iso: string) {
   try {
-    return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+    return formatUiDateTime(iso);
   } catch {
     return iso;
   }
@@ -242,6 +291,7 @@ export function AddEntryModal({
 
   const {
     register,
+    control,
     handleSubmit,
     setValue,
     watch,
@@ -284,6 +334,33 @@ export function AddEntryModal({
   const [enableAcsCodes, setEnableAcsCodes] = useState(false);
   const [acsDisableConfirmOpen, setAcsDisableConfirmOpen] = useState(false);
   const [acsListSearch, setAcsListSearch] = useState("");
+  const [mentorAcsUiMode, setMentorAcsUiMode] = useState<"summary" | "edit">(
+    "summary"
+  );
+  const [mentorAcsSummaryRows, setMentorAcsSummaryRows] = useState<
+    LogbookEntryAcsDisplayRow[]
+  >([]);
+  const [mentorAcsSummaryLoading, setMentorAcsSummaryLoading] = useState(false);
+  const [mentorCtx, setMentorCtx] = useState<LogbookMentorContext | { error: string } | null>(
+    null
+  );
+  const [mentorCtxLoading, setMentorCtxLoading] = useState(false);
+  const [mentorSigningEnabled, setMentorSigningEnabled] = useState(false);
+  const [mentorFirstName, setMentorFirstName] = useState("");
+  const [mentorLastName, setMentorLastName] = useState("");
+  const [mentorCertType, setMentorCertType] = useState<"A" | "P" | "A&P" | "AME">(
+    "A&P"
+  );
+  const [mentorCertNumber, setMentorCertNumber] = useState("");
+  const [mentorSearchLoading, setMentorSearchLoading] = useState(false);
+  const [mentorSearchRows, setMentorSearchRows] = useState<MechanicMentorSearchRow[]>([]);
+  const [selectedMentorUserId, setSelectedMentorUserId] = useState<string | null>(null);
+  const [mentorActionError, setMentorActionError] = useState<string | null>(null);
+  const [mentorCreateBusy, setMentorCreateBusy] = useState(false);
+  const [removeExternalMentorOpen, setRemoveExternalMentorOpen] = useState(false);
+  const [mentorRemoveBusy, setMentorRemoveBusy] = useState(false);
+  const [certNumberTaken, setCertNumberTaken] = useState<boolean | null>(null);
+  const [certTakenChecking, setCertTakenChecking] = useState(false);
 
   const prevAtaChapterRef = useRef<string | undefined>(undefined);
 
@@ -302,6 +379,113 @@ export function AddEntryModal({
       prevAtaChapterRef.current = undefined;
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !isStudent || !(isNewEntry || isStudentEditor)) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setMentorCtxLoading(true);
+      setMentorActionError(null);
+      const res = await getLogbookMentorContext();
+      if (cancelled) return;
+      setMentorCtx(res);
+      setMentorCtxLoading(false);
+      if ("error" in res) {
+        return;
+      }
+      if (res.hasAssignedMentor && res.mentor) {
+        setMentorSigningEnabled(true);
+        setSelectedMentorUserId(res.mentor.id);
+      } else {
+        setMentorSigningEnabled(false);
+        setSelectedMentorUserId(null);
+        setMentorFirstName("");
+        setMentorLastName("");
+        setMentorCertNumber("");
+        setMentorCertType("A&P");
+        setMentorSearchRows([]);
+        setCertNumberTaken(null);
+        setCertTakenChecking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isStudent, isNewEntry, isStudentEditor, entry?.id]);
+
+  useEffect(() => {
+    if (
+      !mentorSigningEnabled ||
+      mentorCtxLoading ||
+      ("hasAssignedMentor" in (mentorCtx ?? {}) &&
+        (mentorCtx as LogbookMentorContext)?.hasAssignedMentor)
+    ) {
+      return;
+    }
+    const q = `${mentorFirstName} ${mentorLastName} ${mentorCertNumber}`.trim();
+    if (q.length < 2) {
+      setMentorSearchRows([]);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      void (async () => {
+        setMentorSearchLoading(true);
+        const res = await searchMechanicMentorsForLogbook(q);
+        setMentorSearchLoading(false);
+        if ("rows" in res) {
+          setMentorSearchRows(res.rows);
+        } else {
+          setMentorSearchRows([]);
+        }
+      })();
+    }, 320);
+    return () => window.clearTimeout(t);
+  }, [
+    mentorFirstName,
+    mentorLastName,
+    mentorCertNumber,
+    mentorSigningEnabled,
+    mentorCtxLoading,
+    mentorCtx,
+  ]);
+
+  useEffect(() => {
+    if (
+      !mentorSigningEnabled ||
+      selectedMentorUserId ||
+      !isValidMechanicCertNumber(mentorCertNumber)
+    ) {
+      setCertNumberTaken(null);
+      setCertTakenChecking(false);
+      return;
+    }
+    let cancelled = false;
+    setCertTakenChecking(true);
+    const t = window.setTimeout(() => {
+      void (async () => {
+        const res = await isMechanicCertificateNumberTakenAction(
+          mentorCertNumber.trim().toUpperCase()
+        );
+        if (cancelled) return;
+        setCertTakenChecking(false);
+        if ("error" in res) {
+          setCertNumberTaken(null);
+          return;
+        }
+        setCertNumberTaken(res.taken);
+      })();
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [
+    mentorSigningEnabled,
+    selectedMentorUserId,
+    mentorCertNumber,
+  ]);
 
   useEffect(() => {
     setAcsListSearch("");
@@ -343,6 +527,30 @@ export function AddEntryModal({
     setEnableAcsCodes(false);
   }, [isOpen, entry?.id]);
 
+  useEffect(() => {
+    if (!isOpen || !mentorMode) return;
+    setMentorAcsUiMode("summary");
+  }, [isOpen, mentorMode, entry?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !mentorMode || !entry?.id) {
+      setMentorAcsSummaryRows([]);
+      setMentorAcsSummaryLoading(false);
+      return;
+    }
+    setMentorAcsSummaryLoading(true);
+    getAcsCodeDisplayRowsForLogbookEntry(entry.id)
+      .then((rows) => {
+        setMentorAcsSummaryRows(rows);
+      })
+      .catch(() => {
+        setMentorAcsSummaryRows([]);
+      })
+      .finally(() => {
+        setMentorAcsSummaryLoading(false);
+      });
+  }, [isOpen, mentorMode, entry?.id]);
+
   // Load only the entry's ACS code strings for student browse view (not the full chapter list)
   useEffect(() => {
     if (!isOpen || !entry || !studentAcsListMode) {
@@ -370,7 +578,19 @@ export function AddEntryModal({
       setAcsLoading(false);
       return;
     }
+    if (mentorMode && mentorAcsUiMode === "summary") {
+      setAcsCodes([]);
+      setAcsLoading(false);
+      setSelectedAcsCodeIds(new Set());
+      return;
+    }
     if (isStudent && isNewEntry && !enableAcsCodes) {
+      setAcsCodes([]);
+      setSelectedAcsCodeIds(new Set());
+      setAcsLoading(false);
+      return;
+    }
+    if (mentorMode && mentorAcsUiMode === "edit" && !enableAcsCodes) {
       setAcsCodes([]);
       setSelectedAcsCodeIds(new Set());
       setAcsLoading(false);
@@ -385,7 +605,11 @@ export function AddEntryModal({
     prevAtaChapterRef.current = ataChapter;
 
     if (isChapterChange && entry && isEditMode) {
-      clearPendingAcsForLogbookEntry(entry.id);
+      if (mentorMode) {
+        void setLogbookEntryPendingAcsForMentorReview(entry.id, []);
+      } else {
+        void clearPendingAcsForLogbookEntry(entry.id);
+      }
     }
 
     setAcsLoading(true);
@@ -408,7 +632,7 @@ export function AddEntryModal({
       }
       setAcsLoading(false);
     });
-  }, [ataChapter, entry?.id, entry?.status, isEditMode, isNewEntry, isStudent, mentorMode, studentAcsListMode, enableAcsCodes]);
+  }, [ataChapter, entry?.id, entry?.status, isEditMode, isNewEntry, isStudent, mentorMode, mentorAcsUiMode, studentAcsListMode, enableAcsCodes]);
 
   function handleEnableAcsChange(checked: boolean) {
     if (checked) {
@@ -425,6 +649,16 @@ export function AddEntryModal({
   async function confirmDisableAcs() {
     if (entry?.id && isStudent) {
       await clearPendingAcsForLogbookEntry(entry.id);
+    }
+    if (entry?.id && mentorMode) {
+      const res = await setLogbookEntryPendingAcsForMentorReview(entry.id, []);
+      if ("error" in res) {
+        setSubmitError(res.error);
+        setAcsDisableConfirmOpen(false);
+        return;
+      }
+      const rows = await getAcsCodeDisplayRowsForLogbookEntry(entry.id);
+      setMentorAcsSummaryRows(rows);
     }
     setEnableAcsCodes(false);
     setSelectedAcsCodeIds(new Set());
@@ -448,6 +682,61 @@ export function AddEntryModal({
 
   // Check if form is valid for submission
   const isFormValid = ataChapter && taskDescription && taskDescription.length >= 10;
+
+  const hasAssignedMentor =
+    mentorCtx !== null && "hasAssignedMentor" in mentorCtx && mentorCtx.hasAssignedMentor;
+
+  const mentorSigningRequiredOk =
+    !certified ||
+    !isStudent ||
+    !(isNewEntry || isStudentEditor) ||
+    mentorCtxLoading ||
+    "error" in (mentorCtx ?? {}) ||
+    hasAssignedMentor ||
+    !mentorSigningEnabled ||
+    (Boolean(selectedMentorUserId) &&
+      (!certified || isValidMechanicCertNumber(mentorCertNumber)));
+
+  const canSubmitForm = isFormValid && mentorSigningRequiredOk;
+
+  const mentorSearchQueryTrimmed = useMemo(
+    () => `${mentorFirstName} ${mentorLastName} ${mentorCertNumber}`.trim(),
+    [mentorFirstName, mentorLastName, mentorCertNumber]
+  );
+
+  const createMentorEligible = useMemo(
+    () =>
+      mentorSigningEnabled &&
+      !selectedMentorUserId &&
+      Boolean(mentorFirstName.trim()) &&
+      Boolean(mentorLastName.trim()) &&
+      isValidMechanicCertNumber(mentorCertNumber) &&
+      !mentorSearchLoading &&
+      mentorSearchRows.length === 0 &&
+      mentorSearchQueryTrimmed.length >= 2 &&
+      !certTakenChecking &&
+      certNumberTaken !== true,
+    [
+      mentorSigningEnabled,
+      selectedMentorUserId,
+      mentorFirstName,
+      mentorLastName,
+      mentorCertNumber,
+      mentorSearchLoading,
+      mentorSearchRows.length,
+      mentorSearchQueryTrimmed,
+      certTakenChecking,
+      certNumberTaken,
+    ]
+  );
+
+  const showMentorNoMatchesHint =
+    mentorSigningEnabled &&
+    !mentorSearchLoading &&
+    mentorSearchRows.length === 0 &&
+    mentorSearchQueryTrimmed.length >= 2 &&
+    !selectedMentorUserId &&
+    !createMentorEligible;
 
   const totalHours = useMemo(() => {
     return calculateHours(startTime, endTime);
@@ -500,13 +789,44 @@ export function AddEntryModal({
   const [rejectReason, setRejectReason] = useState("");
   const [rejectError, setRejectError] = useState<string | null>(null);
 
+  async function finishMentorAcsEdit() {
+    if (!entry?.id || !mentorMode) return;
+    setSubmitError(null);
+    const r = await setLogbookEntryPendingAcsForMentorReview(
+      entry.id,
+      enableAcsCodes ? Array.from(selectedAcsCodeIds) : []
+    );
+    if ("error" in r) {
+      setSubmitError(r.error);
+      return;
+    }
+    const rows = await getAcsCodeDisplayRowsForLogbookEntry(entry.id);
+    setMentorAcsSummaryRows(rows);
+    setMentorAcsUiMode("summary");
+    router.refresh();
+  }
+
   const handleApprove = async () => {
     if (!entry) return;
     setSubmitError(null);
     setIsSubmitting(true);
 
     try {
-      const result = await approveLogbookEntry(entry.id, Array.from(selectedAcsCodeIds));
+      if (mentorMode && mentorAcsUiMode === "edit" && !enableAcsCodes) {
+        const cleared = await setLogbookEntryPendingAcsForMentorReview(entry.id, []);
+        if ("error" in cleared) {
+          setSubmitError(cleared.error);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const acsForApprove =
+        mentorMode && mentorAcsUiMode === "edit" && enableAcsCodes
+          ? Array.from(selectedAcsCodeIds)
+          : [];
+
+      const result = await approveLogbookEntry(entry.id, acsForApprove);
 
       if (result.error) {
         setSubmitError(result.error);
@@ -611,6 +931,22 @@ export function AddEntryModal({
     );
 
     try {
+      if (
+        data.certified &&
+        isStudent &&
+        (isNewEntry || isStudentEditor) &&
+        !hasAssignedMentor &&
+        mentorSigningEnabled &&
+        selectedMentorUserId &&
+        !isValidMechanicCertNumber(mentorCertNumber)
+      ) {
+        setSubmitError(
+          "Mechanic certificate number must be one letter (A–Z) followed by exactly 7 digits."
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
       const result = isEditMode
         ? await updateLogbookEntry(entry!.id, {
             entryDate: data.entryDate,
@@ -624,6 +960,8 @@ export function AddEntryModal({
             logPageNumber: logPageFromForm,
             aircraft: data.aircraft?.trim() || null,
             additionalInformation,
+            mentorSigningEnabled: !hasAssignedMentor && mentorSigningEnabled,
+            selectedMentorUserId: !hasAssignedMentor ? selectedMentorUserId : null,
           })
         : await createLogbookEntry({
             entryDate: data.entryDate,
@@ -637,6 +975,8 @@ export function AddEntryModal({
             logPageNumber: logPageFromForm,
             aircraft: data.aircraft?.trim() || null,
             additionalInformation,
+            mentorSigningEnabled: !hasAssignedMentor && mentorSigningEnabled,
+            selectedMentorUserId: !hasAssignedMentor ? selectedMentorUserId : null,
           });
 
       if (result.error) {
@@ -870,7 +1210,7 @@ export function AddEntryModal({
             )}
           </div>
 
-          {/* ACS Codes — student browse: list; student new/edit: optional toggle; mentor: always */}
+          {/* ACS Codes — student browse: list; mentor: summary + edit; student new/edit: optional toggle */}
           {studentAcsListMode && !viewAcsLoading && viewAcsRows.length > 0 ? (
             <div className="space-y-2">
               <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
@@ -904,7 +1244,139 @@ export function AddEntryModal({
                 </ul>
               )}
             </div>
-          ) : !studentAcsListMode ? (
+          ) : mentorMode && entry ? (
+            <>
+              {mentorAcsUiMode === "edit" ? (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label className="text-sm font-medium">ACS codes</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void finishMentorAcsEdit()}
+                    >
+                      Done editing
+                    </Button>
+                  </div>
+                  <AcsInclusionSwitchRow
+                    id="mentor-logbook-enable-acs"
+                    include={enableAcsCodes}
+                    onChange={handleEnableAcsChange}
+                  />
+                  {enableAcsCodes && (
+                    <div className="space-y-2">
+                      {!ataChapter ? (
+                        <p className="text-sm text-muted-foreground">
+                          Select an ATA chapter to see available ACS codes.
+                        </p>
+                      ) : acsLoading ? (
+                        <p className="text-sm text-muted-foreground">Loading ACS codes...</p>
+                      ) : acsCodes.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          No ACS codes found for this chapter.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                            <Label className="text-sm font-medium leading-none">ACS Codes</Label>
+                            <Input
+                              type="search"
+                              value={acsListSearch}
+                              onChange={(e) => setAcsListSearch(e.target.value)}
+                              placeholder="Search by code, category, or ATA…"
+                              className="h-8 min-w-0 flex-1 sm:max-w-xs"
+                              aria-label="Filter ACS codes"
+                            />
+                          </div>
+                          {pickerAcsFiltered.length === 0 ? (
+                            <p className="text-sm text-muted-foreground pl-0.5">
+                              No ACS codes match your search.
+                            </p>
+                          ) : (
+                            <div className="max-h-48 overflow-y-auto rounded-md border p-3 space-y-2">
+                              {pickerAcsFiltered.map((acs) => (
+                                <label
+                                  key={acs.id}
+                                  className="flex items-start gap-3 p-2 rounded cursor-pointer hover:bg-muted/50"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedAcsCodeIds.has(acs.id)}
+                                    onChange={() => toggleAcsCode(acs.id)}
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-sm">{acs.code}</span>
+                                      <span className="text-muted-foreground text-xs">
+                                        ({acs.category})
+                                      </span>
+                                      {acs.ata_chapter_numbers &&
+                                        acs.ata_chapter_numbers.length > 0 && (
+                                          <span
+                                            className="text-xs text-muted-foreground/80"
+                                            title="ATA chapters"
+                                          >
+                                            Ch {acs.ata_chapter_numbers.join(", ")}
+                                          </span>
+                                        )}
+                                    </div>
+                                    {acs.description && (
+                                      <p
+                                        className="text-xs text-muted-foreground mt-0.5 truncate"
+                                        title={acs.description}
+                                      >
+                                        {acs.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm font-medium">ACS codes</div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-muted-foreground"
+                      title="Edit ACS codes"
+                      aria-label="Edit ACS codes"
+                      onClick={() => {
+                        setMentorAcsUiMode("edit");
+                        setEnableAcsCodes(mentorAcsSummaryRows.length > 0);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {mentorAcsSummaryLoading ? (
+                    <p className="text-sm text-muted-foreground">Loading…</p>
+                  ) : mentorAcsSummaryRows.length > 0 ? (
+                    <ul className="list-disc pl-5 space-y-1.5 text-sm">
+                      {mentorAcsSummaryRows.map((c) => (
+                        <li key={c.id}>
+                          <span className="font-mono font-medium">{c.code}</span>
+                          {c.description ? (
+                            <span className="text-muted-foreground"> — {c.description}</span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              )}
+            </>
+          ) : !studentAcsListMode && !mentorMode ? (
             <div className="space-y-3">
               {isStudent && (isNewEntry || isStudentEditor) && (
                 <AcsInclusionSwitchRow
@@ -913,85 +1385,99 @@ export function AddEntryModal({
                   onChange={handleEnableAcsChange}
                 />
               )}
-              {(mentorMode || ((isNewEntry || isStudentEditor) && enableAcsCodes)) && (
-            <div className="space-y-2">
-            {!ataChapter ? (
-              <>
-                <div className="text-sm font-medium">ACS Codes</div>
-                <p className="text-sm text-muted-foreground">
-                  Select an ATA chapter to see available ACS codes.
-                </p>
-              </>
-            ) : acsLoading ? (
-              <>
-                <div className="text-sm font-medium">ACS Codes</div>
-                <p className="text-sm text-muted-foreground">Loading ACS codes...</p>
-              </>
-            ) : acsCodes.length === 0 ? (
-              <>
-                <div className="text-sm font-medium">ACS Codes</div>
-                <p className="text-sm text-muted-foreground">
-                  No ACS codes found for this chapter.
-                </p>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                  <Label className="text-sm font-medium leading-none">ACS Codes</Label>
-                  <Input
-                    type="search"
-                    value={acsListSearch}
-                    onChange={(e) => setAcsListSearch(e.target.value)}
-                    placeholder="Search by code, category, or ATA…"
-                    disabled={!acsCodesEditable && (isViewMode || (isStudent && !isStudentEditor))}
-                    className="h-8 min-w-0 flex-1 sm:max-w-xs"
-                    aria-label="Filter ACS codes"
-                  />
-                </div>
-                {pickerAcsFiltered.length === 0 ? (
-                  <p className="text-sm text-muted-foreground pl-0.5">
-                    No ACS codes match your search.
-                  </p>
-                ) : (
-                  <div className="max-h-48 overflow-y-auto rounded-md border p-3 space-y-2">
-                    {pickerAcsFiltered.map((acs) => (
-                      <label
-                        key={acs.id}
-                        className={cn(
-                          "flex items-start gap-3 p-2 rounded cursor-pointer hover:bg-muted/50",
-                          !acsCodesEditable && (isViewMode || (isStudent && !isStudentEditor)) && "cursor-default hover:bg-transparent"
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedAcsCodeIds.has(acs.id)}
-                          onChange={() => toggleAcsCode(acs.id)}
+              {(isNewEntry || isStudentEditor) && enableAcsCodes && (
+                <div className="space-y-2">
+                  {!ataChapter ? (
+                    <>
+                      <div className="text-sm font-medium">ACS Codes</div>
+                      <p className="text-sm text-muted-foreground">
+                        Select an ATA chapter to see available ACS codes.
+                      </p>
+                    </>
+                  ) : acsLoading ? (
+                    <>
+                      <div className="text-sm font-medium">ACS Codes</div>
+                      <p className="text-sm text-muted-foreground">Loading ACS codes...</p>
+                    </>
+                  ) : acsCodes.length === 0 ? (
+                    <>
+                      <div className="text-sm font-medium">ACS Codes</div>
+                      <p className="text-sm text-muted-foreground">
+                        No ACS codes found for this chapter.
+                      </p>
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                        <Label className="text-sm font-medium leading-none">ACS Codes</Label>
+                        <Input
+                          type="search"
+                          value={acsListSearch}
+                          onChange={(e) => setAcsListSearch(e.target.value)}
+                          placeholder="Search by code, category, or ATA…"
                           disabled={!acsCodesEditable && (isViewMode || (isStudent && !isStudentEditor))}
-                          className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          className="h-8 min-w-0 flex-1 sm:max-w-xs"
+                          aria-label="Filter ACS codes"
                         />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{acs.code}</span>
-                            <span className="text-muted-foreground text-xs">({acs.category})</span>
-                            {acs.ata_chapter_numbers && acs.ata_chapter_numbers.length > 0 && (
-                              <span className="text-xs text-muted-foreground/80" title="ATA chapters">
-                                Ch {acs.ata_chapter_numbers.join(", ")}
-                              </span>
-                            )}
-                          </div>
-                          {acs.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5 truncate" title={acs.description}>
-                              {acs.description}
-                            </p>
-                          )}
+                      </div>
+                      {pickerAcsFiltered.length === 0 ? (
+                        <p className="text-sm text-muted-foreground pl-0.5">
+                          No ACS codes match your search.
+                        </p>
+                      ) : (
+                        <div className="max-h-48 overflow-y-auto rounded-md border p-3 space-y-2">
+                          {pickerAcsFiltered.map((acs) => (
+                            <label
+                              key={acs.id}
+                              className={cn(
+                                "flex items-start gap-3 p-2 rounded cursor-pointer hover:bg-muted/50",
+                                !acsCodesEditable &&
+                                  (isViewMode || (isStudent && !isStudentEditor)) &&
+                                  "cursor-default hover:bg-transparent"
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedAcsCodeIds.has(acs.id)}
+                                onChange={() => toggleAcsCode(acs.id)}
+                                disabled={
+                                  !acsCodesEditable &&
+                                  (isViewMode || (isStudent && !isStudentEditor))
+                                }
+                                className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm">{acs.code}</span>
+                                  <span className="text-muted-foreground text-xs">
+                                    ({acs.category})
+                                  </span>
+                                  {acs.ata_chapter_numbers &&
+                                    acs.ata_chapter_numbers.length > 0 && (
+                                      <span
+                                        className="text-xs text-muted-foreground/80"
+                                        title="ATA chapters"
+                                      >
+                                        Ch {acs.ata_chapter_numbers.join(", ")}
+                                      </span>
+                                    )}
+                                </div>
+                                {acs.description && (
+                                  <p
+                                    className="text-xs text-muted-foreground mt-0.5 truncate"
+                                    title={acs.description}
+                                  >
+                                    {acs.description}
+                                  </p>
+                                )}
+                              </div>
+                            </label>
+                          ))}
                         </div>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ) : null}
@@ -1034,17 +1520,24 @@ export function AddEntryModal({
                   >
                     Aircraft
                   </Label>
-                  <Input
-                    id="aircraft"
-                    type="text"
-                    autoComplete="off"
-                    placeholder="Type of aircraft worked on"
-                    {...register("aircraft")}
-                    maxLength={200}
-                    disabled={fieldLocked}
-                    className="h-9 min-w-0 flex-1 bg-white dark:bg-white"
-                    aria-invalid={errors.aircraft ? "true" : "false"}
-                  />
+                  <div className="min-w-0 flex-1">
+                    <Controller
+                      name="aircraft"
+                      control={control}
+                      render={({ field }) => (
+                        <SearchableEquipmentCombobox
+                          id="aircraft"
+                          equipmentKind="aircraft"
+                          value={field.value ?? ""}
+                          onValuePickAction={field.onChange}
+                          onBlur={field.onBlur}
+                          disabled={fieldLocked}
+                          placeholder="Search or enter aircraft…"
+                          aria-invalid={!!errors.aircraft}
+                        />
+                      )}
+                    />
+                  </div>
                 </div>
                 {errors.aircraft && (
                   <p className="text-sm text-destructive pl-[calc(8rem+0.75rem)]">
@@ -1059,16 +1552,23 @@ export function AddEntryModal({
                 >
                   Engine
                 </Label>
-                <Input
-                  id="additionalEngine"
-                  type="text"
-                  autoComplete="off"
-                  placeholder="Only for work with engines"
-                  {...register("additionalEngine")}
-                  maxLength={200}
-                  disabled={fieldLocked}
-                  className="h-9 min-w-0 flex-1 bg-white dark:bg-white"
-                />
+                <div className="min-w-0 flex-1">
+                  <Controller
+                    name="additionalEngine"
+                    control={control}
+                    render={({ field }) => (
+                      <SearchableEquipmentCombobox
+                        id="additionalEngine"
+                        equipmentKind="engine"
+                        value={field.value ?? ""}
+                        onValuePickAction={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={fieldLocked}
+                        placeholder="Search or enter engine…"
+                      />
+                    )}
+                  />
+                </div>
               </div>
               <div className="flex min-w-0 flex-row items-center gap-3">
                 <Label
@@ -1077,19 +1577,350 @@ export function AddEntryModal({
                 >
                   Propeller
                 </Label>
-                <Input
-                  id="additionalPropeller"
-                  type="text"
-                  autoComplete="off"
-                  placeholder="Only for work with propellors"
-                  {...register("additionalPropeller")}
-                  maxLength={200}
-                  disabled={fieldLocked}
-                  className="h-9 min-w-0 flex-1 bg-white dark:bg-white"
-                />
+                <div className="min-w-0 flex-1">
+                  <Controller
+                    name="additionalPropeller"
+                    control={control}
+                    render={({ field }) => (
+                      <SearchableEquipmentCombobox
+                        id="additionalPropeller"
+                        equipmentKind="propeller"
+                        value={field.value ?? ""}
+                        onValuePickAction={field.onChange}
+                        onBlur={field.onBlur}
+                        disabled={fieldLocked}
+                        placeholder="Search or enter propeller…"
+                      />
+                    )}
+                  />
+                </div>
               </div>
             </div>
           </div>
+
+          {!mentorMode && (isNewEntry || isStudentEditor) && (
+            <div className="space-y-3 border-t border-border pt-6 mt-4">
+              {mentorCtxLoading ? (
+                <p className="text-xs text-muted-foreground">Loading mentor information…</p>
+              ) : mentorCtx && "error" in mentorCtx ? (
+                <p className="text-sm text-destructive">{mentorCtx.error}</p>
+              ) : hasAssignedMentor &&
+                mentorCtx &&
+                "mentor" in mentorCtx &&
+                mentorCtx.mentor ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="assigned-mentor-display">Mentor</Label>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <Input
+                        id="assigned-mentor-display"
+                        readOnly
+                        disabled
+                        value={formatMechanicDisplayLine(mentorCtx.mentor)}
+                        className="min-w-0 flex-1 bg-muted"
+                      />
+                      {mentorCtx.mentor.visible === false ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="shrink-0"
+                          title="Remove external mentor"
+                          aria-label="Remove external mentor"
+                          onClick={() => {
+                            setMentorActionError(null);
+                            setRemoveExternalMentorOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      This mentor is saved on your profile. Certified entries use them for notification (if they
+                      are a directory user) or automatic sign-off (external / invisible mentors).
+                    </p>
+                    {mentorActionError ? (
+                      <p className="text-sm text-destructive">{mentorActionError}</p>
+                    ) : null}
+                  </div>
+
+                  <Dialog open={removeExternalMentorOpen} onOpenChange={setRemoveExternalMentorOpen}>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Remove external mentor?</DialogTitle>
+                        <DialogDescription>
+                          They will no longer be used for logbook sign-off or notifications. You can assign another
+                          mentor when you add or edit a certified entry.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={mentorRemoveBusy}
+                          onClick={() => setRemoveExternalMentorOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          disabled={mentorRemoveBusy}
+                          onClick={async () => {
+                            setMentorRemoveBusy(true);
+                            setMentorActionError(null);
+                            try {
+                              const res = await clearInvisibleAssignedMentorAction();
+                              if ("error" in res) {
+                                setMentorActionError(res.error);
+                                return;
+                              }
+                              setRemoveExternalMentorOpen(false);
+                              const ctx = await getLogbookMentorContext();
+                              setMentorCtx(ctx);
+                              if (!("error" in ctx) && (!ctx.hasAssignedMentor || !ctx.mentor)) {
+                                setMentorSigningEnabled(false);
+                                setSelectedMentorUserId(null);
+                                setMentorFirstName("");
+                                setMentorLastName("");
+                                setMentorCertNumber("");
+                                setMentorCertType("A&P");
+                                setMentorSearchRows([]);
+                                setCertNumberTaken(null);
+                                setCertTakenChecking(false);
+                              }
+                              router.refresh();
+                            } finally {
+                              setMentorRemoveBusy(false);
+                            }
+                          }}
+                        >
+                          {mentorRemoveBusy ? "Removing…" : "Remove mentor"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="shrink-0 inline-flex"
+                      title="Turn off to certify without a signature or mentor notification (one-time for this entry unless you add a mentor below)."
+                    >
+                      <Switch
+                        id="mentor-signing-switch"
+                        checked={mentorSigningEnabled}
+                        onCheckedChange={(v) => {
+                          setMentorSigningEnabled(v);
+                          setMentorActionError(null);
+                        }}
+                      />
+                    </span>
+                    <Label htmlFor="mentor-signing-switch" className="text-sm font-normal cursor-pointer">
+                      Include mentor signature
+                    </Label>
+                  </div>
+
+                  {mentorSigningEnabled ? (
+                    <div className="space-y-3 border-t border-border/60 pt-3">
+                      <div className="flex w-full min-w-0 flex-nowrap items-end gap-2">
+                        <div className="min-w-0 flex-1 basis-0">
+                          <Label htmlFor="mentor-fn" className="sr-only">
+                            Mentor first name
+                          </Label>
+                          <Input
+                            id="mentor-fn"
+                            value={mentorFirstName}
+                            onChange={(e) => {
+                              setMentorFirstName(e.target.value);
+                              setSelectedMentorUserId(null);
+                              setMentorActionError(null);
+                            }}
+                            autoComplete="off"
+                            placeholder="First name"
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1 basis-0">
+                          <Label htmlFor="mentor-ln" className="sr-only">
+                            Mentor last name
+                          </Label>
+                          <Input
+                            id="mentor-ln"
+                            value={mentorLastName}
+                            onChange={(e) => {
+                              setMentorLastName(e.target.value);
+                              setSelectedMentorUserId(null);
+                              setMentorActionError(null);
+                            }}
+                            autoComplete="off"
+                            placeholder="Last name"
+                          />
+                        </div>
+                        <Select
+                          value={mentorCertType}
+                          onValueChange={(v) => {
+                            setMentorCertType(v as "A" | "P" | "A&P" | "AME");
+                            setMentorActionError(null);
+                          }}
+                        >
+                          <SelectTrigger
+                            className="h-10 w-[5.75rem] shrink-0"
+                            aria-label="Certificate type"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="A&P">A&amp;P</SelectItem>
+                            <SelectItem value="A">A</SelectItem>
+                            <SelectItem value="P">P</SelectItem>
+                            <SelectItem value="AME">AME</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="min-w-0 flex-[1.25] basis-0">
+                          <Label htmlFor="mentor-cert-num" className="sr-only">
+                            Mechanic certificate number
+                          </Label>
+                          <Input
+                            id="mentor-cert-num"
+                            value={mentorCertNumber}
+                            onChange={(e) => {
+                              setMentorCertNumber(sanitizeMechanicCertNumberInput(e.target.value));
+                              setSelectedMentorUserId(null);
+                              setMentorActionError(null);
+                            }}
+                            autoComplete="off"
+                            placeholder="A1234567"
+                            maxLength={8}
+                            className="w-full min-w-0"
+                          />
+                        </div>
+                      </div>
+                      {mentorCertNumber.length > 0 &&
+                      mentorSigningEnabled &&
+                      !isValidMechanicCertNumber(mentorCertNumber) ? (
+                        <p className="text-xs text-destructive">
+                          Use one letter (A–Z) and seven digits (8 characters total).
+                        </p>
+                      ) : null}
+                      {mentorSigningEnabled &&
+                      !selectedMentorUserId &&
+                      isValidMechanicCertNumber(mentorCertNumber) &&
+                      certTakenChecking ? (
+                        <p className="text-xs text-muted-foreground">Checking certificate number…</p>
+                      ) : null}
+                      {mentorSigningEnabled &&
+                      !selectedMentorUserId &&
+                      isValidMechanicCertNumber(mentorCertNumber) &&
+                      certNumberTaken === true ? (
+                        <p className="text-xs text-destructive">
+                          This certificate number is already on file. Choose the matching mentor below or enter a
+                          different number.
+                        </p>
+                      ) : null}
+
+                      {selectedMentorUserId ? (
+                        <p className="text-xs text-muted-foreground">
+                          The selected mentor will be stored as your mentor for all future log entries until you
+                          remove them.
+                        </p>
+                      ) : null}
+
+                      {mentorSearchLoading ? (
+                        <p className="text-xs text-muted-foreground">Searching…</p>
+                      ) : mentorSearchRows.length > 0 ? (
+                        <div className="space-y-1">
+                          <p className="text-xs font-medium text-muted-foreground">Matching users</p>
+                          <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-border/60 bg-background p-1">
+                            {mentorSearchRows.map((row) => (
+                              <li key={row.id}>
+                                <button
+                                  type="button"
+                                  className={cn(
+                                    "w-full rounded px-2 py-1.5 text-left text-sm hover:bg-accent",
+                                    selectedMentorUserId === row.id && "bg-accent"
+                                  )}
+                                  onClick={() => {
+                                    setSelectedMentorUserId(row.id);
+                                    const parts = (row.full_name ?? "").trim().split(/\s+/);
+                                    setMentorFirstName(parts[0] ?? "");
+                                    setMentorLastName(parts.slice(1).join(" ") ?? "");
+                                    if (row.mechanic_certificate_type) {
+                                      setMentorCertType(
+                                        row.mechanic_certificate_type as "A" | "P" | "A&P" | "AME"
+                                      );
+                                    }
+                                    if (row.mechanic_certificate_number) {
+                                      setMentorCertNumber(
+                                        sanitizeMechanicCertNumberInput(row.mechanic_certificate_number)
+                                      );
+                                    }
+                                    setMentorActionError(null);
+                                  }}
+                                >
+                                  {formatMechanicDisplayLine(row)}
+                                  {row.visible === false ? (
+                                    <span className="ml-2 text-[10px] text-muted-foreground">(external)</span>
+                                  ) : null}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+
+                      {mentorActionError ? (
+                        <p className="text-sm text-destructive">{mentorActionError}</p>
+                      ) : null}
+
+                      {createMentorEligible ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={mentorCreateBusy}
+                          onClick={async () => {
+                            setMentorActionError(null);
+                            setMentorCreateBusy(true);
+                            try {
+                              const res = await createInvisibleMechanicMentorAndAssignAction({
+                                firstName: mentorFirstName,
+                                lastName: mentorLastName,
+                                mechanicCertType: mentorCertType,
+                                mechanicCertNumber: mentorCertNumber.trim().toUpperCase(),
+                              });
+                              if (res.error) {
+                                setMentorActionError(res.error);
+                                return;
+                              }
+                              const ctx = await getLogbookMentorContext();
+                              setMentorCtx(ctx);
+                              if ("mentor" in ctx && ctx.mentor) {
+                                setSelectedMentorUserId(ctx.mentor.id);
+                                setMentorSigningEnabled(true);
+                              }
+                            } finally {
+                              setMentorCreateBusy(false);
+                            }
+                          }}
+                        >
+                          {mentorCreateBusy ? "Creating…" : "Create Mentor"}
+                        </Button>
+                      ) : null}
+                      {createMentorEligible ? (
+                        <p className="text-xs text-muted-foreground">
+                          Create Mentor creates an account for a person not in our system yet that will be stored
+                          as your mentor for all future log entries until you remove them.
+                        </p>
+                      ) : showMentorNoMatchesHint ? (
+                        <p className="text-xs text-muted-foreground">No matching mentors found</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Browse: status badges. Edit: certification */}
           {isStudent && isStudentBrowse && !mentorMode && (
@@ -1126,11 +1957,13 @@ export function AddEntryModal({
                         <span
                           className="inline-flex w-fit max-w-full items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs text-green-950 dark:bg-green-600/30 dark:text-green-100"
                         >
-                          {viewMeta.approverName && viewMeta.approvedAt
-                            ? `Signed by ${viewMeta.approverName} on ${formatBadgeDate(viewMeta.approvedAt)}`
-                            : viewMeta.approvedAt
-                              ? `Signed on ${formatBadgeDate(viewMeta.approvedAt)}`
-                              : "Signed"}
+                          {viewMeta.signatureText
+                            ? viewMeta.signatureText
+                            : viewMeta.approverName && viewMeta.approvedAt
+                              ? `Signed by ${viewMeta.approverName} on ${formatBadgeDate(viewMeta.approvedAt)}`
+                              : viewMeta.approvedAt
+                                ? `Signed on ${formatBadgeDate(viewMeta.approvedAt)}`
+                                : "Signed"}
                         </span>
                       )}
                       {entry.status === "rejected" && (
@@ -1161,9 +1994,10 @@ export function AddEntryModal({
                     I certify this information is accurate
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
-                    By checking this box, you confirm the work described was
-                    performed and the hours are accurate. This will submit the
-                    entry for mentor signature.
+                    By checking this box, you confirm the work described was performed and the hours are
+                    accurate. If mentor signing is on, we notify your mentor (for directory users) or
+                    record an automatic signature (external mentors), depending on your mentor profile.
+                    With signing off, no mentor is notified and there is no signature line.
                   </p>
                 </div>
               </div>
@@ -1223,7 +2057,7 @@ export function AddEntryModal({
               >
                 {isStudent && entry && isEditingEntry ? "Cancel" : "Cancel"}
               </Button>
-              <Button type="submit" disabled={isSubmitting || !isFormValid}>
+              <Button type="submit" disabled={isSubmitting || !canSubmitForm}>
                 <Save className="mr-2 h-4 w-4" />
                 {isSubmitting
                   ? certified

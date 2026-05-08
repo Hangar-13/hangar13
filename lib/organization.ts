@@ -52,7 +52,7 @@ export async function listOrganizationIdsWhereUserHasMinRole(
 }
 
 /**
- * Owning org for new catalog rows: prefer an org where the user is manager/admin,
+ * Owning org for new catalog rows: prefer an org where the user is manager/supervisor,
  * else any membership, else earliest org in the system.
  */
 export async function resolveOrganizationIdForCreatedContent(
@@ -63,7 +63,7 @@ export async function resolveOrganizationIdForCreatedContent(
     .from("user_organizations")
     .select("organization_id")
     .eq("user_id", userId)
-    .in("role", ["manager", "admin"])
+    .in("role", ["manager", "supervisor"])
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();

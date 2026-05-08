@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Certification } from "@/lib/certification";
+import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 
 /** Row from public.user_trainings (enrollment in a training program). */
 export type UserTrainingRow = {
@@ -28,19 +29,44 @@ export type CurrentUserTrainingContext = {
 
 /**
  * Resolves the trainee's active training from users.current_curriculum_id.
- * Dashboard, logbook, and progress should use this instead of picking any row by user_id.
+ * Training-centric flows (weekly content, progress for one enrollment) should use this.
  */
 export async function getCurrentUserTrainingContext(
   supabase: SupabaseClient,
   userId: string
 ): Promise<CurrentUserTrainingContext> {
-  const { data: userRow, error: userErr } = await supabase
-    .from("users")
-    .select("current_curriculum_id, current_certification")
-    .eq("id", userId)
-    .single();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (userErr || !userRow) {
+  let userRow: {
+    current_curriculum_id: string | null;
+    current_certification: string | null;
+  } | null = null;
+
+  if (user?.id === userId) {
+    const p = await fetchSessionUserProfile(supabase);
+    if (p) {
+      userRow = {
+        current_curriculum_id: p.current_curriculum_id,
+        current_certification: p.current_certification,
+      };
+    }
+  } else {
+    const { data, error } = await supabase
+      .from("users")
+      .select("current_curriculum_id, current_certification")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!error && data) {
+      userRow = {
+        current_curriculum_id: data.current_curriculum_id as string | null,
+        current_certification: data.current_certification as string | null,
+      };
+    }
+  }
+
+  if (!userRow) {
     return { userTraining: null, currentCertification: null };
   }
 
@@ -66,3 +92,4 @@ export async function getCurrentUserTrainingContext(
     currentCertification: cert,
   };
 }
+

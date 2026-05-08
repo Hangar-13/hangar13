@@ -1,19 +1,8 @@
 import type { CertificationAward, TrainingCompletion } from "@/app/actions/user-credentials";
+import { formatUiDate } from "@/lib/format-ui-date";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Award, GraduationCap, Trash2 } from "lucide-react";
-
-function formatDate(iso: string) {
-  try {
-    return new Date(iso + (iso.length === 10 ? "T12:00:00" : "")).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-}
 
 type Props = {
   trainingCompletions: TrainingCompletion[];
@@ -55,7 +44,7 @@ export function CredentialsReadOnlyLists({
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-foreground">{row.training_name}</div>
                     <div className="text-muted-foreground text-xs mt-0.5">
-                      Completed {formatDate(row.completed_on)}
+                      Completed {formatUiDate(row.completed_on)}
                     </div>
                     {row.notes ? (
                       <p className="text-muted-foreground text-xs mt-1.5">{row.notes}</p>
@@ -101,7 +90,7 @@ export function CredentialsReadOnlyLists({
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-foreground">{row.certification_name}</div>
                     <div className="text-muted-foreground text-xs mt-0.5">
-                      Awarded {formatDate(row.awarded_on)}
+                      Awarded {formatUiDate(row.awarded_on)}
                     </div>
                     {row.notes ? (
                       <p className="text-muted-foreground text-xs mt-1.5">{row.notes}</p>

@@ -15,31 +15,145 @@ import {
 } from "@/app/actions/user-credentials";
 import { CredentialsSummaryCard } from "@/components/student/credentials-summary-card";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
+import { fetchSessionUserProfile } from "@/lib/session-user-profile";
+import { queryLogbookEntriesForOwner, type LogbookEntryRow } from "@/lib/logbook-entries-query";
+
+function ataChaptersTouchedFromLogbook(
+  entries: { skills_practiced?: unknown }[]
+): number {
+  const padChapter = (ch: string) =>
+    ch.length === 1 && /^\d$/.test(ch) ? "0" + ch : ch;
+  const chapters = new Set<string>();
+  for (const entry of entries) {
+    const skills = entry.skills_practiced;
+    if (!Array.isArray(skills)) continue;
+    for (const skill of skills) {
+      if (typeof skill !== "string") continue;
+      const m = skill.match(/ATA:\s*(\d+)\s*-/);
+      if (m) chapters.add(padChapter(m[1]));
+    }
+  }
+  return chapters.size;
+}
 
 async function getUserProfile(userId: string) {
   const supabase = await createServerSupabaseClient();
-  
-  const { data: profile, error } = await supabase
-    .from("users")
-    .select("full_name")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error || !profile) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || user.id !== userId) {
     return null;
   }
 
-  return profile;
+  const profile = await fetchSessionUserProfile(supabase);
+  if (!profile) {
+    console.warn(
+      "getUserProfile: no public.users row for auth id (apply database migrations or check on_auth_user_created)",
+      { userId }
+    );
+    return null;
+  }
+
+  return { full_name: profile.full_name };
+}
+
+function mapLogbookRowsForRecentActivity(
+  rows: Array<Record<string, unknown>>
+): Array<{
+  id: string;
+  entry_date: string;
+  description: string;
+  hours_worked: number;
+}> {
+  return rows.map((row) => ({
+    id: String(row.id ?? ""),
+    entry_date: String(row.entry_date ?? ""),
+    description: String(row.description ?? ""),
+    hours_worked: Number(row.hours_worked ?? 0),
+  }));
 }
 
 async function getStudentData(userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  const { userTraining: student } = await getCurrentUserTrainingContext(supabase, userId);
+  const [{ userTraining: activeStudent }, { data: utRows }] = await Promise.all([
+    getCurrentUserTrainingContext(supabase, userId),
+    supabase
+      .from("user_trainings")
+      .select("*")
+      .eq("user_id", userId)
+      .order("start_date", { ascending: false }),
+  ]);
 
-  if (!student) {
-    return null;
+  const { data: logbookData, error: logbookErr } =
+    await queryLogbookEntriesForOwner(supabase, userId);
+  if (logbookErr) {
+    console.error("getStudentData logbook_entries:", logbookErr.message);
   }
+
+  const allLogbookRows: LogbookEntryRow[] = logbookData ?? [];
+
+  const recentLogbookEntries = mapLogbookRowsForRecentActivity(
+    [...allLogbookRows]
+      .sort(
+        (a, b) =>
+          new Date(String(b.entry_date)).getTime() -
+          new Date(String(a.entry_date)).getTime()
+      )
+      .slice(0, 5)
+  );
+
+  const totalHours =
+    allLogbookRows.reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0) ||
+    0;
+
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const thisWeekHours =
+    allLogbookRows
+      .filter((entry) => new Date(String(entry.entry_date)) >= startOfWeek)
+      .reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0) || 0;
+
+  const anchorForLessons = activeStudent ?? utRows?.[0] ?? null;
+
+  if (!anchorForLessons) {
+    const ataTouched = ataChaptersTouchedFromLogbook(allLogbookRows);
+    return {
+      hasActiveCurriculum: false,
+      trainingPlanName: null as string | null,
+      curriculumItems: [],
+      logbookEntries: recentLogbookEntries,
+      progress: {
+        trainingPercent: 0,
+        hoursCompleted: 0,
+        hoursRequired: 0,
+        lessonsCompleted: 0,
+        lessonsTotal: 0,
+      },
+      hours: {
+        total: totalHours,
+        thisWeek: thisWeekHours,
+        target: 5200,
+      },
+      weeks: {
+        current: 1,
+        total: 130,
+      },
+      currentTraining: {
+        topic: "Select a training program to track weekly curriculum",
+        dueDate: undefined as Date | undefined,
+      },
+      ataChapters: {
+        completed: ataTouched,
+        total: 43,
+      },
+    };
+  }
+
+  const student = anchorForLessons;
 
   const {
     itemsWithProgress,
@@ -49,53 +163,6 @@ async function getStudentData(userId: string) {
     hoursRequired,
     trainingProgressPercent,
   } = await getEnrollmentLessonSnapshot(supabase, student.id, student);
-
-  // Get all logbook entries for hours calculations
-  const { data: allLogbookEntries } = await supabase
-    .from("logbook_entries")
-    .select("*")
-    .eq("user_training_id", student.id);
-
-  // Get recent logbook entries (for recent activity)
-  const { data: recentLogbookEntries } = await supabase
-    .from("logbook_entries")
-    .select("*")
-    .eq("user_training_id", student.id)
-    .order("entry_date", { ascending: false })
-    .limit(5);
-
-  // Calculate total hours
-  const totalHours = allLogbookEntries?.reduce(
-    (sum, entry) => sum + Number(entry.hours_worked || 0),
-    0
-  ) || 0;
-
-  // Calculate this week's hours
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay());
-  startOfWeek.setHours(0, 0, 0, 0);
-
-  const thisWeekHours = allLogbookEntries?.filter((entry) => {
-    const entryDate = new Date(entry.entry_date);
-    return entryDate >= startOfWeek;
-  }).reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0) || 0;
-
-  // Calculate current week (weeks since start date)
-  const startDate = new Date(student.start_date);
-  const daysSinceStart = Math.floor(
-    (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const currentWeek = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
-  const totalWeeks = 130; // Program duration
-
-  const currentTrainingItem = itemsWithProgress.find(
-    (item) => item.status !== "completed"
-  );
-
-  // Calculate due date (end of current week)
-  const dueDate = new Date(startDate);
-  dueDate.setDate(startDate.getDate() + currentWeek * 7 - 1);
 
   const uniqueCategories = new Set(
     itemsWithProgress
@@ -109,6 +176,27 @@ async function getStudentData(userId: string) {
       .filter((cat): cat is string => !!cat)
   );
 
+  let ataCompleted = completedCategories.size;
+  let ataTotal = uniqueCategories.size || 43;
+  if (totalItems === 0) {
+    ataCompleted = ataChaptersTouchedFromLogbook(allLogbookRows);
+    ataTotal = 43;
+  }
+
+  const startDate = new Date(student.start_date);
+  const daysSinceStart = Math.floor(
+    (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  const currentWeek = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
+  const totalWeeks = 130;
+
+  const currentTrainingItem = itemsWithProgress.find(
+    (item) => item.status !== "completed"
+  );
+
+  const dueDate = new Date(startDate);
+  dueDate.setDate(startDate.getDate() + currentWeek * 7 - 1);
+
   let trainingPlanName: string | null = null;
   const { data: pathRow } = await supabase
     .from("training_paths")
@@ -118,10 +206,10 @@ async function getStudentData(userId: string) {
   trainingPlanName = pathRow?.name ?? null;
 
   return {
-    student,
+    hasActiveCurriculum: !!activeStudent,
     trainingPlanName,
     curriculumItems: itemsWithProgress,
-    logbookEntries: recentLogbookEntries || [],
+    logbookEntries: recentLogbookEntries,
     progress: {
       trainingPercent: trainingProgressPercent,
       hoursCompleted,
@@ -139,12 +227,14 @@ async function getStudentData(userId: string) {
       total: totalWeeks,
     },
     currentTraining: {
-      topic: currentTrainingItem?.title || "Safety, Ground Operations & Servicing",
+      topic:
+        currentTrainingItem?.title ||
+        "Safety, Ground Operations & Servicing",
       dueDate,
     },
     ataChapters: {
-      completed: completedCategories.size,
-      total: uniqueCategories.size || 43,
+      completed: ataCompleted,
+      total: ataTotal,
     },
   };
 }
@@ -189,33 +279,6 @@ export default async function StudentDashboard() {
     getCertificationAwardsForUser(user.id),
   ]);
 
-  if (!data) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Welcome back, {firstName}
-          </h1>
-          <p className="text-muted-foreground text-base">
-            No active training enrollment. Use{" "}
-            <Link href="/dashboard/student/find-training" className="text-primary underline underline-offset-4">
-              Find Training
-            </Link>{" "}
-            to enroll, or{" "}
-            <Link href="/dashboard/student/credentials" className="text-primary underline underline-offset-4">
-              My Training Programs
-            </Link>{" "}
-            to set your current program.
-          </p>
-        </div>
-        <CredentialsSummaryCard
-          trainingCount={trainings.length}
-          certificationCount={certifications.length}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -224,19 +287,34 @@ export default async function StudentDashboard() {
             Welcome back, {firstName}
           </h1>
           <p className="text-muted-foreground text-base">
-            Keep up the great work on your aviation journey
+            {data.hasActiveCurriculum ? (
+              "Keep up the great work on your aviation journey"
+            ) : (
+              <>
+                Log OJT hours anytime; when enrolled, set a current program in{" "}
+                <Link
+                  href="/dashboard/student/credentials"
+                  className="text-primary underline underline-offset-4"
+                >
+                  My Training Programs
+                </Link>
+                .
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button asChild>
             <Link href="/dashboard/student/logbook?add=true">+ Log Entry</Link>
           </Button>
-          <Button asChild variant="outline">
-            <Link href={`/dashboard/student/training/submit?week=${data.weeks.current}`}>
-              <FileText className="mr-2 h-4 w-4" />
-              Submit Week
-            </Link>
-          </Button>
+          {data.hasActiveCurriculum ? (
+            <Button asChild variant="outline">
+              <Link href={`/dashboard/student/training/submit?week=${data.weeks.current}`}>
+                <FileText className="mr-2 h-4 w-4" />
+                Submit Week
+              </Link>
+            </Button>
+          ) : null}
         </div>
       </div>
 

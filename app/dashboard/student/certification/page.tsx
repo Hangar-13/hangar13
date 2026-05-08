@@ -1,8 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
-import { getProgressDataForStudent } from "@/app/actions/progress";
+import { getProgressDataForUser } from "@/app/actions/progress";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getCertificationAwardsForUser } from "@/app/actions/user-credentials";
 import { getAcsCertificationProgressStats } from "@/app/actions/acs-certification-progress";
@@ -21,25 +20,8 @@ export default async function StudentCertificationPage() {
 
   const ctx = await getCurrentUserTrainingContext(supabase, user.id);
 
-  if (!ctx.userTraining) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">Certification</h1>
-          <p className="text-muted-foreground text-base">
-            No active training selected. Use{" "}
-            <Link href="/dashboard/student/find-training" className="text-primary underline underline-offset-4">
-              Find Training
-            </Link>{" "}
-            to choose a program.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const [progressData, ataChapters, certificationAwards, acsProgressStats] = await Promise.all([
-    getProgressDataForStudent(ctx.userTraining),
+    getProgressDataForUser(user.id),
     getAtaChapters(),
     getCertificationAwardsForUser(user.id),
     getAcsCertificationProgressStats(user.id, ctx.currentCertification),

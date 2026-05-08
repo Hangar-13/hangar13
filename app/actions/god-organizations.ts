@@ -1,10 +1,24 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { getActiveUser } from "@/lib/auth";
 import { hasPlatformAdminAccess } from "@/lib/auth-shared";
+import type { OrganizationRole } from "@/lib/auth-shared";
+import { normalizeOrganizationRole } from "@/lib/auth-shared";
+import { GOD_UI_ORG_ROLES } from "@/lib/god-user-constants";
+import { inviteOrLinkUserToOrganization } from "@/lib/org-invite-member";
+import type { DirectoryInviteSearchHit } from "@/app/actions/org-dashboard";
+
+const ORG_MEMBER_SORT_RANK: Record<string, number> = {
+  lead: 0,
+  supervisor: 1,
+  manager: 2,
+  mentor: 3,
+  student: 4,
+};
 
 function assertPlatformAdmin() {
   return getActiveUser().then((u) => {
@@ -82,7 +96,7 @@ const userRowSchema = z.object({
   firstName: z.string(),
   lastName: z.string(),
   isNew: z.boolean(),
-  lead: z.boolean(),
+  organizationRole: z.enum(GOD_UI_ORG_ROLES),
 });
 
 const createOrgSchema = z.object({
@@ -99,7 +113,7 @@ export async function godCreateOrganizationWithUsers(input: {
     firstName: string;
     lastName: string;
     isNew: boolean;
-    lead: boolean;
+    organizationRole: OrganizationRole;
   }>;
 }): Promise<{ ok: true; organizationId: string } | { ok: false; error: string }> {
   const auth = await assertPlatformAdmin();
@@ -113,9 +127,14 @@ export async function godCreateOrganizationWithUsers(input: {
   }
 
   const { name, users: rows } = parsed.data;
-  const leadCount = rows.filter((r) => r.lead).length;
+  const leadCount = rows.filter(
+    (r) => normalizeOrganizationRole(r.organizationRole) === "lead"
+  ).length;
   if (leadCount !== 1) {
-    return { ok: false, error: "Select exactly one lead user." };
+    return {
+      ok: false,
+      error: "Exactly one user must have the Lead organization role.",
+    };
   }
 
   const emails = rows.map((r) => r.email.trim().toLowerCase());
@@ -181,7 +200,7 @@ export async function godCreateOrganizationWithUsers(input: {
       {
         data: {
           full_name: fullName,
-          role: "student",
+          role: "standard",
         },
       }
     );
@@ -207,12 +226,9 @@ export async function godCreateOrganizationWithUsers(input: {
     userIds.push(invited.user.id);
   }
 
-  const leadIndex = rows.findIndex((r) => r.lead);
-  const leadUserId = userIds[leadIndex]!;
-
   const { data: org, error: orgError } = await supabase
     .from("organizations")
-    .insert({ name, lead_user_id: leadUserId })
+    .insert({ name, lead_user_id: null })
     .select("id")
     .single();
 
@@ -223,7 +239,7 @@ export async function godCreateOrganizationWithUsers(input: {
   const uo = userIds.map((userId, i) => ({
     user_id: userId,
     organization_id: org.id,
-    role: i === leadIndex ? "admin" : "student",
+    role: normalizeOrganizationRole(rows[i]!.organizationRole as string),
   }));
 
   const { error: uoError } = await supabase.from("user_organizations").insert(uo);
@@ -328,23 +344,32 @@ export async function godGetOrganization(
 
   const userIds = (uo || []).map((r) => r.user_id);
   const { data: users } = userIds.length
-    ? await supabase.from("users").select("id, email, full_name").in("id", userIds)
-    : { data: [] as { id: string; email: string | null; full_name: string | null }[] };
+    ? await supabase
+        .from("users")
+        .select("id, email, full_name, visible")
+        .in("id", userIds)
+    : { data: [] as { id: string; email: string | null; full_name: string | null; visible: boolean | null }[] };
 
   const userMap = new Map((users || []).map((u) => [u.id, u] as const));
-  const members = (uo || []).map((row) => {
+  const members = (uo || []).flatMap((row) => {
     const p = userMap.get(row.user_id);
-    return {
-      userId: row.user_id,
-      email: p?.email ?? null,
-      fullName: p?.full_name ?? null,
-      orgRole: row.role,
-    };
+    if (!p || p.visible !== true) {
+      return [];
+    }
+    return [
+      {
+        userId: row.user_id,
+        email: p.email ?? null,
+        fullName: p.full_name ?? null,
+        orgRole: row.role,
+      },
+    ];
   });
 
   members.sort((a, b) => {
-    if (a.userId === org.lead_user_id) return -1;
-    if (b.userId === org.lead_user_id) return 1;
+    const ra = ORG_MEMBER_SORT_RANK[a.orgRole] ?? 99;
+    const rb = ORG_MEMBER_SORT_RANK[b.orgRole] ?? 99;
+    if (ra !== rb) return ra - rb;
     return (a.email || "").localeCompare(b.email || "");
   });
 
@@ -390,9 +415,302 @@ export async function godGetOrganization(
       id: org.id,
       name: org.name,
       leadUserId: org.lead_user_id,
-      memberCount: (uo || []).length,
+      memberCount: members.length,
       members,
       trainingMaterial,
     },
   };
+}
+
+const godOrgRoleSchema = z.enum(GOD_UI_ORG_ROLES);
+
+export async function godUpdateOrganizationMemberRole(
+  organizationId: string,
+  targetUserId: string,
+  newRole: OrganizationRole
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await assertPlatformAdmin();
+  if (!auth.ok) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const parsed = godOrgRoleSchema.safeParse(newRole);
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid organization role." };
+  }
+
+  const roleNorm = normalizeOrganizationRole(parsed.data);
+  const supabase = await createServerSupabaseClient();
+
+  const { data: row } = await supabase
+    .from("user_organizations")
+    .select("user_id, role")
+    .eq("organization_id", organizationId)
+    .eq("user_id", targetUserId)
+    .maybeSingle();
+
+  if (!row) {
+    return { ok: false, error: "Member not found in this organization." };
+  }
+
+  const currentRole = normalizeOrganizationRole(row.role as string);
+
+  if (currentRole === "lead" && roleNorm !== "lead") {
+    return {
+      ok: false,
+      error:
+        "Promote another member to Lead first (that replaces the current lead); then you can change this member’s role.",
+    };
+  }
+
+  if (roleNorm === "lead") {
+    const { error: demoteErr } = await supabase
+      .from("user_organizations")
+      .update({ role: "supervisor" })
+      .eq("organization_id", organizationId)
+      .eq("role", "lead")
+      .neq("user_id", targetUserId);
+    if (demoteErr) {
+      return { ok: false, error: demoteErr.message };
+    }
+  }
+
+  const { error } = await supabase
+    .from("user_organizations")
+    .update({ role: roleNorm })
+    .eq("organization_id", organizationId)
+    .eq("user_id", targetUserId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(`/dashboard/god/organizations/${organizationId}`);
+  revalidatePath("/dashboard/god/organizations");
+  return { ok: true };
+}
+
+export async function godRemoveOrganizationMember(
+  organizationId: string,
+  targetUserId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await assertPlatformAdmin();
+  if (!auth.ok) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const orgIdParse = z.string().uuid().safeParse(organizationId);
+  const userIdParse = z.string().uuid().safeParse(targetUserId);
+  if (!orgIdParse.success || !userIdParse.success) {
+    return { ok: false, error: "Invalid request." };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: row } = await supabase
+    .from("user_organizations")
+    .select("user_id")
+    .eq("organization_id", orgIdParse.data)
+    .eq("user_id", userIdParse.data)
+    .maybeSingle();
+
+  if (!row) {
+    return { ok: false, error: "Member not found in this organization." };
+  }
+
+  const { error } = await supabase
+    .from("user_organizations")
+    .delete()
+    .eq("organization_id", orgIdParse.data)
+    .eq("user_id", userIdParse.data);
+
+  if (error) {
+    const msg = error.message || "";
+    if (
+      msg.includes("organization_must_keep_lead") ||
+      msg.toLowerCase().includes("promote another member")
+    ) {
+      return {
+        ok: false,
+        error:
+          "Promote another member to Lead before removing the current lead, or remove other members first.",
+      };
+    }
+    return { ok: false, error: msg };
+  }
+
+  revalidatePath(`/dashboard/god/organizations/${orgIdParse.data}`);
+  revalidatePath("/dashboard/god/organizations");
+  revalidatePath("/dashboard/organization");
+  return { ok: true };
+}
+
+/** Directory invite (god org page); requires DB migration `069_org_supervisor_directory_invite_search.sql` (e.g. `npx supabase db push`). */
+function parseDirectoryInviteSearchRpc(
+  data: unknown
+): DirectoryInviteSearchHit[] {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+  const users: DirectoryInviteSearchHit[] = [];
+  for (const item of data) {
+    const o = item as Record<string, unknown>;
+    const id = o.id != null ? String(o.id) : "";
+    const email = o.email != null ? String(o.email) : "";
+    if (!id || !email) continue;
+    users.push({
+      id,
+      email,
+      full_name: o.full_name != null ? String(o.full_name) : null,
+    });
+  }
+  return users;
+}
+
+export async function godSearchDirectoryUsersForInvite(
+  organizationId: string,
+  query: string
+): Promise<
+  { ok: true; users: DirectoryInviteSearchHit[] } | { ok: false; error: string }
+> {
+  const auth = await assertPlatformAdmin();
+  if (!auth.ok) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const orgIdParse = z.string().uuid().safeParse(organizationId);
+  if (!orgIdParse.success) {
+    return { ok: false, error: "Invalid organization." };
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc("org_supervisor_search_directory_users", {
+    p_organization_id: orgIdParse.data,
+    p_query: query.trim(),
+    p_limit: 15,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, users: parseDirectoryInviteSearchRpc(data) };
+}
+
+export async function godDirectoryEmailAvailableForInvite(
+  organizationId: string,
+  email: string
+): Promise<{ ok: true; available: boolean } | { ok: false; error: string }> {
+  const auth = await assertPlatformAdmin();
+  if (!auth.ok) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  const orgIdParse = z.string().uuid().safeParse(organizationId);
+  if (!orgIdParse.success) {
+    return { ok: false, error: "Invalid organization." };
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase.rpc("org_supervisor_directory_email_available", {
+    p_organization_id: orgIdParse.data,
+    p_email: email.trim(),
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, available: Boolean(data) };
+}
+
+const godInviteRowSchema = z.object({
+  email: z.string().min(1).email(),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  role: godOrgRoleSchema,
+  linkedUserId: z.string().uuid().optional().nullable(),
+});
+
+export async function godInviteMembersToOrganization(
+  organizationId: string,
+  users: Array<{
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: OrganizationRole;
+    linkedUserId?: string | null;
+  }>
+): Promise<
+  { ok: true } | { ok: false; error: string; failedRow?: number }
+> {
+  const auth = await assertPlatformAdmin();
+  if (!auth.ok) {
+    return { ok: false, error: "Forbidden" };
+  }
+
+  if (!users.length) {
+    return { ok: false, error: "Add at least one user." };
+  }
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("id")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (!org) {
+    return { ok: false, error: "Organization not found." };
+  }
+
+  for (let i = 0; i < users.length; i++) {
+    const parsed = godInviteRowSchema.safeParse(users[i]);
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: parsed.error.issues[0]?.message ?? "Invalid input",
+        failedRow: i + 1,
+      };
+    }
+
+    if (!parsed.data.linkedUserId) {
+      const { data: rid, error: rerr } = await supabase.rpc(
+        "org_supervisor_invite_resolve_user_id",
+        {
+          p_organization_id: organizationId,
+          p_email: parsed.data.email.trim(),
+        }
+      );
+      if (rerr) {
+        return { ok: false, error: rerr.message, failedRow: i + 1 };
+      }
+      if (rid) {
+        return {
+          ok: false,
+          error:
+            "That email already has an account. Choose the person from suggestions, or use a different email.",
+          failedRow: i + 1,
+        };
+      }
+    }
+
+    const res = await inviteOrLinkUserToOrganization({
+      supabase,
+      organizationId,
+      email: parsed.data.email,
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+      role: normalizeOrganizationRole(parsed.data.role),
+      existingUserId: parsed.data.linkedUserId ?? undefined,
+    });
+    if (!res.ok) {
+      return { ok: false, error: res.error, failedRow: i + 1 };
+    }
+  }
+
+  revalidatePath(`/dashboard/god/organizations/${organizationId}`);
+  revalidatePath("/dashboard/god/organizations");
+  return { ok: true };
 }

@@ -1,30 +1,24 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { LogbookSummaryCards } from "@/components/student/logbook-summary-cards";
-import { LogbookTable } from "@/components/student/logbook-table";
+import { LogbookTable, type LogbookEntry } from "@/components/student/logbook-table";
 import { AddEntryModal } from "@/components/student/add-entry-modal";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getAcsCodesByEntry } from "@/app/actions/logbook";
-import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
-import Link from "next/link";
+import { queryLogbookEntriesForOwner, type LogbookEntryRow } from "@/lib/logbook-entries-query";
 
-async function getLogbookEntries(userId: string) {
+async function getLogbookEntries(userId: string): Promise<LogbookEntryRow[]> {
   const supabase = await createServerSupabaseClient();
 
-  const { userTraining: student } = await getCurrentUserTrainingContext(supabase, userId);
-
-  if (!student) {
-    return null;
+  const { data: logbookEntries, error } = await queryLogbookEntriesForOwner(
+    supabase,
+    userId
+  );
+  if (error) {
+    console.error("getLogbookEntries:", error.message);
   }
 
-  // Logbook entries (optional ACS / metadata on entry)
-  const { data: logbookEntries, error: logbookError } = await supabase
-    .from("logbook_entries")
-    .select("*")
-    .eq("user_training_id", student.id)
-    .order("entry_date", { ascending: false });
-
-  return logbookEntries || [];
+  return logbookEntries ?? [];
 }
 
 interface PageProps {
@@ -50,32 +44,15 @@ export default async function LogbookPage({ searchParams }: PageProps) {
     getAtaChapters(),
   ]);
 
-  const acsCodesByEntry = entries
-    ? await getAcsCodesByEntry(entries.map((e) => e.id))
-    : {};
+  const entriesForTable = entries as LogbookEntry[];
 
-  if (entries === null) {
-    return (
-      <div className="space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">OJT Logbook</h1>
-          <p className="text-muted-foreground text-base">
-            No active training selected. Use{" "}
-            <Link href="/dashboard/student/find-training" className="text-primary underline underline-offset-4">
-              Find Training
-            </Link>{" "}
-            to choose a program.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const acsCodesByEntry = await getAcsCodesByEntry(entriesForTable.map((e) => e.id));
 
   // Calculate summary statistics
-  const totalHours = entries.reduce((sum, entry) => sum + (parseFloat(entry.hours_worked?.toString() || "0") || 0), 0);
-  const pendingCount = entries.filter((e) => e.status === "submitted").length;
-  const signedCount = entries.filter((e) => e.status === "approved").length;
-  const totalEntries = entries.length;
+  const totalHours = entriesForTable.reduce((sum, entry) => sum + (parseFloat(entry.hours_worked?.toString() || "0") || 0), 0);
+  const pendingCount = entriesForTable.filter((e) => e.status === "submitted").length;
+  const signedCount = entriesForTable.filter((e) => e.status === "approved").length;
+  const totalEntries = entriesForTable.length;
 
   // Entries already have skills_practiced which we're using for ATA chapter
 
@@ -108,7 +85,7 @@ export default async function LogbookPage({ searchParams }: PageProps) {
 
       {/* Table */}
       <LogbookTable
-        entries={entries}
+        entries={entriesForTable}
         runningTotal={totalHours}
         ataChapters={ataChapters.map((c) => ({
           value: c.chapter_number,
