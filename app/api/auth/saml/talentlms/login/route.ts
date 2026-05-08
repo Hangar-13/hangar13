@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import { getTalentLmsSamlEnvironment } from "@/lib/talentlms/saml-config";
+import { parseSamlRedirectBindingQuery } from "@/lib/talentlms/saml-redirect-query";
 import {
   executeTalentlmsSamlExchange,
   resolveTalentLmsUsername,
@@ -14,7 +15,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const samlReq = request.nextUrl.searchParams.get("SAMLRequest");
+  const query = parseSamlRedirectBindingQuery(request.nextUrl.search);
+  const samlReq = query.SAMLRequest;
   if (!samlReq) {
     return NextResponse.json(
       {
@@ -25,13 +27,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const forwardQueryParams: Record<string, string> = {};
-  request.nextUrl.searchParams.forEach((value, key) => {
-    forwardQueryParams[key] = value;
-  });
+  const forwardQueryParams = query;
 
-  const relayStateRaw = request.nextUrl.searchParams.get("RelayState");
-  const relayState = relayStateRaw === null ? undefined : relayStateRaw;
+  const relayStateRaw = query.RelayState;
+  const relayState = relayStateRaw === undefined ? undefined : relayStateRaw;
 
   try {
     const env = getTalentLmsSamlEnvironment();
