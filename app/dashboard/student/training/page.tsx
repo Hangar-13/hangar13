@@ -19,10 +19,6 @@ import {
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/student/collapsible-section";
 import { LessonMarkdownBody } from "@/components/student/lesson-markdown-body";
-import {
-  TalentLmsLessonEmbedProvider,
-  TalentLmsStartLessonButton,
-} from "@/components/student/talent-lms-lesson-embed";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { redirectIfNoUserTrainings } from "@/lib/student-user-trainings-guard";
 import {
@@ -30,7 +26,6 @@ import {
   resolveLessonIdForProgramWeek,
 } from "@/lib/training-lessons";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
-import { extractFirstTalentLmsUrlFromMarkdown } from "@/lib/talentlms/lesson-url";
 import { formatUiDate } from "@/lib/format-ui-date";
 
 async function getStudentTrainingData(userId: string, week?: number) {
@@ -215,17 +210,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const learningObjectives = w.learning_objectives || [];
   const mentorQuestions = w.mentor_discussion_questions || [];
 
-  const talentLessonUrl = extractFirstTalentLmsUrlFromMarkdown(
-    [w.study_materials, w.practical_application, w.weekly_deliverable]
-      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
-      .join("\n\n")
-  );
-
-  const tlSubRaw = process.env.TALENTLMS_SUBDOMAIN?.trim() ?? "";
-  const tlSubdomain = tlSubRaw.replace(/\.talentlms\.com$/i, "").trim();
-  const talentPortalOrigin =
-    tlSubdomain.length > 0 ? `https://${tlSubdomain}.talentlms.com` : null;
-
   const pageTitle = data.trainingPlanName ?? "Training";
 
   return (
@@ -288,27 +272,22 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         </CardContent>
       </Card>
 
-      <TalentLmsLessonEmbedProvider talentPortalOrigin={talentPortalOrigin}>
-      {/* TalentLMS: plain clicks go straight to Talent (same tab); ⌘/Ctrl-click markdown links opens new tab. */}
       {/* Current Chapter Card */}
       <Card className="bg-primary/50 text-primary-foreground border-primary">
         <CardContent className="p-3">
           <div className="flex items-start gap-4">
-            <BookOpen className="h-6 w-6 mt-1 shrink-0" />
-            <div className="min-w-0 flex flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 space-y-2">
-                <p className="text-sm text-primary-foreground/80">
-                  {ataChapterLine}
-                </p>
-                <h2 className="text-2xl font-bold">
-                  {w.title ?? "Training Content"}
-                </h2>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 shrink-0" />
-                  <span>Due: {formatUiDate(data.dueDate)}</span>
-                </div>
+            <BookOpen className="h-6 w-6 mt-1" />
+            <div className="flex-1 space-y-2">
+              <p className="text-sm text-primary-foreground/80">
+                {ataChapterLine}
+              </p>
+              <h2 className="text-2xl font-bold">
+                {w.title ?? "Training Content"}
+              </h2>
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4" />
+                <span>Due: {formatUiDate(data.dueDate)}</span>
               </div>
-              <TalentLmsStartLessonButton href={talentLessonUrl} />
             </div>
           </div>
         </CardContent>
@@ -459,7 +438,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           )}
         </CollapsibleSection>
       </div>
-      </TalentLmsLessonEmbedProvider>
     </div>
   );
 }
