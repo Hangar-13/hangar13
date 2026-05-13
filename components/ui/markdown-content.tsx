@@ -31,7 +31,7 @@ const tableWrap = "my-2 overflow-x-auto rounded-md border border-border";
 type Props = {
   markdown: string;
   className?: string;
-  /** Client-side handler: TalentLMS links open in Hangar viewer instead of a new tab when set. */
+  /** Plain-click Talent LMS links navigate same-tab via Hangar (modifier-click keeps normal link behavior). */
   onTalentLmsHttpsClickAction?: (href: string) => void;
 };
 

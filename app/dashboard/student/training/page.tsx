@@ -284,7 +284,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
       </Card>
 
       <TalentLmsLessonEmbedProvider>
-      {/* TalentLMS: week markdown links + embedded lesson viewer */}
+      {/* TalentLMS: plain clicks go straight to Talent (same tab); ⌘/Ctrl-click markdown links opens new tab. */}
       {/* Current Chapter Card */}
       <Card className="bg-primary/50 text-primary-foreground border-primary">
         <CardContent className="p-3">
