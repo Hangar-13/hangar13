@@ -9,6 +9,7 @@ import {
 import { PlayCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { talentLmsSpInitiatedSsoLaunchUrl } from "@/lib/talentlms/sso-launch-url";
 import { cn } from "@/lib/utils";
 
 type OpenFn = (href: string) => void;
@@ -22,12 +23,12 @@ export function useTalentLmsEmbedOpener(): OpenFn | null {
 function navigateToTalentLesson(href: string): void {
   const u = href.trim();
   if (!u) return;
-  window.location.assign(u);
+  window.location.assign(talentLmsSpInitiatedSsoLaunchUrl(u));
 }
 
 /**
- * Sends learners to Talent on Talent’s origin (same tab). Embedding Talent in Hangar fails in
- * practice (cookies / CSP / SPA); iframe was removed for direct navigation instead.
+ * Sends learners through Talent SP-initiated SAML (`/index/ssologin/service:saml`), then optionally
+ * back to the lesson URL via `redirect`. Raw lesson links skip SSO and show Talent password login.
  */
 export function TalentLmsLessonEmbedProvider({ children }: { children: ReactNode }) {
   const open = useCallback((href: string) => {
