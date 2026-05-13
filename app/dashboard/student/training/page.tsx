@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/student/collapsible-section";
 import { LessonMarkdownBody } from "@/components/student/lesson-markdown-body";
+import { TalentLmsWebviewProvider } from "@/components/student/talent-lms-webview";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { redirectIfNoUserTrainings } from "@/lib/student-user-trainings-guard";
 import {
@@ -210,6 +211,11 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const learningObjectives = w.learning_objectives || [];
   const mentorQuestions = w.mentor_discussion_questions || [];
 
+  const tlSubRaw = process.env.TALENTLMS_SUBDOMAIN?.trim() ?? "";
+  const tlSubdomain = tlSubRaw.replace(/\.talentlms\.com$/i, "").trim();
+  const talentPortalOrigin =
+    tlSubdomain.length > 0 ? `https://${tlSubdomain}.talentlms.com` : null;
+
   const pageTitle = data.trainingPlanName ?? "Training";
 
   return (
@@ -293,7 +299,8 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         </CardContent>
       </Card>
 
-      {/* Content Sections */}
+      {/* Content Sections — Talent LMS markdown links may open in embedded webview */}
+      <TalentLmsWebviewProvider>
       <div className="space-y-4">
         <CollapsibleSection
           title="Learning Objectives"
@@ -319,7 +326,11 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           icon={<BookOpen className="h-5 w-5" />}
           defaultOpen={true}
         >
-          <LessonMarkdownBody markdown={w.study_materials ?? ""} />
+          <LessonMarkdownBody
+            markdown={w.study_materials ?? ""}
+            talentPortalOrigin={talentPortalOrigin}
+            talentEmbedWebview={true}
+          />
         </CollapsibleSection>
 
         <CollapsibleSection
@@ -327,7 +338,11 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           icon={<Clock className="h-5 w-5" />}
           defaultOpen={true}
         >
-          <LessonMarkdownBody markdown={w.practical_application ?? ""} />
+          <LessonMarkdownBody
+            markdown={w.practical_application ?? ""}
+            talentPortalOrigin={talentPortalOrigin}
+            talentEmbedWebview={true}
+          />
         </CollapsibleSection>
 
         <CollapsibleSection
@@ -354,7 +369,11 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           defaultOpen={true}
         >
           <div className="mb-4">
-            <LessonMarkdownBody markdown={w.weekly_deliverable ?? ""} />
+            <LessonMarkdownBody
+              markdown={w.weekly_deliverable ?? ""}
+              talentPortalOrigin={talentPortalOrigin}
+              talentEmbedWebview={true}
+            />
           </div>
         </CollapsibleSection>
 
@@ -438,6 +457,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           )}
         </CollapsibleSection>
       </div>
+      </TalentLmsWebviewProvider>
     </div>
   );
 }

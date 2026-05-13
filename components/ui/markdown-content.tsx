@@ -3,6 +3,9 @@
 import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+import { isTalentLmsHttpsUrl } from "@/lib/talentlms/lesson-url";
+import { talentLmsSpInitiatedSsoLaunchUrl } from "@/lib/talentlms/sso-launch-url";
 import { cn } from "@/lib/utils";
 
 const bodyClass = cn(
@@ -29,30 +32,89 @@ const tableWrap = "my-2 overflow-x-auto rounded-md border border-border";
 type Props = {
   markdown: string;
   className?: string;
+  /**
+   * When provided (including `null`), `*.talentlms.com` links are rewritten to Talent’s SP-initiated
+   * SAML bookmark URL first (`/index/ssologin/service:saml`) so learners skip “Login with SAML 2.0”.
+   * Omit entirely for previews / non-training contexts (links stay as authored).
+   */
+  talentPortalOrigin?: string | null;
+  /** Plain-click opens SSO launch URL inside Hangar webview dialog instead of a new tab. */
+  talentOpenInWebview?: boolean;
+  onTalentWebviewOpenAction?: (ssoLaunchUrl: string) => void;
 };
 
 /**
  * Renders GitHub-flavored markdown (headings, lists, links, code, tables).
  * Does not use raw HTML (react-markdown default is safe; no rehype-raw).
  */
-export function MarkdownContent({ markdown, className }: Props) {
+export function MarkdownContent({
+  markdown,
+  className,
+  talentPortalOrigin,
+  talentOpenInWebview,
+  onTalentWebviewOpenAction,
+}: Props) {
   return (
     <div className={cn(bodyClass, className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              className="text-primary underline underline-offset-2"
-              target={href?.startsWith("http") ? "_blank" : undefined}
-              rel={
-                href?.startsWith("http") ? "noopener noreferrer" : undefined
-              }
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children }) => {
+            const raw = typeof href === "string" ? href : "";
+            const isHttp = raw.startsWith("http");
+            const appliesTalentRewrite =
+              typeof talentPortalOrigin !== "undefined" &&
+              isHttp &&
+              isTalentLmsHttpsUrl(raw);
+            const resolvedHref = appliesTalentRewrite
+              ? talentLmsSpInitiatedSsoLaunchUrl(raw, {
+                  portalOrigin: talentPortalOrigin ?? null,
+                })
+              : raw;
+
+            const openInPanel =
+              Boolean(
+                talentOpenInWebview &&
+                  onTalentWebviewOpenAction &&
+                  appliesTalentRewrite
+              );
+
+            return (
+              <a
+                href={resolvedHref || undefined}
+                className={cn(
+                  "text-primary underline underline-offset-2",
+                  openInPanel && "cursor-pointer"
+                )}
+                target={
+                  openInPanel ? undefined : isHttp ? "_blank" : undefined
+                }
+                rel={
+                  openInPanel ? undefined : isHttp ? "noopener noreferrer" : undefined
+                }
+                onClick={
+                  openInPanel && onTalentWebviewOpenAction
+                    ? (event) => {
+                        if (
+                          event.defaultPrevented ||
+                          event.button !== 0 ||
+                          event.metaKey ||
+                          event.ctrlKey ||
+                          event.shiftKey ||
+                          event.altKey
+                        ) {
+                          return;
+                        }
+                        event.preventDefault();
+                        onTalentWebviewOpenAction(resolvedHref);
+                      }
+                    : undefined
+                }
+              >
+                {children}
+              </a>
+            );
+          },
           table: ({ children }) => (
             <div className={tableWrap}>
               <table className="w-full border-collapse text-left text-sm">
