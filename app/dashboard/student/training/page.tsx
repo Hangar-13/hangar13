@@ -221,6 +221,11 @@ export default async function TrainingPage({ searchParams }: PageProps) {
       .join("\n\n")
   );
 
+  const tlSubRaw = process.env.TALENTLMS_SUBDOMAIN?.trim() ?? "";
+  const tlSubdomain = tlSubRaw.replace(/\.talentlms\.com$/i, "").trim();
+  const talentPortalOrigin =
+    tlSubdomain.length > 0 ? `https://${tlSubdomain}.talentlms.com` : null;
+
   const pageTitle = data.trainingPlanName ?? "Training";
 
   return (
@@ -283,7 +288,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         </CardContent>
       </Card>
 
-      <TalentLmsLessonEmbedProvider>
+      <TalentLmsLessonEmbedProvider talentPortalOrigin={talentPortalOrigin}>
       {/* TalentLMS: plain clicks go straight to Talent (same tab); ⌘/Ctrl-click markdown links opens new tab. */}
       {/* Current Chapter Card */}
       <Card className="bg-primary/50 text-primary-foreground border-primary">

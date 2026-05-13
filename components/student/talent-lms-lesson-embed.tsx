@@ -2,8 +2,8 @@
 
 import {
   createContext,
-  useCallback,
   useContext,
+  useMemo,
   type ReactNode,
 } from "react";
 import { PlayCircle } from "lucide-react";
@@ -14,29 +14,43 @@ import { cn } from "@/lib/utils";
 
 type OpenFn = (href: string) => void;
 
-const TalentLmsEmbedOpenerCtx = createContext<OpenFn | null>(null);
+type TalentLmsLaunchContextValue = Readonly<{
+  openTalentLesson: OpenFn;
+}>;
+
+const TalentLmsLaunchCtx = createContext<TalentLmsLaunchContextValue | null>(null);
 
 export function useTalentLmsEmbedOpener(): OpenFn | null {
-  return useContext(TalentLmsEmbedOpenerCtx);
-}
-
-function navigateToTalentLesson(href: string): void {
-  const u = href.trim();
-  if (!u) return;
-  window.location.assign(talentLmsSpInitiatedSsoLaunchUrl(u));
+  return useContext(TalentLmsLaunchCtx)?.openTalentLesson ?? null;
 }
 
 /**
- * Sends learners through Talent SP-initiated SAML (`/index/ssologin/service:saml`), then optionally
- * back to the lesson URL via `redirect`. Raw lesson links skip SSO and show Talent password login.
+ * Sends learners through Talent SP-initiated SAML (`/index/ssologin/service:saml`) on the tenant
+ * host from `talentPortalOrigin` when markdown URLs point at www / wrong host.
  */
-export function TalentLmsLessonEmbedProvider({ children }: { children: ReactNode }) {
-  const open = useCallback((href: string) => {
-    navigateToTalentLesson(href);
-  }, []);
+export function TalentLmsLessonEmbedProvider({
+  children,
+  talentPortalOrigin = null,
+}: {
+  children: ReactNode;
+  /** From server env `TALENTLMS_SUBDOMAIN`, e.g. `https://myorg.talentlms.com` */
+  talentPortalOrigin?: string | null;
+}) {
+  const value = useMemo<TalentLmsLaunchContextValue>(
+    () => ({
+      openTalentLesson: (href: string) => {
+        const u = href.trim();
+        if (!u) return;
+        window.location.assign(
+          talentLmsSpInitiatedSsoLaunchUrl(u, { portalOrigin: talentPortalOrigin })
+        );
+      },
+    }),
+    [talentPortalOrigin]
+  );
 
   return (
-    <TalentLmsEmbedOpenerCtx.Provider value={open}>{children}</TalentLmsEmbedOpenerCtx.Provider>
+    <TalentLmsLaunchCtx.Provider value={value}>{children}</TalentLmsLaunchCtx.Provider>
   );
 }
 
@@ -50,7 +64,8 @@ export function TalentLmsStartLessonButton({
   className?: string;
 }) {
   const trimmed = href?.trim();
-  if (!trimmed) {
+  const ctx = useContext(TalentLmsLaunchCtx);
+  if (!trimmed || !ctx?.openTalentLesson) {
     return null;
   }
 
@@ -62,7 +77,7 @@ export function TalentLmsStartLessonButton({
         "shrink-0 gap-2 border border-primary/20 bg-background/80 text-primary hover:bg-background",
         className
       )}
-      onClick={() => navigateToTalentLesson(trimmed)}
+      onClick={() => ctx.openTalentLesson(trimmed)}
     >
       <PlayCircle className="mr-2 h-5 w-5" />
       Start lesson
