@@ -6,6 +6,10 @@ import {
   userMaySelfEnrollFromVisibility,
 } from "@/lib/discoverable-training-paths";
 import { revalidatePath } from "next/cache";
+import {
+  ensureTalentLmsUserAndEnrollInCourse,
+  getTalentLmsApiEnrollmentConfig,
+} from "@/lib/talentlms/api-enroll";
 
 export async function purchaseTrainingPlan(
   trainingPathId: string
@@ -23,7 +27,9 @@ export async function purchaseTrainingPlan(
     await Promise.all([
       supabase
         .from("training_paths")
-        .select("id, organization_id, is_active, visibility, monetization")
+        .select(
+          "id, organization_id, is_active, visibility, monetization, talent_lms_course_id"
+        )
         .eq("id", trainingPathId)
         .maybeSingle(),
       supabase.from("users").select("role").eq("id", user.id).maybeSingle(),
@@ -103,11 +109,41 @@ export async function purchaseTrainingPlan(
 
   const { error: userErr } = await supabase
     .from("users")
-    .update({ current_curriculum_id: inserted.id })
+    .update({ current_user_training_id: inserted.id })
     .eq("id", user.id);
 
   if (userErr) {
     return { error: userErr.message };
+  }
+
+  const tlCourseRaw = path.talent_lms_course_id as string | null | undefined;
+  const tlCourse = tlCourseRaw?.trim();
+  if (tlCourse) {
+    const apiConfig = getTalentLmsApiEnrollmentConfig();
+    if (apiConfig) {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("email, full_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      const enrollEmail =
+        `${profile?.email || user.email || ""}`.trim().toLowerCase();
+      if (enrollEmail) {
+        const tl = await ensureTalentLmsUserAndEnrollInCourse({
+          config: apiConfig,
+          userEmail: enrollEmail,
+          fullName: profile?.full_name,
+          courseId: tlCourse,
+        });
+        if (!tl.ok) {
+          console.error(
+            "[TalentLMS] enroll user on Hangar signup failed:",
+            tl.status,
+            tl.message
+          );
+        }
+      }
+    }
   }
 
   revalidatePath("/dashboard/student/find-training");

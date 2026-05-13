@@ -12,6 +12,12 @@ import {
 } from "@/lib/training-progress";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { queryLogbookEntriesForOwner } from "@/lib/logbook-entries-query";
+import { fetchLessonsForTrainingPath } from "@/lib/training-lessons";
+import {
+  computeProgramLessonWeek,
+  DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS,
+  expectedLogbookHoursForLessonWeek,
+} from "@/lib/training-program-week";
 
 export type ProgressData = {
   student: { id: string; user_id: string; start_date: string; [key: string]: unknown };
@@ -24,7 +30,8 @@ export type ProgressData = {
   totalWeeks: number;
   expectedHours: number;
   hoursDifference: number;
-  approvedCount: number;
+  /** Approved lesson (weekly) submissions for the current enrollment (`lesson_submissions.status = approved`). */
+  approvedWeeklySubmissionsCount: number;
   ataChapterHours: Record<string, number>;
   ataChapterData: Record<string, { hours: number; status: string }>;
   chaptersWithHours: number;
@@ -65,6 +72,23 @@ const EMPTY_LESSON_SNAPSHOT: LessonSnapshot = {
   trainingProgressPercent: 0,
 };
 
+async function countApprovedLessonSubmissionsForEnrollment(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  userTrainingId: string
+): Promise<number> {
+  if (!userTrainingId) return 0;
+  const { count, error } = await supabase
+    .from("lesson_submissions")
+    .select("*", { count: "exact", head: true })
+    .eq("user_training_id", userTrainingId)
+    .eq("status", "approved");
+  if (error) {
+    console.error("buildProgressData lesson_submissions approved count:", error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
 async function buildProgressData(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   studentRecord: ProgressData["student"],
@@ -85,17 +109,29 @@ async function buildProgressData(
   const totalHours =
     logbookEntries.reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0) || 0;
 
-  const startDate = new Date(studentRecord.start_date);
-  const now = new Date();
-  const daysSinceStart = Math.floor(
-    (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  const lessonsOrdered = studentRecord.training_path_id
+    ? await fetchLessonsForTrainingPath(
+        supabase,
+        studentRecord.training_path_id as string
+      )
+    : [];
+  const lessonCount = lessonsOrdered.length;
+  const { currentWeek, totalWeeks } = computeProgramLessonWeek({
+    startDateIso: studentRecord.start_date,
+    lessonCount,
+  });
+
+  const expectedHours = expectedLogbookHoursForLessonWeek(
+    currentWeek,
+    totalWeeks,
+    DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS
   );
-  const currentWeek = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
-  const totalWeeks = 130;
-  const expectedHours = currentWeek * 40;
   const hoursDifference = totalHours - expectedHours;
-  const approvedCount =
-    logbookEntries.filter((entry) => entry.status === "approved").length || 0;
+
+  const approvedWeeklySubmissionsCount = await countApprovedLessonSubmissionsForEnrollment(
+    supabase,
+    studentRecord.id
+  );
 
   /** Normalize chapter to 2 digits for consistent keys */
   const padChapter = (ch: string) => (ch.length === 1 && /^\d$/.test(ch) ? "0" + ch : ch);
@@ -153,7 +189,7 @@ async function buildProgressData(
     totalWeeks,
     expectedHours,
     hoursDifference,
-    approvedCount,
+    approvedWeeklySubmissionsCount,
     ataChapterHours,
     ataChapterData,
     chaptersWithHours,

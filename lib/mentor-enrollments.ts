@@ -155,11 +155,11 @@ export async function fetchCurrentCurriculumIdsForUsers(
   if (userIds.length === 0) return new Map();
   const { data } = await supabase
     .from("users")
-    .select("id, current_curriculum_id")
+    .select("id, current_user_training_id")
     .in("id", userIds);
   const m = new Map<string, string | null>();
   for (const r of data ?? []) {
-    m.set(r.id as string, (r as { current_curriculum_id: string | null }).current_curriculum_id);
+    m.set(r.id as string, (r as { current_user_training_id: string | null }).current_user_training_id);
   }
   return m;
 }

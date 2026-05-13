@@ -129,6 +129,7 @@ export default async function ManagerTrainingPathDetailPage({ params }: PageProp
         name: path.name,
         description: path.description,
         visibility: normalizeCatalogVisibility(path.visibility, "public"),
+        talentLmsCourseId: path.talent_lms_course_id ?? null,
       }}
       mapItems={mapItems}
       catalog={catalog}

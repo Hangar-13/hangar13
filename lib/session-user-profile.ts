@@ -8,7 +8,7 @@ export type SessionUserProfileRow = {
   role: string | null;
   visible: boolean | null;
   last_active_organization_id: string | null;
-  current_curriculum_id: string | null;
+  current_user_training_id: string | null;
   current_certification: string | null;
 };
 

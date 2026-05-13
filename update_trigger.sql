@@ -30,7 +30,7 @@ BEGIN
     END IF;
 
     IF v_training_id IS NOT NULL THEN
-        UPDATE public.users SET current_curriculum_id = v_training_id WHERE id = NEW.id;
+        UPDATE public.users SET current_user_training_id = v_training_id WHERE id = NEW.id;
     END IF;
 
     RETURN NEW;

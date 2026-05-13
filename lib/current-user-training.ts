@@ -28,7 +28,7 @@ export type CurrentUserTrainingContext = {
 };
 
 /**
- * Resolves the trainee's active training from users.current_curriculum_id.
+ * Resolves the trainee's active training from users.current_user_training_id.
  * Training-centric flows (weekly content, progress for one enrollment) should use this.
  */
 export async function getCurrentUserTrainingContext(
@@ -40,7 +40,7 @@ export async function getCurrentUserTrainingContext(
   } = await supabase.auth.getUser();
 
   let userRow: {
-    current_curriculum_id: string | null;
+    current_user_training_id: string | null;
     current_certification: string | null;
   } | null = null;
 
@@ -48,19 +48,19 @@ export async function getCurrentUserTrainingContext(
     const p = await fetchSessionUserProfile(supabase);
     if (p) {
       userRow = {
-        current_curriculum_id: p.current_curriculum_id,
+        current_user_training_id: p.current_user_training_id,
         current_certification: p.current_certification,
       };
     }
   } else {
     const { data, error } = await supabase
       .from("users")
-      .select("current_curriculum_id, current_certification")
+      .select("current_user_training_id, current_certification")
       .eq("id", userId)
       .maybeSingle();
     if (!error && data) {
       userRow = {
-        current_curriculum_id: data.current_curriculum_id as string | null,
+        current_user_training_id: data.current_user_training_id as string | null,
         current_certification: data.current_certification as string | null,
       };
     }
@@ -72,14 +72,14 @@ export async function getCurrentUserTrainingContext(
 
   const cert = (userRow.current_certification as Certification | null) ?? null;
 
-  if (!userRow.current_curriculum_id) {
+  if (!userRow.current_user_training_id) {
     return { userTraining: null, currentCertification: cert };
   }
 
   const { data: ut, error: utErr } = await supabase
     .from("user_trainings")
     .select("*")
-    .eq("id", userRow.current_curriculum_id)
+    .eq("id", userRow.current_user_training_id)
     .eq("user_id", userId)
     .maybeSingle();
 

@@ -25,6 +25,9 @@ export interface LogbookEntry {
   category?: string | null;
   skills_practiced?: string[] | null;
   reject_reason?: string | null;
+  log_page_number?: number | null;
+  aircraft?: string | null;
+  additional_information?: unknown;
 }
 
 interface LogbookTableProps {

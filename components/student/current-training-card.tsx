@@ -23,7 +23,13 @@ export function CurrentTrainingCard({
         <div className="space-y-4">
           <div>
             <p className="text-primary-foreground/80 text-sm mb-1">
-              Week {currentWeek} of {totalWeeks}
+              {totalWeeks > 0 ? (
+                <>
+                  Week {currentWeek} of {totalWeeks}
+                </>
+              ) : (
+                <>No lessons in this program yet</>
+              )}
             </p>
             <h3 className="text-2xl font-bold mb-2">{topic}</h3>
             {dueDate && (

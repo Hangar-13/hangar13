@@ -27,7 +27,7 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
     totalWeeks,
     expectedHours,
     hoursDifference,
-    approvedCount,
+    approvedWeeklySubmissionsCount,
     ataChapterHours,
     chaptersWithHours,
     logbookEntries,
@@ -70,7 +70,10 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
   }, [logbookEntries, selectedChapter]);
 
   const targetHours = 5200;
-  const percentageComplete = Math.round((currentWeek / totalWeeks) * 100);
+  const percentageComplete =
+    totalWeeks > 0
+      ? Math.round((currentWeek / totalWeeks) * 100)
+      : Math.round(trainingProgressPercent);
   const totalATAChapters = ataChapters.length;
   const ataChaptersMap = Object.fromEntries(
     ataChapters.map((c) => [c.chapter_number, `${c.chapter_number} - ${c.title}`])
@@ -84,7 +87,13 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
             <div>
               <h2 className="text-2xl font-bold text-white">Overall Program Progress</h2>
               <p className="text-white/80 mt-1">
-                Week {currentWeek} of {totalWeeks}
+                {totalWeeks > 0 ? (
+                  <>
+                    Week {currentWeek} of {totalWeeks}
+                  </>
+                ) : (
+                  <>No lessons in this program yet</>
+                )}
               </p>
             </div>
             <div className="text-3xl font-bold text-white">{percentageComplete}% Complete</div>
@@ -99,7 +108,7 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-muted-foreground" />
-                <span className="text-sm font-medium text-muted-foreground">Training (curriculum)</span>
+                <span className="text-sm font-medium text-muted-foreground">Training Path</span>
               </div>
             </div>
             <div className="text-2xl font-bold">
@@ -165,8 +174,8 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
                 <span className="text-sm font-medium text-muted-foreground">Weeks Approved</span>
               </div>
             </div>
-            <div className="text-2xl font-bold">{approvedCount}</div>
-            <div className="text-xs text-muted-foreground mt-1">submissions</div>
+            <div className="text-2xl font-bold">{approvedWeeklySubmissionsCount}</div>
+            <div className="text-xs text-muted-foreground mt-1">weekly submissions signed off</div>
           </CardContent>
         </Card>
       </div>
@@ -231,20 +240,20 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
               <p className="text-sm text-muted-foreground">No logs for this chapter yet.</p>
             ) : selectedChapter && logsForChapter.length > 0 ? (
               <div className="space-y-4">
-                <div className="overflow-x-auto rounded-lg border border-border bg-white">
+                <div className="overflow-x-auto rounded-lg border border-border bg-card">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left py-1.5 px-3 text-sm font-semibold w-24 border-r border-border/60">
+                        <th className="text-left py-1.5 px-3 text-sm font-semibold w-24 border-r border-border/60 text-foreground">
                           Date
                         </th>
-                        <th className="text-left py-1.5 px-3 text-sm font-semibold border-r border-border/60">
+                        <th className="text-left py-1.5 px-3 text-sm font-semibold border-r border-border/60 text-foreground">
                           Description
                         </th>
-                        <th className="text-left py-1.5 px-3 text-sm font-semibold w-16 border-r border-border/60">
+                        <th className="text-left py-1.5 px-3 text-sm font-semibold w-16 border-r border-border/60 text-foreground">
                           Hours
                         </th>
-                        <th className="text-left py-1.5 px-3 text-sm font-semibold w-28">Status</th>
+                        <th className="text-left py-1.5 px-3 text-sm font-semibold w-28 text-foreground">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -254,15 +263,15 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
                           <tr
                             key={entry.id}
                             onClick={() => setSelectedEntry(entry)}
-                            className="border-b cursor-pointer transition-colors hover:bg-secondary/10 last:border-b-0"
+                            className="border-b cursor-pointer transition-colors hover:bg-muted/50 last:border-b-0"
                           >
-                            <td className="py-2 px-3 text-sm border-r border-border/60 whitespace-nowrap w-24">
+                            <td className="py-2 px-3 text-sm border-r border-border/60 whitespace-nowrap w-24 text-foreground">
                               {formatUiDate(entry.entry_date)}
                             </td>
-                            <td className="py-2 px-3 text-sm font-medium border-r border-border/60">
+                            <td className="py-2 px-3 text-sm font-medium border-r border-border/60 text-foreground">
                               {entry.description}
                             </td>
-                            <td className="py-2 px-3 text-sm border-r border-border/60 whitespace-nowrap w-16">
+                            <td className="py-2 px-3 text-sm border-r border-border/60 whitespace-nowrap w-16 text-foreground">
                               {entry.hours_worked}h
                             </td>
                             <td className="py-2 px-3 whitespace-nowrap w-28">
@@ -325,7 +334,7 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
         </div>
       </Card>
 
-      <MilestonesTimeline currentWeek={currentWeek} />
+      <MilestonesTimeline currentWeek={currentWeek} totalWeeks={totalWeeks} />
 
       {selectedEntry && (
         <AddEntryModal

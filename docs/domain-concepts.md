@@ -79,7 +79,7 @@ There is **no enrollment directly on courses** in the current model—see below.
 
 ### What a training path is
 
-**`training_paths`** are managerial groupings layered on top of catalog content. Metadata includes name, organization, totals, `visibility`, `monetization`, `is_active`, etc.
+**`training_paths`** are managerial groupings layered on top of catalog content. Metadata includes name, organization, totals, `visibility`, `monetization`, `is_active`, optional **`talent_lms_course_id`** (numeric Talent LMS course id for REST enrollment after Hangar checkout when `TALENTLMS_API_KEY` is configured), etc.
 
 **`training_path_items`** glue a path to **exactly one** of:
 
@@ -157,7 +157,7 @@ Each **`user_trainings`** row can reference **`mentor_id`**. Mentors typically l
 
 ### Student “focus” enrollment
 
-[`getCurrentUserTrainingContext`](../lib/current-user-training.ts) resolves the trainee’s focused enrollment via **`users.current_curriculum_id`** (name is legacy)—the **`user_trainings.id`** actively used for dashboard, logbook, and progress scopes when multiple enrollments exist.
+[`getCurrentUserTrainingContext`](../lib/current-user-training.ts) resolves the trainee’s focused enrollment via **`users.current_user_training_id`**—the **`user_trainings.id`** actively used for dashboard, logbook, and progress scopes when multiple enrollments exist.
 
 ### ACS / certifications
 

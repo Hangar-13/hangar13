@@ -1,9 +1,12 @@
 "use server";
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { isValidMechanicCertificateNumber } from "@/lib/mechanic-certificate-number";
 
 export type LogbookMentorContext = {
   hasAssignedMentor: boolean;
+  /** True when the signed-in trainee has a non-empty mechanic_certificate_number. */
+  traineeHasMechanicCertificateNumber: boolean;
   mentor: {
     id: string;
     full_name: string | null;
@@ -26,6 +29,7 @@ export async function getLogbookMentorContext(): Promise<
   const payload = data as {
     error?: string;
     hasAssignedMentor?: boolean;
+    traineeHasMechanicCertificateNumber?: boolean;
     mentor?: {
       id: string;
       full_name: string | null;
@@ -42,12 +46,17 @@ export async function getLogbookMentorContext(): Promise<
     return { error: payload.error };
   }
   if (!payload.hasAssignedMentor || !payload.mentor) {
-    return { hasAssignedMentor: false, mentor: null };
+    return {
+      hasAssignedMentor: false,
+      traineeHasMechanicCertificateNumber: Boolean(payload.traineeHasMechanicCertificateNumber),
+      mentor: null,
+    };
   }
 
   const m = payload.mentor;
   return {
     hasAssignedMentor: true,
+    traineeHasMechanicCertificateNumber: Boolean(payload.traineeHasMechanicCertificateNumber),
     mentor: {
       id: m.id,
       full_name: m.full_name,
@@ -66,9 +75,12 @@ export type MechanicMentorSearchRow = {
   visible: boolean;
 };
 
-export async function searchMechanicMentorsForLogbook(
-  query: string
-): Promise<{ rows: MechanicMentorSearchRow[] } | { error: string }> {
+export async function searchMechanicMentorsForLogbook(input: {
+  firstName: string;
+  lastName: string;
+  /** Digit-only prefix from the mechanic certificate field (any non-digits stripped). */
+  certDigits: string;
+}): Promise<{ rows: MechanicMentorSearchRow[] } | { error: string }> {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -77,13 +89,17 @@ export async function searchMechanicMentorsForLogbook(
     return { error: "Not authenticated." };
   }
 
-  const q = query.trim();
-  if (q.length < 2) {
+  const fn = input.firstName.trim();
+  const ln = input.lastName.trim();
+  const cert = input.certDigits.trim().replace(/\D/g, "");
+  if (fn.length + ln.length + cert.length < 2) {
     return { rows: [] };
   }
 
   const { data, error } = await supabase.rpc("search_mechanic_mentors", {
-    p_query: q,
+    p_first_name: fn,
+    p_last_name: ln,
+    p_cert_prefix: cert,
     p_limit: 20,
   });
 
@@ -105,8 +121,13 @@ export async function isMechanicCertificateNumberTakenAction(
     return { error: "Not authenticated." };
   }
 
+  const cn = certNumber.trim();
+  if (!isValidMechanicCertificateNumber(cn)) {
+    return { error: "Certificate number must be exactly 7 digits." };
+  }
+
   const { data, error } = await supabase.rpc("is_mechanic_certificate_number_taken", {
-    p_cert_number: certNumber.trim(),
+    p_cert_number: cn,
   });
 
   if (error) {
@@ -156,12 +177,17 @@ export async function createInvisibleMechanicMentorAndAssignAction(input: {
   mechanicCertType: "A" | "P" | "A&P" | "AME";
   mechanicCertNumber: string;
 }): Promise<{ mentorUserId?: string; error?: string }> {
+  const cn = input.mechanicCertNumber.trim();
+  if (!isValidMechanicCertificateNumber(cn)) {
+    return { error: "Certificate number must be exactly 7 digits." };
+  }
+
   const supabase = await createServerSupabaseClient();
   const { data, error } = await supabase.rpc("claim_external_mentor_for_self", {
     p_first_name: input.firstName.trim(),
     p_last_name: input.lastName.trim(),
     p_mechanic_cert_type: input.mechanicCertType,
-    p_mechanic_cert_number: input.mechanicCertNumber.trim(),
+    p_mechanic_cert_number: cn,
   });
 
   if (error) {

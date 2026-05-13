@@ -78,21 +78,20 @@ async function getMentorData(userId: string) {
     studentsWithProfiles = await buildStudentCards(supabase, canonicalEnrollments, now, targetHours);
   }
 
-  let pendingEntries: any[] = [];
+  let logbookEntries: any[] = [];
   if (traineeUserIds.length > 0) {
     const { data: entries } = await supabase
       .from("logbook_entries")
       .select("*")
       .in("user_id", traineeUserIds)
-      .eq("status", "submitted")
       .order("entry_date", { ascending: false });
 
-    pendingEntries = await Promise.all((entries ?? []).map(attachEntryContext));
+    logbookEntries = await Promise.all((entries ?? []).map(attachEntryContext));
   }
 
   return {
     students: studentsWithProfiles,
-    pendingEntries,
+    logbookEntries,
   };
 }
 
@@ -178,8 +177,8 @@ export default async function MentorDashboard() {
   ]);
 
   const acsCodesByEntry =
-    data.pendingEntries?.length > 0
-      ? await getAcsCodesByEntry(data.pendingEntries.map((e: { id: string }) => e.id))
+    data.logbookEntries?.length > 0
+      ? await getAcsCodesByEntry(data.logbookEntries.map((e: { id: string }) => e.id))
       : {};
 
   return (
@@ -194,7 +193,7 @@ export default async function MentorDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <AssignedStudentsList students={data.students} compact />
         <PendingLogbookEntries
-          entries={data.pendingEntries}
+          entries={data.logbookEntries}
           acsCodesByEntry={acsCodesByEntry}
           ataChapters={ataChapters.map((c: { chapter_number: string; title: string }) => ({
             value: c.chapter_number,

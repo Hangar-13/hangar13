@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+import { isTalentLmsHttpsUrl } from "@/lib/talentlms/lesson-url";
 import { cn } from "@/lib/utils";
 
 const bodyClass = cn(
@@ -29,30 +31,66 @@ const tableWrap = "my-2 overflow-x-auto rounded-md border border-border";
 type Props = {
   markdown: string;
   className?: string;
+  /** Client-side handler: TalentLMS links open in Hangar viewer instead of a new tab when set. */
+  onTalentLmsHttpsClickAction?: (href: string) => void;
 };
 
 /**
  * Renders GitHub-flavored markdown (headings, lists, links, code, tables).
  * Does not use raw HTML (react-markdown default is safe; no rehype-raw).
  */
-export function MarkdownContent({ markdown, className }: Props) {
+export function MarkdownContent({
+  markdown,
+  className,
+  onTalentLmsHttpsClickAction,
+}: Props) {
   return (
     <div className={cn(bodyClass, className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              className="text-primary underline underline-offset-2"
-              target={href?.startsWith("http") ? "_blank" : undefined}
-              rel={
-                href?.startsWith("http") ? "noopener noreferrer" : undefined
-              }
-            >
-              {children}
-            </a>
-          ),
+          a: ({ href, children }) => {
+            const h = typeof href === "string" ? href : "";
+            const isHttp = h.startsWith("http");
+            const useTalentEmbed =
+              Boolean(onTalentLmsHttpsClickAction) && isTalentLmsHttpsUrl(h);
+
+            if (useTalentEmbed && onTalentLmsHttpsClickAction) {
+              return (
+                <a
+                  href={h}
+                  className="cursor-pointer text-primary underline underline-offset-2"
+                  onClick={(event) => {
+                    if (
+                      event.defaultPrevented ||
+                      event.button !== 0 ||
+                      event.metaKey ||
+                      event.ctrlKey ||
+                      event.shiftKey ||
+                      event.altKey
+                    ) {
+                      return;
+                    }
+                    event.preventDefault();
+                    onTalentLmsHttpsClickAction(h);
+                  }}
+                >
+                  {children}
+                </a>
+              );
+            }
+
+            return (
+              <a
+                href={h || undefined}
+                className="text-primary underline underline-offset-2"
+                target={isHttp ? "_blank" : undefined}
+                rel={isHttp ? "noopener noreferrer" : undefined}
+              >
+                {children}
+              </a>
+            );
+          },
           table: ({ children }) => (
             <div className={tableWrap}>
               <table className="w-full border-collapse text-left text-sm">

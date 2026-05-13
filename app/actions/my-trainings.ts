@@ -14,7 +14,7 @@ export async function getMyTrainingsPageData(userId: string): Promise<{
   const supabase = await createServerSupabaseClient();
 
   const [{ data: userRow }, { data: rows, error }] = await Promise.all([
-    supabase.from("users").select("current_curriculum_id").eq("id", userId).single(),
+    supabase.from("users").select("current_user_training_id").eq("id", userId).single(),
     supabase
       .from("user_trainings")
       .select(
@@ -34,7 +34,7 @@ export async function getMyTrainingsPageData(userId: string): Promise<{
   if (error) {
     console.error("getMyTrainingsPageData:", error);
     return {
-      currentUserTrainingId: userRow?.current_curriculum_id ?? null,
+      currentUserTrainingId: userRow?.current_user_training_id ?? null,
       inProgress: [],
       completed: [],
     };
@@ -45,14 +45,14 @@ export async function getMyTrainingsPageData(userId: string): Promise<{
   const completed = list.filter((r) => r.status === "completed");
 
   return {
-    currentUserTrainingId: userRow?.current_curriculum_id ?? null,
+    currentUserTrainingId: userRow?.current_user_training_id ?? null,
     inProgress,
     completed,
   };
 }
 
 /**
- * Sets the user's active enrollment (users.current_curriculum_id).
+ * Sets the user's active enrollment (users.current_user_training_id).
  */
 export async function setCurrentUserTraining(
   userTrainingId: string
@@ -66,7 +66,7 @@ export async function setCurrentUserTraining(
     return { error: "Not authenticated." };
   }
 
-  const { error } = await supabase.rpc("set_current_curriculum_id", {
+  const { error } = await supabase.rpc("set_current_user_training_id", {
     p_user_training_id: userTrainingId,
   });
 

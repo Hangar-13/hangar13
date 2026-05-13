@@ -56,7 +56,7 @@ export default async function ProgressPage() {
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
         <p className="text-muted-foreground text-base">
-          Track your progress through the 30-month program
+          Track lesson progress, logbook hours, and ACS coverage for your current program.
         </p>
       </div>
 

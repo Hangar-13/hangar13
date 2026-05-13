@@ -14,7 +14,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { approveLogbookEntry, approveAllPendingLogbookEntries, rejectLogbookEntry } from "@/app/actions/logbook-approval";
+import { approveLogbookEntry, approvePendingLogbookEntriesByIds, rejectLogbookEntry } from "@/app/actions/logbook-approval";
 import { useRouter } from "next/navigation";
 import { AddEntryModal } from "@/components/student/add-entry-modal";
 import { RejectReasonDialog } from "@/components/mentor/reject-reason-dialog";
@@ -31,6 +31,9 @@ export interface PendingLogbookEntry {
   next_steps: string | null;
   status: string;
   reject_reason?: string | null;
+  log_page_number?: number | null;
+  aircraft?: string | null;
+  additional_information?: unknown;
   user_trainings: {
     id: string;
     users: {
@@ -66,6 +69,7 @@ export function PendingLogbookEntries({
   const [statusFilter, setStatusFilter] = useState<"draft" | "pending" | "all">("pending");
   const [nameFilter, setNameFilter] = useState<string>(initialNameFilter);
   const [bulkReviewOpen, setBulkReviewOpen] = useState(false);
+  const [bulkCheckedIds, setBulkCheckedIds] = useState<Set<string>>(() => new Set());
   const [bulkFeedback, setBulkFeedback] = useState<{
     type: "success" | "error" | "warning";
     message: string;
@@ -104,6 +108,40 @@ export function PendingLogbookEntries({
       return (b.entry_date || "").localeCompare(a.entry_date || "");
     });
   }, [pendingSubmitted]);
+
+  const bulkSignCount = useMemo(() => {
+    let n = 0;
+    for (const r of bulkLinesSorted) {
+      if (bulkCheckedIds.has(r.id)) n += 1;
+    }
+    return n;
+  }, [bulkLinesSorted, bulkCheckedIds]);
+
+  const allBulkLinesChecked =
+    bulkLinesSorted.length > 0 && bulkSignCount === bulkLinesSorted.length;
+
+  const openBulkReviewModal = () => {
+    setBulkCheckedIds(new Set(bulkLinesSorted.map((r) => r.id)));
+    setBulkReviewOpen(true);
+  };
+
+  const toggleBulkRowChecked = (id: string) => {
+    setBulkCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllBulkLinesChecked = () => {
+    setBulkCheckedIds((prev) => {
+      if (bulkLinesSorted.length > 0 && bulkLinesSorted.every((r) => prev.has(r.id))) {
+        return new Set();
+      }
+      return new Set(bulkLinesSorted.map((r) => r.id));
+    });
+  };
 
   const getStatusDisplay = (status: string) => {
     switch (status) {
@@ -190,11 +228,12 @@ export function PendingLogbookEntries({
     }
   };
 
-  function confirmSignAllFromReviewModal() {
-    if (pendingCount === 0) return;
+  function confirmSignSelectedFromReviewModal() {
+    const idsToSign = bulkLinesSorted.filter((r) => bulkCheckedIds.has(r.id)).map((r) => r.id);
+    if (idsToSign.length === 0) return;
     setBulkFeedback(null);
     startBulkTransition(async () => {
-      const result = await approveAllPendingLogbookEntries();
+      const result = await approvePendingLogbookEntriesByIds(idsToSign);
       if ("error" in result) {
         setBulkFeedback({ type: "error", message: result.error });
         return;
@@ -228,40 +267,53 @@ export function PendingLogbookEntries({
             "border-primary/25 bg-primary/[0.06] dark:bg-primary/10"
           )}
         >
-          <div className="space-y-1">
-            <p className="font-medium text-foreground">
-              {pendingCount} log entr{pendingCount === 1 ? "y" : "ies"} awaiting your signature
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Open the list to confirm every entry, then sign all at once. Pending ACS on each row is
-              applied the same as signing individually.
-            </p>
-          </div>
+          <p className="font-medium text-foreground">
+            {pendingCount} log entr{pendingCount === 1 ? "y" : "ies"} awaiting your signature
+          </p>
           <Button
             type="button"
             size="lg"
             className="shrink-0 gap-2"
-            onClick={() => setBulkReviewOpen(true)}
+            onClick={openBulkReviewModal}
           >
             <CheckCircle2 className="h-4 w-4" />
-            Review and sign all…
+            Review and sign
           </Button>
         </div>
       )}
 
-      <Dialog open={bulkReviewOpen} onOpenChange={setBulkReviewOpen}>
+      <Dialog
+        open={bulkReviewOpen}
+        onOpenChange={(open) => {
+          setBulkReviewOpen(open);
+          if (open) {
+            setBulkCheckedIds(new Set(bulkLinesSorted.map((r) => r.id)));
+          }
+        }}
+      >
         <DialogContent className="flex max-h-[min(90vh,720px)] flex-col sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Sign all pending logs</DialogTitle>
+            <DialogTitle>Sign pending logs</DialogTitle>
             <DialogDescription>
-              {pendingCount} entr{pendingCount === 1 ? "y" : "ies"} will be signed. Sorted by student,
-              then newest date first within each student.
+              {pendingCount} entr{pendingCount === 1 ? "y" : "ies"} listed below. All are selected by default;
+              uncheck any you do not want to sign. Sorted by student, then newest date first within each student.
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto rounded-md border">
             <table className="w-full text-sm">
               <thead className="sticky top-0 border-b bg-muted/50 text-left">
                 <tr>
+                  <th className="w-10 p-2">
+                    <span className="sr-only">Include when signing</span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input accent-primary"
+                      checked={allBulkLinesChecked}
+                      onChange={toggleAllBulkLinesChecked}
+                      aria-label="Select all pending logs"
+                      disabled={bulkLinesSorted.length === 0}
+                    />
+                  </th>
                   <th className="p-2 font-medium">Student</th>
                   <th className="p-2 font-medium whitespace-nowrap">Date</th>
                   <th className="p-2 font-medium">Description</th>
@@ -270,6 +322,15 @@ export function PendingLogbookEntries({
               <tbody>
                 {bulkLinesSorted.map((row) => (
                   <tr key={row.id} className="border-b border-border/80 last:border-0 align-top">
+                    <td className="p-2 align-top">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                        checked={bulkCheckedIds.has(row.id)}
+                        onChange={() => toggleBulkRowChecked(row.id)}
+                        aria-label={`Sign log for ${row.user_trainings?.users?.full_name || row.user_trainings?.users?.email || "student"}`}
+                      />
+                    </td>
                     <td className="p-2 font-medium">
                       {row.user_trainings?.users?.full_name ||
                         row.user_trainings?.users?.email ||
@@ -299,9 +360,9 @@ export function PendingLogbookEntries({
             </Button>
             <Button
               type="button"
-              disabled={isBulkApproving || pendingCount === 0}
+              disabled={isBulkApproving || bulkSignCount === 0}
               className="gap-2"
-              onClick={() => confirmSignAllFromReviewModal()}
+              onClick={() => confirmSignSelectedFromReviewModal()}
             >
               {isBulkApproving ? (
                 <>
@@ -311,7 +372,7 @@ export function PendingLogbookEntries({
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  Sign all
+                  Sign {bulkSignCount} Log{bulkSignCount === 1 ? "" : "s"}
                 </>
               )}
             </Button>
@@ -501,6 +562,9 @@ export function PendingLogbookEntries({
             skills_practiced: selectedEntry.skills_practiced,
             status: selectedEntry.status,
             reject_reason: selectedEntry.reject_reason,
+            log_page_number: selectedEntry.log_page_number ?? null,
+            aircraft: selectedEntry.aircraft ?? null,
+            additional_information: selectedEntry.additional_information ?? null,
           }}
           mentorMode
           open={!!selectedEntry}

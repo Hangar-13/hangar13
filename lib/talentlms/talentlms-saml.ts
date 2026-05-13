@@ -12,7 +12,7 @@ const SAML_NAME_FORMAT_URI = "urn:oasis:names:tc:SAML:2.0:attrname-format:uri";
 
 export function resolveTalentLmsUsername(
   email: string,
-  env: TalentLmsSamlEnvironment
+  env: Pick<TalentLmsSamlEnvironment, "usernameMode"> | TalentLmsSamlEnvironment
 ): string {
   const trimmed = email.trim().toLowerCase();
   if (env.usernameMode === "emailLocalPart") {

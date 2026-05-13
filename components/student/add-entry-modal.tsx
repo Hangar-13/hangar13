@@ -42,6 +42,10 @@ import {
 import { Check, Plus, Clock, Calendar, Save, Pencil, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatUiDateTime } from "@/lib/format-ui-date";
+import {
+  isValidMechanicCertificateNumber,
+  sanitizeMechanicCertificateNumberInput,
+} from "@/lib/mechanic-certificate-number";
 import { SearchableChapterSelect } from "./searchable-chapter-select";
 import { SearchableEquipmentCombobox } from "./searchable-equipment-combobox";
 import { AcsInclusionSwitchRow } from "@/components/manager/manager-acs-inclusion-toggle-row";
@@ -70,28 +74,6 @@ function formatMechanicDisplayLine(m: {
   const n = m.mechanic_certificate_number?.trim();
   if (n) return `${name} (${t} ${n})`;
   return `${name} (${t})`;
-}
-
-/** One letter A–Z followed by exactly 7 digits (e.g. A1234567). */
-const MECHANIC_CERT_NUMBER_REGEX = /^[A-Z][0-9]{7}$/;
-
-function isValidMechanicCertNumber(value: string): boolean {
-  return MECHANIC_CERT_NUMBER_REGEX.test(value.trim().toUpperCase());
-}
-
-function sanitizeMechanicCertNumberInput(raw: string): string {
-  const u = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (u.length === 0) return "";
-  let letter = "";
-  let digits = "";
-  for (const ch of u) {
-    if (!letter) {
-      if (/[A-Z]/.test(ch)) letter = ch;
-      continue;
-    }
-    if (/\d/.test(ch) && digits.length < 7) digits += ch;
-  }
-  return letter + digits;
 }
 
 const logbookEntrySchema = z
@@ -321,6 +303,25 @@ export function AddEntryModal({
   const taskDescription = watch("taskDescription");
   const ataChapter = watch("ataChapter");
   const certified = watch("certified");
+  const logPageNumberWatch = watch("logPageNumber");
+  const aircraftWatch = watch("aircraft");
+  const additionalEngineWatch = watch("additionalEngine");
+  const additionalPropellerWatch = watch("additionalPropeller");
+
+  /** Show every optional row while creating or editing a draft/rejected entry; otherwise only if populated. */
+  const isEditingOptionalFieldsLayout = isNewEntry || isStudentEditor;
+  const optionalRowVisible = (value: string | undefined | null) =>
+    isEditingOptionalFieldsLayout || (value ?? "").trim().length > 0;
+
+  const showOptionalLogPage = optionalRowVisible(logPageNumberWatch);
+  const showOptionalAircraft = optionalRowVisible(aircraftWatch);
+  const showOptionalEngine = optionalRowVisible(additionalEngineWatch);
+  const showOptionalPropeller = optionalRowVisible(additionalPropellerWatch);
+  const anyOptionalFieldVisible =
+    showOptionalLogPage ||
+    showOptionalAircraft ||
+    showOptionalEngine ||
+    showOptionalPropeller;
 
   // ACS codes state
   const [acsCodes, setAcsCodes] = useState<Array<{ id: number; code: string; category: string; description: string | null; ata_chapter_numbers?: string[] }>>([]);
@@ -424,15 +425,21 @@ export function AddEntryModal({
     ) {
       return;
     }
-    const q = `${mentorFirstName} ${mentorLastName} ${mentorCertNumber}`.trim();
-    if (q.length < 2) {
+    const fn = mentorFirstName.trim();
+    const ln = mentorLastName.trim();
+    const certDigits = sanitizeMechanicCertificateNumberInput(mentorCertNumber);
+    if (fn.length + ln.length + certDigits.length < 2) {
       setMentorSearchRows([]);
       return;
     }
     const t = window.setTimeout(() => {
       void (async () => {
         setMentorSearchLoading(true);
-        const res = await searchMechanicMentorsForLogbook(q);
+        const res = await searchMechanicMentorsForLogbook({
+          firstName: fn,
+          lastName: ln,
+          certDigits,
+        });
         setMentorSearchLoading(false);
         if ("rows" in res) {
           setMentorSearchRows(res.rows);
@@ -455,7 +462,7 @@ export function AddEntryModal({
     if (
       !mentorSigningEnabled ||
       selectedMentorUserId ||
-      !isValidMechanicCertNumber(mentorCertNumber)
+      !isValidMechanicCertificateNumber(mentorCertNumber)
     ) {
       setCertNumberTaken(null);
       setCertTakenChecking(false);
@@ -466,7 +473,7 @@ export function AddEntryModal({
     const t = window.setTimeout(() => {
       void (async () => {
         const res = await isMechanicCertificateNumberTakenAction(
-          mentorCertNumber.trim().toUpperCase()
+          mentorCertNumber.trim()
         );
         if (cancelled) return;
         setCertTakenChecking(false);
@@ -695,12 +702,15 @@ export function AddEntryModal({
     hasAssignedMentor ||
     !mentorSigningEnabled ||
     (Boolean(selectedMentorUserId) &&
-      (!certified || isValidMechanicCertNumber(mentorCertNumber)));
+      (!certified || isValidMechanicCertificateNumber(mentorCertNumber)));
 
   const canSubmitForm = isFormValid && mentorSigningRequiredOk;
 
-  const mentorSearchQueryTrimmed = useMemo(
-    () => `${mentorFirstName} ${mentorLastName} ${mentorCertNumber}`.trim(),
+  const mentorSearchSignalLength = useMemo(
+    () =>
+      mentorFirstName.trim().length +
+      mentorLastName.trim().length +
+      sanitizeMechanicCertificateNumberInput(mentorCertNumber).length,
     [mentorFirstName, mentorLastName, mentorCertNumber]
   );
 
@@ -710,10 +720,9 @@ export function AddEntryModal({
       !selectedMentorUserId &&
       Boolean(mentorFirstName.trim()) &&
       Boolean(mentorLastName.trim()) &&
-      isValidMechanicCertNumber(mentorCertNumber) &&
+      isValidMechanicCertificateNumber(mentorCertNumber) &&
       !mentorSearchLoading &&
       mentorSearchRows.length === 0 &&
-      mentorSearchQueryTrimmed.length >= 2 &&
       !certTakenChecking &&
       certNumberTaken !== true,
     [
@@ -724,7 +733,6 @@ export function AddEntryModal({
       mentorCertNumber,
       mentorSearchLoading,
       mentorSearchRows.length,
-      mentorSearchQueryTrimmed,
       certTakenChecking,
       certNumberTaken,
     ]
@@ -734,7 +742,7 @@ export function AddEntryModal({
     mentorSigningEnabled &&
     !mentorSearchLoading &&
     mentorSearchRows.length === 0 &&
-    mentorSearchQueryTrimmed.length >= 2 &&
+    mentorSearchSignalLength >= 2 &&
     !selectedMentorUserId &&
     !createMentorEligible;
 
@@ -938,10 +946,10 @@ export function AddEntryModal({
         !hasAssignedMentor &&
         mentorSigningEnabled &&
         selectedMentorUserId &&
-        !isValidMechanicCertNumber(mentorCertNumber)
+        !isValidMechanicCertificateNumber(mentorCertNumber)
       ) {
         setSubmitError(
-          "Mechanic certificate number must be one letter (A–Z) followed by exactly 7 digits."
+          "Mechanic certificate number must be exactly 7 digits."
         );
         setIsSubmitting(false);
         return;
@@ -1482,121 +1490,131 @@ export function AddEntryModal({
             </div>
           ) : null}
 
-          <div className="space-y-4">
-            <hr className="border-border" />
-            <h3 className="text-sm font-semibold text-foreground">Optional</h3>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <div className="flex min-w-0 flex-row items-center gap-3">
-                  <Label
-                    htmlFor="logPageNumber"
-                    className="w-32 shrink-0 text-sm font-medium text-muted-foreground"
-                  >
-                    Log page #
-                  </Label>
-                  <Input
-                    id="logPageNumber"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    placeholder="e.g. 12"
-                    {...register("logPageNumber")}
-                    disabled={fieldLocked}
-                    className="h-9 min-w-0 flex-1 bg-white dark:bg-white"
-                    aria-invalid={errors.logPageNumber ? "true" : "false"}
-                  />
-                </div>
-                {errors.logPageNumber && (
-                  <p className="text-sm text-destructive pl-[calc(8rem+0.75rem)]">
-                    {errors.logPageNumber.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <div className="flex min-w-0 flex-row items-center gap-3">
-                  <Label
-                    htmlFor="aircraft"
-                    className="w-32 shrink-0 text-sm font-medium text-muted-foreground"
-                  >
-                    Aircraft
-                  </Label>
-                  <div className="min-w-0 flex-1">
-                    <Controller
-                      name="aircraft"
-                      control={control}
-                      render={({ field }) => (
-                        <SearchableEquipmentCombobox
-                          id="aircraft"
-                          equipmentKind="aircraft"
-                          value={field.value ?? ""}
-                          onValuePickAction={field.onChange}
-                          onBlur={field.onBlur}
-                          disabled={fieldLocked}
-                          placeholder="Search or enter aircraft…"
-                          aria-invalid={!!errors.aircraft}
-                        />
-                      )}
-                    />
+          {anyOptionalFieldVisible ? (
+            <div className="space-y-4">
+              <hr className="border-border" />
+              <h3 className="text-sm font-semibold text-foreground">Optional</h3>
+              <div className="space-y-3">
+                {showOptionalLogPage ? (
+                  <div className="space-y-1">
+                    <div className="flex min-w-0 flex-row items-center gap-3">
+                      <Label
+                        htmlFor="logPageNumber"
+                        className="w-32 shrink-0 text-sm font-medium text-muted-foreground"
+                      >
+                        Log page #
+                      </Label>
+                      <Input
+                        id="logPageNumber"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        placeholder="e.g. 12"
+                        {...register("logPageNumber")}
+                        disabled={fieldLocked}
+                        className="h-9 min-w-0 flex-1 bg-white dark:bg-white"
+                        aria-invalid={errors.logPageNumber ? "true" : "false"}
+                      />
+                    </div>
+                    {errors.logPageNumber && (
+                      <p className="text-sm text-destructive pl-[calc(8rem+0.75rem)]">
+                        {errors.logPageNumber.message}
+                      </p>
+                    )}
                   </div>
-                </div>
-                {errors.aircraft && (
-                  <p className="text-sm text-destructive pl-[calc(8rem+0.75rem)]">
-                    {errors.aircraft.message}
-                  </p>
-                )}
-              </div>
-              <div className="flex min-w-0 flex-row items-center gap-3">
-                <Label
-                  htmlFor="additionalEngine"
-                  className="w-32 shrink-0 text-sm font-medium text-muted-foreground"
-                >
-                  Engine
-                </Label>
-                <div className="min-w-0 flex-1">
-                  <Controller
-                    name="additionalEngine"
-                    control={control}
-                    render={({ field }) => (
-                      <SearchableEquipmentCombobox
-                        id="additionalEngine"
-                        equipmentKind="engine"
-                        value={field.value ?? ""}
-                        onValuePickAction={field.onChange}
-                        onBlur={field.onBlur}
-                        disabled={fieldLocked}
-                        placeholder="Search or enter engine…"
-                      />
+                ) : null}
+                {showOptionalAircraft ? (
+                  <div className="space-y-1">
+                    <div className="flex min-w-0 flex-row items-center gap-3">
+                      <Label
+                        htmlFor="aircraft"
+                        className="w-32 shrink-0 text-sm font-medium text-muted-foreground"
+                      >
+                        Aircraft
+                      </Label>
+                      <div className="min-w-0 flex-1">
+                        <Controller
+                          name="aircraft"
+                          control={control}
+                          render={({ field }) => (
+                            <SearchableEquipmentCombobox
+                              id="aircraft"
+                              equipmentKind="aircraft"
+                              value={field.value ?? ""}
+                              onValuePickAction={field.onChange}
+                              onBlur={field.onBlur}
+                              disabled={fieldLocked}
+                              placeholder="Search or enter aircraft…"
+                              aria-invalid={!!errors.aircraft}
+                            />
+                          )}
+                        />
+                      </div>
+                    </div>
+                    {errors.aircraft && (
+                      <p className="text-sm text-destructive pl-[calc(8rem+0.75rem)]">
+                        {errors.aircraft.message}
+                      </p>
                     )}
-                  />
-                </div>
-              </div>
-              <div className="flex min-w-0 flex-row items-center gap-3">
-                <Label
-                  htmlFor="additionalPropeller"
-                  className="w-32 shrink-0 text-sm font-medium text-muted-foreground"
-                >
-                  Propeller
-                </Label>
-                <div className="min-w-0 flex-1">
-                  <Controller
-                    name="additionalPropeller"
-                    control={control}
-                    render={({ field }) => (
-                      <SearchableEquipmentCombobox
-                        id="additionalPropeller"
-                        equipmentKind="propeller"
-                        value={field.value ?? ""}
-                        onValuePickAction={field.onChange}
-                        onBlur={field.onBlur}
-                        disabled={fieldLocked}
-                        placeholder="Search or enter propeller…"
+                  </div>
+                ) : null}
+                {showOptionalEngine ? (
+                  <div className="flex min-w-0 flex-row items-center gap-3">
+                    <Label
+                      htmlFor="additionalEngine"
+                      className="w-32 shrink-0 text-sm font-medium text-muted-foreground"
+                    >
+                      Engine
+                    </Label>
+                    <div className="min-w-0 flex-1">
+                      <Controller
+                        name="additionalEngine"
+                        control={control}
+                        render={({ field }) => (
+                          <SearchableEquipmentCombobox
+                            id="additionalEngine"
+                            equipmentKind="engine"
+                            value={field.value ?? ""}
+                            onValuePickAction={field.onChange}
+                            onBlur={field.onBlur}
+                            disabled={fieldLocked}
+                            placeholder="Search or enter engine…"
+                          />
+                        )}
                       />
-                    )}
-                  />
-                </div>
+                    </div>
+                  </div>
+                ) : null}
+                {showOptionalPropeller ? (
+                  <div className="flex min-w-0 flex-row items-center gap-3">
+                    <Label
+                      htmlFor="additionalPropeller"
+                      className="w-32 shrink-0 text-sm font-medium text-muted-foreground"
+                    >
+                      Propeller
+                    </Label>
+                    <div className="min-w-0 flex-1">
+                      <Controller
+                        name="additionalPropeller"
+                        control={control}
+                        render={({ field }) => (
+                          <SearchableEquipmentCombobox
+                            id="additionalPropeller"
+                            equipmentKind="propeller"
+                            value={field.value ?? ""}
+                            onValuePickAction={field.onChange}
+                            onBlur={field.onBlur}
+                            disabled={fieldLocked}
+                            placeholder="Search or enter propeller…"
+                          />
+                        )}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
-          </div>
+          ) : null}
 
           {!mentorMode && (isNewEntry || isStudentEditor) && (
             <div className="space-y-3 border-t border-border pt-6 mt-4">
@@ -1619,14 +1637,14 @@ export function AddEntryModal({
                         value={formatMechanicDisplayLine(mentorCtx.mentor)}
                         className="min-w-0 flex-1 bg-muted"
                       />
-                      {mentorCtx.mentor.visible === false ? (
+                      {mentorCtx.traineeHasMechanicCertificateNumber ? (
                         <Button
                           type="button"
                           variant="outline"
                           size="icon"
                           className="shrink-0"
-                          title="Remove external mentor"
-                          aria-label="Remove external mentor"
+                          title="Remove mentor from your profile"
+                          aria-label="Remove mentor from your profile"
                           onClick={() => {
                             setMentorActionError(null);
                             setRemoveExternalMentorOpen(true);
@@ -1636,10 +1654,6 @@ export function AddEntryModal({
                         </Button>
                       ) : null}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      This mentor is saved on your profile. Certified entries use them for notification (if they
-                      are a directory user) or automatic sign-off (external / invisible mentors).
-                    </p>
                     {mentorActionError ? (
                       <p className="text-sm text-destructive">{mentorActionError}</p>
                     ) : null}
@@ -1648,10 +1662,10 @@ export function AddEntryModal({
                   <Dialog open={removeExternalMentorOpen} onOpenChange={setRemoveExternalMentorOpen}>
                     <DialogContent className="sm:max-w-md">
                       <DialogHeader>
-                        <DialogTitle>Remove external mentor?</DialogTitle>
+                        <DialogTitle>Remove mentor?</DialogTitle>
                         <DialogDescription>
-                          They will no longer be used for logbook sign-off or notifications. You can assign another
-                          mentor when you add or edit a certified entry.
+                          They will no longer be saved on your profile for logbook sign-off or notifications. You can
+                          assign another mentor when you add or edit a certified entry.
                         </DialogDescription>
                       </DialogHeader>
                       <DialogFooter className="gap-2 sm:gap-0">
@@ -1786,33 +1800,33 @@ export function AddEntryModal({
                             id="mentor-cert-num"
                             value={mentorCertNumber}
                             onChange={(e) => {
-                              setMentorCertNumber(sanitizeMechanicCertNumberInput(e.target.value));
+                              setMentorCertNumber(sanitizeMechanicCertificateNumberInput(e.target.value));
                               setSelectedMentorUserId(null);
                               setMentorActionError(null);
                             }}
                             autoComplete="off"
-                            placeholder="A1234567"
-                            maxLength={8}
+                            placeholder="7 digit cert number"
+                            maxLength={7}
                             className="w-full min-w-0"
                           />
                         </div>
                       </div>
                       {mentorCertNumber.length > 0 &&
                       mentorSigningEnabled &&
-                      !isValidMechanicCertNumber(mentorCertNumber) ? (
+                      !isValidMechanicCertificateNumber(mentorCertNumber) ? (
                         <p className="text-xs text-destructive">
-                          Use one letter (A–Z) and seven digits (8 characters total).
+                          Enter exactly 7 digits (certificate number only).
                         </p>
                       ) : null}
                       {mentorSigningEnabled &&
                       !selectedMentorUserId &&
-                      isValidMechanicCertNumber(mentorCertNumber) &&
+                      isValidMechanicCertificateNumber(mentorCertNumber) &&
                       certTakenChecking ? (
                         <p className="text-xs text-muted-foreground">Checking certificate number…</p>
                       ) : null}
                       {mentorSigningEnabled &&
                       !selectedMentorUserId &&
-                      isValidMechanicCertNumber(mentorCertNumber) &&
+                      isValidMechanicCertificateNumber(mentorCertNumber) &&
                       certNumberTaken === true ? (
                         <p className="text-xs text-destructive">
                           This certificate number is already on file. Choose the matching mentor below or enter a
@@ -1853,7 +1867,7 @@ export function AddEntryModal({
                                     }
                                     if (row.mechanic_certificate_number) {
                                       setMentorCertNumber(
-                                        sanitizeMechanicCertNumberInput(row.mechanic_certificate_number)
+                                        sanitizeMechanicCertificateNumberInput(row.mechanic_certificate_number)
                                       );
                                     }
                                     setMentorActionError(null);
@@ -1887,7 +1901,7 @@ export function AddEntryModal({
                                 firstName: mentorFirstName,
                                 lastName: mentorLastName,
                                 mechanicCertType: mentorCertType,
-                                mechanicCertNumber: mentorCertNumber.trim().toUpperCase(),
+                                mechanicCertNumber: mentorCertNumber.trim(),
                               });
                               if (res.error) {
                                 setMentorActionError(res.error);

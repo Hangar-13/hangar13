@@ -107,3 +107,22 @@ export function getTalentLmsSamlEnvironment(): TalentLmsSamlEnvironment {
       process.env.TALENTLMS_SAML_ATTR_EMAIL?.trim() || "urn:oid:0.9.2342.19200300.100.1.3",
   };
 }
+
+/**
+ * Same username rules as SAML (`TALENTLMS_SAML_USERNAME_MODE`) without loading signing keys.
+ * Use when calling Talent REST (e.g. JIT user signup) so `login` matches SSO.
+ */
+export function getTalentLmsUsernamePolicyFromEnv(): Pick<
+  TalentLmsSamlEnvironment,
+  "usernameMode"
+> {
+  const modeRaw =
+    process.env.TALENTLMS_SAML_USERNAME_MODE?.trim().toLowerCase() ?? "email";
+  const usernameMode: TalentLmsSamlUsernameMode =
+    modeRaw === "emaillocalpart" ||
+    modeRaw === "email_local_part" ||
+    modeRaw === "localpart"
+      ? "emailLocalPart"
+      : "email";
+  return { usernameMode };
+}

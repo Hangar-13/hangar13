@@ -24,6 +24,9 @@ interface LogbookEntry {
   created_at: string;
   approved_at: string | null;
   reject_reason?: string | null;
+  log_page_number?: number | null;
+  aircraft?: string | null;
+  additional_information?: unknown;
 }
 
 export type AtaChapterOption = { value: string; label: string };
@@ -289,6 +292,9 @@ export function StudentEntriesList({
             skills_practiced: selectedEntry.skills_practiced,
             status: selectedEntry.status,
             reject_reason: selectedEntry.reject_reason,
+            log_page_number: selectedEntry.log_page_number ?? null,
+            aircraft: selectedEntry.aircraft ?? null,
+            additional_information: selectedEntry.additional_information ?? null,
           }}
           mentorMode
           open={!!selectedEntry}

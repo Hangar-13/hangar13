@@ -109,7 +109,7 @@ export function AppNavigationProvider({
       const list = (rows ?? []) as UserTrainingEnrollmentRow[];
       const inProgress = list.filter((r) => r.status !== "completed");
       setTrainingSwitcherData({
-        currentUserTrainingId: profile?.current_curriculum_id ?? null,
+        currentUserTrainingId: profile?.current_user_training_id ?? null,
         inProgress,
       });
     } catch (e) {

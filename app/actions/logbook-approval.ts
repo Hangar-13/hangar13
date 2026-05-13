@@ -71,8 +71,10 @@ export async function approveLogbookEntry(
   return { success: true };
 }
 
-/** Approve every submitted logbook row for trainees this mentor may sign. */
-export async function approveAllPendingLogbookEntries(): Promise<
+/** Approve specific submitted logbook rows (mentor must have signing access to each trainee). */
+export async function approvePendingLogbookEntriesByIds(
+  entryIds: string[]
+): Promise<
   | { success: true; approvedCount: number; warning?: string }
   | { error: string; approvedCount?: number }
 > {
@@ -87,15 +89,22 @@ export async function approveAllPendingLogbookEntries(): Promise<
     return { error: "You must be logged in to approve entries." };
   }
 
+  const ids = [...new Set(entryIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) {
+    revalidatePath("/dashboard/mentor/review-logs");
+    return { success: true, approvedCount: 0 };
+  }
+
   const traineeIds = await fetchTraineeUserIdsForMentor(supabase, user.id);
   if (traineeIds.length === 0) {
     revalidatePath("/dashboard/mentor/review-logs");
     return { success: true, approvedCount: 0 };
   }
 
-  const { data: pending, error: qErr } = await supabase
+  const { data: eligibleRows, error: qErr } = await supabase
     .from("logbook_entries")
     .select("id, user_id")
+    .in("id", ids)
     .in("user_id", traineeIds)
     .eq("status", "submitted");
 
@@ -103,20 +112,18 @@ export async function approveAllPendingLogbookEntries(): Promise<
     return { error: qErr.message };
   }
 
-  const rows = pending ?? [];
-  if (rows.length === 0) {
-    revalidatePath("/dashboard/mentor/review-logs");
-    return { success: true, approvedCount: 0 };
-  }
+  const rowById = new Map((eligibleRows ?? []).map((r) => [r.id, r]));
+  const orderedToApprove = ids.filter((id) => rowById.has(id));
 
   let approvedCount = 0;
   let failCount = 0;
   let firstError: string | null = null;
   const affectedTrainees = new Set<string>();
 
-  for (const row of rows) {
+  for (const id of orderedToApprove) {
+    const row = rowById.get(id)!;
     const { data: result, error: rpcError } = await supabase.rpc("approve_logbook_entry", {
-      p_entry_id: row.id,
+      p_entry_id: id,
       p_approver_id: user.id,
       p_acs_code_ids: [],
     });
@@ -159,6 +166,47 @@ export async function approveAllPendingLogbookEntries(): Promise<
         }
       : {}),
   };
+}
+
+/** Approve every submitted logbook row for trainees this mentor may sign. */
+export async function approveAllPendingLogbookEntries(): Promise<
+  | { success: true; approvedCount: number; warning?: string }
+  | { error: string; approvedCount?: number }
+> {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "You must be logged in to approve entries." };
+  }
+
+  const traineeIds = await fetchTraineeUserIdsForMentor(supabase, user.id);
+  if (traineeIds.length === 0) {
+    revalidatePath("/dashboard/mentor/review-logs");
+    return { success: true, approvedCount: 0 };
+  }
+
+  const { data: pending, error: qErr } = await supabase
+    .from("logbook_entries")
+    .select("id, user_id")
+    .in("user_id", traineeIds)
+    .eq("status", "submitted");
+
+  if (qErr) {
+    return { error: qErr.message };
+  }
+
+  const rows = pending ?? [];
+  if (rows.length === 0) {
+    revalidatePath("/dashboard/mentor/review-logs");
+    return { success: true, approvedCount: 0 };
+  }
+
+  return approvePendingLogbookEntriesByIds(rows.map((r) => r.id));
 }
 
 export async function rejectLogbookEntry(entryId: string, rejectReason: string) {

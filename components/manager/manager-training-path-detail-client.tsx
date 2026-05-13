@@ -26,6 +26,7 @@ type Props = {
     name: string;
     description: string | null;
     visibility: CatalogVisibility;
+    talentLmsCourseId: string | null;
   };
   mapItems: TrainingPathMapItem[];
   catalog: TrainingContentCatalogCourse[];
@@ -138,6 +139,39 @@ export function ManagerTrainingPathDetailClient({
             }
             onSaved={() => router.refresh()}
           />
+        </div>
+        <div className="border-t pt-4 space-y-2">
+          <EditableInline
+            label="TalentLMS course ID"
+            value={path.talentLmsCourseId ?? ""}
+            displayClassName="text-sm font-medium font-mono"
+            placeholder="e.g. 126 (optional)"
+            onSave={async (raw) => {
+              const trimmed = raw.trim();
+              const r = await updateTrainingPathFields(path.id, {
+                talentLmsCourseId: trimmed === "" ? null : trimmed,
+              });
+              if (r.ok) router.refresh();
+              return r;
+            }}
+          />
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            When set and{" "}
+            <code className="text-xs">TALENTLMS_API_KEY</code> is configured on
+            the server, learners are enrolled in this Talent course when they
+            self-enroll in this Hangar path. If they do not exist in Talent yet,
+            Hangar creates their learner via the Talent API using the same login
+            rules as SSO, then enrolls them (
+            <a
+              href="https://www.talentlms.com/pages/docs/TalentLMS-API-Documentation.pdf"
+              className="underline underline-offset-2"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              TalentLMS REST API
+            </a>
+            ). Use the numeric course ID from Talent (same id as in lesson URLs).
+          </p>
         </div>
       </header>
 

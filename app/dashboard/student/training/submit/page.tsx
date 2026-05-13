@@ -4,7 +4,11 @@ import { WeeklySubmissionForm } from "@/components/student/weekly-submission-for
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { redirectIfNoUserTrainings } from "@/lib/student-user-trainings-guard";
 import { getWeeklySubmission } from "@/app/actions/weekly-submission";
-import { resolveLessonIdForProgramWeek } from "@/lib/training-lessons";
+import {
+  fetchLessonsForTrainingPath,
+  resolveLessonIdForProgramWeek,
+} from "@/lib/training-lessons";
+import { computeProgramLessonWeek } from "@/lib/training-program-week";
 import Link from "next/link";
 
 interface PageProps {
@@ -52,17 +56,34 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
     );
   }
 
-  let currentWeek = week;
-  if (!currentWeek) {
-    const now = new Date();
-    const startDate = new Date(student.start_date);
-    const daysSinceStart = Math.floor(
-      (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    currentWeek = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
-  }
+  const lessonsOrdered = await fetchLessonsForTrainingPath(
+    supabase,
+    student.training_path_id
+  );
+  const lessonCount = lessonsOrdered.length;
 
-  const totalWeeks = 130;
+  const explicitWeek =
+    typeof week === "number" && Number.isFinite(week) && week >= 1
+      ? Math.floor(week)
+      : undefined;
+
+  const { currentWeek, totalWeeks } = computeProgramLessonWeek({
+    startDateIso: student.start_date,
+    lessonCount,
+    explicitWeek,
+  });
+
+  if (lessonCount === 0 || currentWeek < 1) {
+    return (
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight">Weekly Submission</h1>
+        <p className="text-muted-foreground text-base">
+          There are no lessons in your current training path yet. Add lessons to the
+          program or choose another training path.
+        </p>
+      </div>
+    );
+  }
 
   const lessonId = await resolveLessonIdForProgramWeek(
     supabase,

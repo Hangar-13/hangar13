@@ -17,6 +17,11 @@ import { CredentialsSummaryCard } from "@/components/student/credentials-summary
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
 import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 import { queryLogbookEntriesForOwner, type LogbookEntryRow } from "@/lib/logbook-entries-query";
+import { fetchLessonsForTrainingPath } from "@/lib/training-lessons";
+import {
+  computeProgramLessonWeek,
+  DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS,
+} from "@/lib/training-program-week";
 
 function ataChaptersTouchedFromLogbook(
   entries: { skills_practiced?: unknown }[]
@@ -136,11 +141,11 @@ async function getStudentData(userId: string) {
       hours: {
         total: totalHours,
         thisWeek: thisWeekHours,
-        target: 5200,
+        target: DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS,
       },
       weeks: {
-        current: 1,
-        total: 130,
+        current: 0,
+        total: 0,
       },
       currentTraining: {
         topic: "Select a training program to track weekly curriculum",
@@ -183,19 +188,26 @@ async function getStudentData(userId: string) {
     ataTotal = 43;
   }
 
-  const startDate = new Date(student.start_date);
-  const daysSinceStart = Math.floor(
-    (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  const lessonsOrdered = await fetchLessonsForTrainingPath(
+    supabase,
+    student.training_path_id
   );
-  const currentWeek = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
-  const totalWeeks = 130;
+  const lessonCount = lessonsOrdered.length;
+  const { currentWeek, totalWeeks } = computeProgramLessonWeek({
+    startDateIso: student.start_date,
+    lessonCount,
+  });
+
+  const startDate = new Date(student.start_date);
 
   const currentTrainingItem = itemsWithProgress.find(
     (item) => item.status !== "completed"
   );
 
   const dueDate = new Date(startDate);
-  dueDate.setDate(startDate.getDate() + currentWeek * 7 - 1);
+  if (currentWeek > 0) {
+    dueDate.setDate(startDate.getDate() + currentWeek * 7 - 1);
+  }
 
   let trainingPlanName: string | null = null;
   const { data: pathRow } = await supabase
@@ -220,7 +232,7 @@ async function getStudentData(userId: string) {
     hours: {
       total: totalHours,
       thisWeek: thisWeekHours,
-      target: 5200,
+      target: DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS,
     },
     weeks: {
       current: currentWeek,
@@ -307,7 +319,7 @@ export default async function StudentDashboard() {
           <Button asChild>
             <Link href="/dashboard/student/logbook?add=true">+ Log Entry</Link>
           </Button>
-          {data.hasActiveCurriculum ? (
+          {data.hasActiveCurriculum && data.weeks.total > 0 && data.weeks.current > 0 ? (
             <Button asChild variant="outline">
               <Link href={`/dashboard/student/training/submit?week=${data.weeks.current}`}>
                 <FileText className="mr-2 h-4 w-4" />

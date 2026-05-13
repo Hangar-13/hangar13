@@ -19,12 +19,18 @@ import {
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/student/collapsible-section";
 import { LessonMarkdownBody } from "@/components/student/lesson-markdown-body";
+import {
+  TalentLmsLessonEmbedProvider,
+  TalentLmsStartLessonButton,
+} from "@/components/student/talent-lms-lesson-embed";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { redirectIfNoUserTrainings } from "@/lib/student-user-trainings-guard";
 import {
   fetchLessonsForTrainingPath,
   resolveLessonIdForProgramWeek,
 } from "@/lib/training-lessons";
+import { computeProgramLessonWeek } from "@/lib/training-program-week";
+import { extractFirstTalentLmsUrlFromMarkdown } from "@/lib/talentlms/lesson-url";
 import { formatUiDate } from "@/lib/format-ui-date";
 
 async function getStudentTrainingData(userId: string, week?: number) {
@@ -36,12 +42,7 @@ async function getStudentTrainingData(userId: string, week?: number) {
     return null;
   }
 
-  // Calculate current week based on start date if week is not provided
-  const now = new Date();
   const startDate = new Date(student.start_date);
-  const daysSinceStart = Math.floor(
-    (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
 
   let trainingPlanName: string | null = null;
 
@@ -56,24 +57,21 @@ async function getStudentTrainingData(userId: string, week?: number) {
     supabase,
     student.training_path_id
   );
-  const totalWeeksFromPath = lessonsOrdered.length;
+  const lessonCount = lessonsOrdered.length;
 
-  const totalWeeks = totalWeeksFromPath > 0 ? totalWeeksFromPath : 130;
+  const { currentWeek, totalWeeks } = computeProgramLessonWeek({
+    startDateIso: student.start_date,
+    lessonCount,
+    explicitWeek:
+      typeof week === "number" && Number.isFinite(week) && week >= 1
+        ? Math.floor(week)
+        : undefined,
+  });
+
   let weekContent = null;
 
-  const rawWeek =
-    typeof week === "number" && Number.isFinite(week) && week >= 1
-      ? Math.floor(week)
-      : Math.max(1, Math.floor(daysSinceStart / 7) + 1);
-
-  /** Program week clamps to expanded path length when we have lesson rows. */
-  const currentWeek =
-    totalWeeksFromPath > 0
-      ? Math.min(Math.max(rawWeek, 1), totalWeeksFromPath)
-      : rawWeek;
-
   const weekLessonRow =
-    totalWeeksFromPath > 0
+    lessonCount > 0 && currentWeek > 0
       ? (lessonsOrdered[currentWeek - 1] as Record<string, unknown>)
       : null;
 
@@ -106,9 +104,11 @@ async function getStudentTrainingData(userId: string, week?: number) {
     }
   }
 
-  // Calculate due date (end of current week)
+  // Calculate due date (end slot for this lesson week)
   const dueDate = new Date(startDate);
-  dueDate.setDate(startDate.getDate() + currentWeek * 7 - 1);
+  if (currentWeek > 0) {
+    dueDate.setDate(startDate.getDate() + currentWeek * 7 - 1);
+  }
 
   return {
     student,
@@ -215,6 +215,12 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const learningObjectives = w.learning_objectives || [];
   const mentorQuestions = w.mentor_discussion_questions || [];
 
+  const talentLessonUrl = extractFirstTalentLmsUrlFromMarkdown(
+    [w.study_materials, w.practical_application, w.weekly_deliverable]
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+      .join("\n\n")
+  );
+
   const pageTitle = data.trainingPlanName ?? "Training";
 
   return (
@@ -277,22 +283,27 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         </CardContent>
       </Card>
 
+      <TalentLmsLessonEmbedProvider>
+      {/* TalentLMS: week markdown links + embedded lesson viewer */}
       {/* Current Chapter Card */}
       <Card className="bg-primary/50 text-primary-foreground border-primary">
         <CardContent className="p-3">
           <div className="flex items-start gap-4">
-            <BookOpen className="h-6 w-6 mt-1" />
-            <div className="flex-1 space-y-2">
-              <p className="text-sm text-primary-foreground/80">
-                {ataChapterLine}
-              </p>
-              <h2 className="text-2xl font-bold">
-                {w.title ?? "Training Content"}
-              </h2>
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4" />
-                <span>Due: {formatUiDate(data.dueDate)}</span>
+            <BookOpen className="h-6 w-6 mt-1 shrink-0" />
+            <div className="min-w-0 flex flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-2">
+                <p className="text-sm text-primary-foreground/80">
+                  {ataChapterLine}
+                </p>
+                <h2 className="text-2xl font-bold">
+                  {w.title ?? "Training Content"}
+                </h2>
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 shrink-0" />
+                  <span>Due: {formatUiDate(data.dueDate)}</span>
+                </div>
               </div>
+              <TalentLmsStartLessonButton href={talentLessonUrl} />
             </div>
           </div>
         </CardContent>
@@ -443,6 +454,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           )}
         </CollapsibleSection>
       </div>
+      </TalentLmsLessonEmbedProvider>
     </div>
   );
 }
