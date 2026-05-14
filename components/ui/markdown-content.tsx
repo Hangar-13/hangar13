@@ -6,7 +6,6 @@ import remarkGfm from "remark-gfm";
 
 import { isTalentLmsHttpsUrl } from "@/lib/talentlms/lesson-url";
 import { talentLmsSpInitiatedSsoLaunchUrl } from "@/lib/talentlms/sso-launch-url";
-import type { TalentLmsWebviewOpenPayload } from "@/lib/talentlms/webview-payload";
 import { cn } from "@/lib/utils";
 
 const bodyClass = cn(
@@ -34,14 +33,10 @@ type Props = {
   markdown: string;
   className?: string;
   /**
-   * When provided (including `null`), `*.talentlms.com` links are rewritten to Talent’s SP-initiated
-   * SAML bookmark URL first (`/index/ssologin/service:saml`) so learners skip “Login with SAML 2.0”.
-   * Omit entirely for previews / non-training contexts (links stay as authored).
+   * When provided (including `null`), `*.talentlms.com` links use SP-initiated SAML in a new tab.
+   * Omit for previews / non-training contexts (links stay as authored).
    */
   talentPortalOrigin?: string | null;
-  /** Plain-click opens SSO launch URL inside Hangar webview dialog instead of a new tab. */
-  talentOpenInWebview?: boolean;
-  onTalentWebviewOpenAction?: (payload: TalentLmsWebviewOpenPayload) => void;
 };
 
 /**
@@ -52,8 +47,6 @@ export function MarkdownContent({
   markdown,
   className,
   talentPortalOrigin,
-  talentOpenInWebview,
-  onTalentWebviewOpenAction,
 }: Props) {
   return (
     <div className={cn(bodyClass, className)}>
@@ -63,57 +56,21 @@ export function MarkdownContent({
           a: ({ href, children }) => {
             const raw = typeof href === "string" ? href : "";
             const isHttp = raw.startsWith("http");
-            const appliesTalentRewrite =
+            const resolvedHref =
               typeof talentPortalOrigin !== "undefined" &&
               isHttp &&
-              isTalentLmsHttpsUrl(raw);
-            const resolvedHref = appliesTalentRewrite
-              ? talentLmsSpInitiatedSsoLaunchUrl(raw, {
-                  portalOrigin: talentPortalOrigin ?? null,
-                })
-              : raw;
-
-            const openInPanel =
-              Boolean(
-                talentOpenInWebview &&
-                  onTalentWebviewOpenAction &&
-                  appliesTalentRewrite
-              );
+              isTalentLmsHttpsUrl(raw)
+                ? talentLmsSpInitiatedSsoLaunchUrl(raw, {
+                    portalOrigin: talentPortalOrigin ?? null,
+                  })
+                : raw;
 
             return (
               <a
                 href={resolvedHref || undefined}
-                className={cn(
-                  "text-primary underline underline-offset-2",
-                  openInPanel && "cursor-pointer"
-                )}
-                target={
-                  openInPanel ? undefined : isHttp ? "_blank" : undefined
-                }
-                rel={
-                  openInPanel ? undefined : isHttp ? "noopener noreferrer" : undefined
-                }
-                onClick={
-                  openInPanel && onTalentWebviewOpenAction
-                    ? (event) => {
-                        if (
-                          event.defaultPrevented ||
-                          event.button !== 0 ||
-                          event.metaKey ||
-                          event.ctrlKey ||
-                          event.shiftKey ||
-                          event.altKey
-                        ) {
-                          return;
-                        }
-                        event.preventDefault();
-                        onTalentWebviewOpenAction({
-                          ssoLaunchUrl: resolvedHref,
-                          originalLessonUrl: raw,
-                        });
-                      }
-                    : undefined
-                }
+                className="text-primary underline underline-offset-2"
+                target={isHttp ? "_blank" : undefined}
+                rel={isHttp ? "noopener noreferrer" : undefined}
               >
                 {children}
               </a>

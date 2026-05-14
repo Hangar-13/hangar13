@@ -15,17 +15,18 @@ import {
   ArrowLeft,
   ArrowRight,
   Image as ImageIcon,
-  Edit
+  Edit,
+  PlayCircle,
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/student/collapsible-section";
 import { LessonMarkdownBody } from "@/components/student/lesson-markdown-body";
-import { TalentLmsWebviewProvider } from "@/components/student/talent-lms-webview";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { redirectIfNoUserTrainings } from "@/lib/student-user-trainings-guard";
 import {
   fetchLessonsForTrainingPath,
   resolveLessonIdForProgramWeek,
 } from "@/lib/training-lessons";
+import { extractFirstTalentLmsUrlFromMarkdown } from "@/lib/talentlms/lesson-url";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
 import { formatUiDate } from "@/lib/format-ui-date";
 
@@ -216,6 +217,12 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const talentPortalOrigin =
     tlSubdomain.length > 0 ? `https://${tlSubdomain}.talentlms.com` : null;
 
+  const talentLessonDeepUrl = extractFirstTalentLmsUrlFromMarkdown(
+    [w.study_materials, w.practical_application, w.weekly_deliverable]
+      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
+      .join("\n\n")
+  );
+
   const pageTitle = data.trainingPlanName ?? "Training";
 
   return (
@@ -282,25 +289,42 @@ export default async function TrainingPage({ searchParams }: PageProps) {
       <Card className="bg-primary/50 text-primary-foreground border-primary">
         <CardContent className="p-3">
           <div className="flex items-start gap-4">
-            <BookOpen className="h-6 w-6 mt-1" />
-            <div className="flex-1 space-y-2">
-              <p className="text-sm text-primary-foreground/80">
-                {ataChapterLine}
-              </p>
-              <h2 className="text-2xl font-bold">
-                {w.title ?? "Training Content"}
-              </h2>
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4" />
-                <span>Due: {formatUiDate(data.dueDate)}</span>
+            <BookOpen className="h-6 w-6 mt-1 shrink-0" />
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-2">
+                <p className="text-sm text-primary-foreground/80">
+                  {ataChapterLine}
+                </p>
+                <h2 className="text-2xl font-bold">
+                  {w.title ?? "Training Content"}
+                </h2>
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 shrink-0" />
+                  <span>Due: {formatUiDate(data.dueDate)}</span>
+                </div>
               </div>
+              {talentLessonDeepUrl ? (
+                <Button
+                  asChild
+                  variant="secondary"
+                  className="shrink-0 gap-2 border border-primary/20 bg-background/80 text-primary hover:bg-background"
+                >
+                  <a
+                    href={talentLessonDeepUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <PlayCircle className="h-5 w-5" />
+                    Start lesson
+                  </a>
+                </Button>
+              ) : null}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Content Sections — Talent LMS markdown links may open in embedded webview */}
-      <TalentLmsWebviewProvider>
+      {/* Content Sections */}
       <div className="space-y-4">
         <CollapsibleSection
           title="Learning Objectives"
@@ -329,7 +353,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           <LessonMarkdownBody
             markdown={w.study_materials ?? ""}
             talentPortalOrigin={talentPortalOrigin}
-            talentEmbedWebview={true}
           />
         </CollapsibleSection>
 
@@ -341,7 +364,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           <LessonMarkdownBody
             markdown={w.practical_application ?? ""}
             talentPortalOrigin={talentPortalOrigin}
-            talentEmbedWebview={true}
           />
         </CollapsibleSection>
 
@@ -372,7 +394,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
             <LessonMarkdownBody
               markdown={w.weekly_deliverable ?? ""}
               talentPortalOrigin={talentPortalOrigin}
-              talentEmbedWebview={true}
             />
           </div>
         </CollapsibleSection>
@@ -457,7 +478,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           )}
         </CollapsibleSection>
       </div>
-      </TalentLmsWebviewProvider>
     </div>
   );
 }
