@@ -100,7 +100,7 @@ export function ManagerModuleDetailClient({
     StringListRow[]
   >(() => []);
   const [weeklyDeliverable, setWeeklyDeliverable] = useState("");
-  const [talentLmsLessonUrl, setTalentLmsLessonUrl] = useState("");
+  const [talentLmsUnitId, setTalentLmsUnitId] = useState("");
   const [lessonHours, setLessonHours] = useState("0");
   const [acsCodesSelected, setAcsCodesSelected] = useState<number[]>([]);
   const [includeAcsCodes, setIncludeAcsCodes] = useState(false);
@@ -115,7 +115,7 @@ export function ManagerModuleDetailClient({
     setPracticalApplication("");
     setMentorDiscussionRows([]);
     setWeeklyDeliverable("");
-    setTalentLmsLessonUrl("");
+    setTalentLmsUnitId("");
     setAcsCodesSelected([]);
     setIncludeAcsCodes(false);
     setLessonError(null);
@@ -209,7 +209,7 @@ export function ManagerModuleDetailClient({
         practicalApplication: practicalApplication.trim() || null,
         mentorDiscussionQuestions: stringsFromRows(mentorDiscussionRows),
         weeklyDeliverable: weeklyDeliverable.trim() || null,
-        talentLmsLessonUrl: talentLmsLessonUrl.trim() || null,
+        talentLmsUnitId: talentLmsUnitId.trim() || null,
       });
       if (!result.ok) {
         setLessonError(result.error);
@@ -535,27 +535,22 @@ export function ManagerModuleDetailClient({
               />
             </div>
             <div className="min-w-0 space-y-2 py-3">
-              <Label
-                htmlFor="les-talent-url"
-                className="text-sm font-medium text-muted-foreground"
-              >
-                Talent LMS lesson link
-              </Label>
+              <h3 className="text-base font-semibold tracking-tight">
+                TalentLMS Unit
+              </h3>
               <Input
-                id="les-talent-url"
-                type="url"
-                inputMode="url"
+                id="les-talent-unit"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 autoComplete="off"
-                placeholder="https://yourtenant.talentlms.com/course/play/id:…/unit:…"
-                value={talentLmsLessonUrl}
-                onChange={(e) => setTalentLmsLessonUrl(e.target.value)}
+                placeholder="4 digit unit id"
+                aria-label="TalentLMS Unit"
+                value={talentLmsUnitId}
+                onChange={(e) => setTalentLmsUnitId(e.target.value)}
                 disabled={pending}
-                className="font-mono text-sm"
+                className="max-w-xs font-mono text-sm tabular-nums"
               />
-              <p className="text-xs text-muted-foreground">
-                Optional when creating; you can edit anytime on the lesson page. Must be https on
-                *.talentlms.com.
-              </p>
             </div>
             <div className="min-w-0 space-y-2 py-3">
               <Label

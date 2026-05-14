@@ -62,11 +62,7 @@ export function LessonProgressCard({
         <>
           <div className="space-y-2">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="text-sm font-medium">
-                {snapshot.granularity === "unit"
-                  ? "This lesson unit"
-                  : "Assigned Talent course"}
-              </p>
+              <p className="text-sm font-medium">This lesson unit</p>
               <p className="text-lg font-semibold tabular-nums">
                 {Math.round(percent!)}% complete
               </p>

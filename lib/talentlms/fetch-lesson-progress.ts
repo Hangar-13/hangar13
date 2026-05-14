@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  buildTalentLmsCoursePlayUrl,
+  coerceTalentLmsUnitId,
+} from "@/lib/talentlms/lesson-url";
+import {
   getTalentLmsApiEnrollmentConfig,
   talentLmsGetUserIdByEmail,
   talentLmsGetUserStatusInCourse,
@@ -9,7 +13,6 @@ import {
   type TalentLmsUserCourseStatusPayload,
   type TalentLmsUnitUserProgressRow,
 } from "@/lib/talentlms/api-enroll";
-import { getLessonTalentContext } from "@/lib/talentlms/lesson-talent-context";
 
 export type TalentLessonProgressSnapshot =
   | {
@@ -17,8 +20,7 @@ export type TalentLessonProgressSnapshot =
       percent: number;
       talentUrl: string | null;
       courseId: string;
-      unitId: string | null;
-      granularity: "unit" | "course";
+      unitId: string;
       statusLabel: string | null;
       checkedAt: string;
       detailNote: string | null;
@@ -55,20 +57,6 @@ function parsePercentFromUnitProgressRow(
   return 0;
 }
 
-function parseCourseCompletionPercent(
-  payload: TalentLmsUserCourseStatusPayload
-): number {
-  const raw = payload.completion_percentage;
-  if (raw == null || raw === "") {
-    return 0;
-  }
-  const n =
-    typeof raw === "number"
-      ? raw
-      : parseFloat(String(raw).replace(/%/g, "").trim());
-  return Number.isNaN(n) ? 0 : Math.min(100, Math.max(0, n));
-}
-
 function unitPercentFromCoursePayload(
   payload: TalentLmsUserCourseStatusPayload,
   unitId: string
@@ -102,6 +90,10 @@ function unitPercentFromCoursePayload(
   };
 }
 
+/**
+ * Progress for the learner’s weekly lesson — uses **only** `lessons.talent_lms_unit_id`
+ * and `training_paths.talent_lms_course_id` (plus `TALENTLMS_SUBDOMAIN` for the play URL).
+ */
 export async function fetchTalentLessonProgressSnapshot(
   supabase: SupabaseClient,
   options: Readonly<{
@@ -110,30 +102,74 @@ export async function fetchTalentLessonProgressSnapshot(
     trainingPathId: string;
   }>
 ): Promise<TalentLessonProgressSnapshot> {
-  const ctx = await getLessonTalentContext(
-    supabase,
-    options.lessonId,
-    options.trainingPathId
+  const [{ data: lessonRow }, { data: pathRow }] = await Promise.all([
+    supabase
+      .from("lessons")
+      .select("talent_lms_unit_id")
+      .eq("id", options.lessonId)
+      .maybeSingle(),
+    supabase
+      .from("training_paths")
+      .select("talent_lms_course_id")
+      .eq("id", options.trainingPathId)
+      .maybeSingle(),
+  ]);
+
+  const unitId = coerceTalentLmsUnitId(
+    typeof lessonRow?.talent_lms_unit_id === "string"
+      ? lessonRow.talent_lms_unit_id
+      : null
   );
+
+  const courseIdRaw =
+    typeof pathRow?.talent_lms_course_id === "string" &&
+    pathRow.talent_lms_course_id.trim()
+      ? pathRow.talent_lms_course_id.trim()
+      : null;
+
+  const subdomain = process.env.TALENTLMS_SUBDOMAIN?.trim() ?? "";
 
   const apiConfig = getTalentLmsApiEnrollmentConfig();
   const checkedAt = new Date().toISOString();
 
-  if (!apiConfig) {
+  if (!unitId) {
     return {
       kind: "unavailable",
-      talentUrl: ctx.talentUrl,
-      message:
-        "Connect Talent LMS on the server (TALENTLMS_SUBDOMAIN and TALENTLMS_API_KEY) to load progress.",
+      talentUrl: null,
+      message: "No TalentLMS lesson specified.",
     };
   }
 
-  if (!ctx.courseId) {
+  if (!courseIdRaw) {
     return {
       kind: "unavailable",
-      talentUrl: ctx.talentUrl,
+      talentUrl: null,
       message:
-        "Set this lesson’s Talent LMS lesson URL (manager lesson editor), or include course/play URLs in study materials. You can also set the training path’s Talent course id.",
+        "Set the Talent LMS course id on this training path so Hangar can load unit progress.",
+    };
+  }
+
+  if (!subdomain) {
+    return {
+      kind: "unavailable",
+      talentUrl: null,
+      message:
+        "TALENTLMS_SUBDOMAIN is not set on the server; Hangar cannot build your lesson link.",
+    };
+  }
+
+  const talentUrl = buildTalentLmsCoursePlayUrl({
+    subdomain,
+    courseId: courseIdRaw,
+    unitId,
+  });
+
+  if (!apiConfig) {
+    return {
+      kind: "unavailable",
+      talentUrl,
+      message:
+        "Connect Talent LMS on the server (TALENTLMS_SUBDOMAIN and TALENTLMS_API_KEY) to load progress.",
     };
   }
 
@@ -142,7 +178,7 @@ export async function fetchTalentLessonProgressSnapshot(
     return {
       kind: "error",
       message: "Your account has no email; Talent progress cannot load.",
-      talentUrl: ctx.talentUrl,
+      talentUrl,
     };
   }
 
@@ -154,95 +190,64 @@ export async function fetchTalentLessonProgressSnapshot(
         tlUser.status === 404
           ? "No Talent LMS learner matches your email yet. Open your lesson in Talent once, then update progress."
           : tlUser.message,
-      talentUrl: ctx.talentUrl,
+      talentUrl,
     };
   }
 
-  if (ctx.unitId) {
-    const up = await talentLmsGetUsersProgressInUnit({
-      config: apiConfig,
-      unitId: ctx.unitId,
-      userId: tlUser.userId,
-    });
+  const up = await talentLmsGetUsersProgressInUnit({
+    config: apiConfig,
+    unitId,
+    userId: tlUser.userId,
+  });
 
-    if (up.ok && up.entries.length > 0) {
-      const row =
-        up.entries.find(
-          (e) => String(e.user_id ?? "") === String(tlUser.userId)
-        ) ?? up.entries[0];
-
-      return {
-        kind: "ready",
-        percent: parsePercentFromUnitProgressRow(row),
-        talentUrl: ctx.talentUrl,
-        courseId: ctx.courseId,
-        unitId: ctx.unitId,
-        granularity: "unit",
-        statusLabel: row.status ?? null,
-        checkedAt,
-        detailNote: null,
-      };
-    }
-
-    const courseStatus = await talentLmsGetUserStatusInCourse({
-      config: apiConfig,
-      userId: tlUser.userId,
-      courseId: ctx.courseId,
-    });
-
-    if (!courseStatus.ok) {
-      return {
-        kind: "error",
-        message: courseStatus.message,
-        talentUrl: ctx.talentUrl,
-      };
-    }
-
-    const { percent, statusLabel } = unitPercentFromCoursePayload(
-      courseStatus.payload,
-      ctx.unitId
-    );
+  if (up.ok && up.entries.length > 0) {
+    const row =
+      up.entries.find(
+        (e) => String(e.user_id ?? "") === String(tlUser.userId)
+      ) ?? up.entries[0];
 
     return {
       kind: "ready",
-      percent,
-      talentUrl: ctx.talentUrl,
-      courseId: ctx.courseId,
-      unitId: ctx.unitId,
-      granularity: "unit",
-      statusLabel,
+      percent: parsePercentFromUnitProgressRow(row),
+      talentUrl,
+      courseId: courseIdRaw,
+      unitId,
+      statusLabel: row.status ?? null,
       checkedAt,
-      detailNote:
-        up.ok && up.entries.length === 0
-          ? "No unit activity reported yet; showing enrollment status from your course."
-          : null,
+      detailNote: null,
     };
   }
 
   const courseStatus = await talentLmsGetUserStatusInCourse({
     config: apiConfig,
     userId: tlUser.userId,
-    courseId: ctx.courseId,
+    courseId: courseIdRaw,
   });
 
   if (!courseStatus.ok) {
     return {
       kind: "error",
       message: courseStatus.message,
-      talentUrl: ctx.talentUrl,
+      talentUrl,
     };
   }
 
+  const { percent, statusLabel } = unitPercentFromCoursePayload(
+    courseStatus.payload,
+    unitId
+  );
+
   return {
     kind: "ready",
-    percent: parseCourseCompletionPercent(courseStatus.payload),
-    talentUrl: ctx.talentUrl,
-    courseId: ctx.courseId,
-    unitId: null,
-    granularity: "course",
-    statusLabel: courseStatus.payload.completion_status ?? null,
+    percent,
+    talentUrl,
+    courseId: courseIdRaw,
+    unitId,
+    statusLabel,
     checkedAt,
     detailNote:
-      "Overall course completion. Use a Talent URL that includes a unit id for this lesson’s unit progress.",
+      up.ok && up.entries.length === 0
+        ? "No unit activity reported yet; showing enrollment status from your course."
+        : null,
   };
 }

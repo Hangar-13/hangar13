@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
-  coerceTalentLmsLessonUrl,
+  buildTalentLmsCoursePlayUrl,
+  coerceTalentLmsUnitId,
   extractFirstTalentLmsUrlFromMarkdown,
   parseTalentLmsCourseAndUnitFromUrl,
 } from "@/lib/talentlms/lesson-url";
@@ -21,7 +22,7 @@ export async function getLessonTalentContext(
     supabase
       .from("lessons")
       .select(
-        "talent_lms_lesson_url, study_materials, practical_application, weekly_deliverable"
+        "talent_lms_unit_id, study_materials, practical_application, weekly_deliverable"
       )
       .eq("id", lessonId)
       .maybeSingle(),
@@ -40,16 +41,10 @@ export async function getLessonTalentContext(
     .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
     .join("\n\n");
 
-  const explicitUrl = coerceTalentLmsLessonUrl(
-    typeof lessonRow?.talent_lms_lesson_url === "string"
-      ? lessonRow.talent_lms_lesson_url
-      : null
-  );
-
-  const talentUrl =
-    explicitUrl ?? extractFirstTalentLmsUrlFromMarkdown(markdownBlob);
-  const parsed = talentUrl
-    ? parseTalentLmsCourseAndUnitFromUrl(talentUrl)
+  const extractedUrl =
+    extractFirstTalentLmsUrlFromMarkdown(markdownBlob);
+  const parsedFromMarkdown = extractedUrl
+    ? parseTalentLmsCourseAndUnitFromUrl(extractedUrl)
     : { courseId: null, unitId: null };
 
   const pathCourseId =
@@ -58,11 +53,38 @@ export async function getLessonTalentContext(
       ? pathRow.talent_lms_course_id.trim()
       : null;
 
-  const courseId = parsed.courseId ?? pathCourseId;
+  const unitFromLesson = coerceTalentLmsUnitId(
+    typeof lessonRow?.talent_lms_unit_id === "string"
+      ? lessonRow.talent_lms_unit_id
+      : null
+  );
+
+  const subdomain = process.env.TALENTLMS_SUBDOMAIN?.trim() ?? "";
+
+  const courseId =
+    pathCourseId ?? parsedFromMarkdown.courseId ?? null;
+
+  const unitId =
+    unitFromLesson ?? parsedFromMarkdown.unitId ?? null;
+
+  let talentUrl: string | null = null;
+
+  const courseForPlayUrl =
+    pathCourseId ?? parsedFromMarkdown.courseId ?? null;
+
+  if (unitFromLesson && courseForPlayUrl && subdomain) {
+    talentUrl = buildTalentLmsCoursePlayUrl({
+      subdomain,
+      courseId: courseForPlayUrl,
+      unitId: unitFromLesson,
+    });
+  } else {
+    talentUrl = extractedUrl;
+  }
 
   return {
     talentUrl,
     courseId,
-    unitId: parsed.unitId,
+    unitId,
   };
 }

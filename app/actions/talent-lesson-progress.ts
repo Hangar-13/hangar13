@@ -8,6 +8,7 @@ import {
   fetchTalentLessonProgressSnapshot,
   type TalentLessonProgressSnapshot,
 } from "@/lib/talentlms/fetch-lesson-progress";
+import { coerceTalentLmsUnitId } from "@/lib/talentlms/lesson-url";
 
 export async function refreshTalentLessonProgress(
   weekNumber: number
@@ -39,6 +40,22 @@ export async function refreshTalentLessonProgress(
     return {
       error: "Could not find a lesson for this week for your enrollment.",
     };
+  }
+
+  const { data: lessonTalentRow } = await supabase
+    .from("lessons")
+    .select("talent_lms_unit_id")
+    .eq("id", lessonId)
+    .maybeSingle();
+
+  if (
+    !coerceTalentLmsUnitId(
+      typeof lessonTalentRow?.talent_lms_unit_id === "string"
+        ? lessonTalentRow.talent_lms_unit_id
+        : null
+    )
+  ) {
+    return { error: "No TalentLMS unit is configured for this lesson." };
   }
 
   return fetchTalentLessonProgressSnapshot(supabase, {

@@ -28,6 +28,7 @@ import {
   fetchTalentLessonProgressSnapshot,
   type TalentLessonProgressSnapshot,
 } from "@/lib/talentlms/fetch-lesson-progress";
+import { coerceTalentLmsUnitId } from "@/lib/talentlms/lesson-url";
 import { LessonProgressCard } from "@/components/student/lesson-progress-card";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
 import { formatUiDate, formatUiDateTime } from "@/lib/format-ui-date";
@@ -177,20 +178,28 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         .maybeSingle()
     : { data: null };
 
-  let lessonProgressSnapshot: TalentLessonProgressSnapshot;
+  let lessonProgressSnapshot: TalentLessonProgressSnapshot | null = null;
 
   if (lessonId && user.email) {
-    lessonProgressSnapshot = await fetchTalentLessonProgressSnapshot(supabase, {
-      userEmail: user.email,
-      lessonId,
-      trainingPathId: data.student.training_path_id,
-    });
-  } else {
-    lessonProgressSnapshot = {
-      kind: "unavailable",
-      talentUrl: null,
-      message: "Lesson progress is unavailable for this week.",
-    };
+    const { data: lessonTalentRow } = await supabase
+      .from("lessons")
+      .select("talent_lms_unit_id")
+      .eq("id", lessonId)
+      .maybeSingle();
+
+    const hasTalentUnit = coerceTalentLmsUnitId(
+      typeof lessonTalentRow?.talent_lms_unit_id === "string"
+        ? lessonTalentRow.talent_lms_unit_id
+        : null
+    );
+
+    if (hasTalentUnit) {
+      lessonProgressSnapshot = await fetchTalentLessonProgressSnapshot(supabase, {
+        userEmail: user.email,
+        lessonId,
+        trainingPathId: data.student.training_path_id,
+      });
+    }
   }
 
   const prevWeek = data.currentWeek > 1 ? data.currentWeek - 1 : null;
@@ -344,16 +353,18 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           <LessonMarkdownBody markdown={w.study_materials ?? ""} />
         </CollapsibleSection>
 
-        <CollapsibleSection
-          title="Lesson Progress"
-          icon={<Percent className="h-5 w-5" />}
-          defaultOpen={true}
-        >
-          <LessonProgressCard
-            weekNumber={data.currentWeek}
-            initialSnapshot={lessonProgressSnapshot}
-          />
-        </CollapsibleSection>
+        {lessonProgressSnapshot ? (
+          <CollapsibleSection
+            title="Lesson Progress"
+            icon={<Percent className="h-5 w-5" />}
+            defaultOpen={true}
+          >
+            <LessonProgressCard
+              weekNumber={data.currentWeek}
+              initialSnapshot={lessonProgressSnapshot}
+            />
+          </CollapsibleSection>
+        ) : null}
 
         <CollapsibleSection
           title="Practical Application"

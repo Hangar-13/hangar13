@@ -27,48 +27,47 @@ export function isTalentLmsTenantPortalHttpsUrl(href: string): boolean {
   }
 }
 
-/**
- * Normalizes a stored lesson URL; returns null if empty or not a valid Talent LMS https URL.
- */
-export function coerceTalentLmsLessonUrl(
+/** Normalizes stored unit id from DB; null if empty or invalid. */
+export function coerceTalentLmsUnitId(
   raw: string | null | undefined
 ): string | null {
   const t = raw?.trim();
-  if (!t) return null;
-  try {
-    const href = new URL(t).href;
-    return isTalentLmsHttpsUrl(href) ? href : null;
-  } catch {
-    return null;
+  if (!t || !/^\d+$/.test(t)) return null;
+  return t;
+}
+
+/** Validates manager-supplied Talent unit id; empty clears the field. */
+export function validateTalentLmsUnitIdForSave(
+  raw: string | null | undefined
+):
+  | { ok: true; unitId: string | null }
+  | { ok: false; error: string } {
+  const t = raw?.trim();
+  if (!t) return { ok: true, unitId: null };
+  if (!/^\d+$/.test(t)) {
+    return {
+      ok: false,
+      error: "TalentLMS Unit must contain digits only.",
+    };
   }
+  if (t.length > 24) {
+    return { ok: false, error: "TalentLMS Unit id is too long." };
+  }
+  return { ok: true, unitId: t };
 }
 
 /**
- * Validates manager-supplied lesson URL; empty clears the field.
+ * Learner deep link: `/course/play/id:{courseId}/unit:{unitId}` on the tenant host.
  */
-export function validateTalentLmsLessonUrlForSave(
-  raw: string | null | undefined
-):
-  | { ok: true; url: string | null }
-  | { ok: false; error: string } {
-  const t = raw?.trim();
-  if (!t) return { ok: true, url: null };
-  try {
-    const href = new URL(t).href;
-    if (!isTalentLmsHttpsUrl(href)) {
-      return {
-        ok: false,
-        error:
-          "Talent LMS lesson link must use https and point to a *.talentlms.com host.",
-      };
-    }
-    return { ok: true, url: href };
-  } catch {
-    return {
-      ok: false,
-      error: "Talent LMS lesson link must be a valid URL.",
-    };
-  }
+export function buildTalentLmsCoursePlayUrl(options: Readonly<{
+  subdomain: string;
+  courseId: string;
+  unitId: string;
+}>): string {
+  const sub = options.subdomain.trim().toLowerCase();
+  const cid = options.courseId.trim();
+  const uid = options.unitId.trim();
+  return `https://${sub}.talentlms.com/course/play/id:${cid}/unit:${uid}`;
 }
 
 /**

@@ -11,7 +11,7 @@ import {
   isCatalogVisibility,
   type CatalogVisibility,
 } from "@/lib/catalog-visibility";
-import { validateTalentLmsLessonUrlForSave } from "@/lib/talentlms/lesson-url";
+import { validateTalentLmsUnitIdForSave } from "@/lib/talentlms/lesson-url";
 
 function linesToTextArray(text: string): string[] {
   return text
@@ -442,7 +442,7 @@ export async function createManagerLesson(input: {
   practicalApplication: string | null;
   mentorDiscussionQuestions: string | string[];
   weeklyDeliverable: string | null;
-  talentLmsLessonUrl?: string | null;
+  talentLmsUnitId?: string | null;
 }): Promise<{ ok: true; lessonId: string } | { ok: false; error: string }> {
   const supabase = await createServerSupabaseClient();
   const {
@@ -472,8 +472,8 @@ export async function createManagerLesson(input: {
     coerceStrictPositiveIntArray(input.ataChapterIds)
   );
 
-  const tlUrl = validateTalentLmsLessonUrlForSave(input.talentLmsLessonUrl);
-  if (!tlUrl.ok) return { ok: false, error: tlUrl.error };
+  const tlUnit = validateTalentLmsUnitIdForSave(input.talentLmsUnitId);
+  if (!tlUnit.ok) return { ok: false, error: tlUnit.error };
 
   const { data: row, error } = await supabase
     .from("lessons")
@@ -493,7 +493,7 @@ export async function createManagerLesson(input: {
         input.mentorDiscussionQuestions
       ),
       weekly_deliverable: input.weeklyDeliverable?.trim() || null,
-      talent_lms_lesson_url: tlUrl.url,
+      talent_lms_unit_id: tlUnit.unitId,
       hours: hoursParsed.hours,
     })
     .select("id")
@@ -530,7 +530,7 @@ export async function updateLessonFields(
     practical_application?: string | null;
     mentor_discussion_questions?: string | string[];
     weekly_deliverable?: string | null;
-    talent_lms_lesson_url?: string | null;
+    talent_lms_unit_id?: string | null;
   }
 ): Promise<ActionResult> {
   const supabase = await createServerSupabaseClient();
@@ -594,10 +594,10 @@ export async function updateLessonFields(
   if (patch.weekly_deliverable !== undefined) {
     update.weekly_deliverable = patch.weekly_deliverable?.trim() || null;
   }
-  if (patch.talent_lms_lesson_url !== undefined) {
-    const tl = validateTalentLmsLessonUrlForSave(patch.talent_lms_lesson_url);
+  if (patch.talent_lms_unit_id !== undefined) {
+    const tl = validateTalentLmsUnitIdForSave(patch.talent_lms_unit_id);
     if (!tl.ok) return { ok: false, error: tl.error };
-    update.talent_lms_lesson_url = tl.url;
+    update.talent_lms_unit_id = tl.unitId;
   }
 
   if (Object.keys(update).length === 0) return { ok: true };

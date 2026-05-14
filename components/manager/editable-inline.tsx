@@ -11,7 +11,10 @@ type EditableInlineProps = {
   value: string;
   onSave: (next: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   multiline?: boolean;
+  /** Shown when the value is empty (display mode) and as edit placeholder if `editPlaceholder` is omitted */
   placeholder?: string;
+  /** Placeholder while editing (optional) */
+  editPlaceholder?: string;
   displayClassName?: string;
   inputClassName?: string;
   /** Screen reader label for the edit control */
@@ -23,6 +26,7 @@ export function EditableInline({
   onSave,
   multiline,
   placeholder,
+  editPlaceholder,
   displayClassName,
   inputClassName,
   label,
@@ -70,7 +74,7 @@ export function EditableInline({
           }}
           disabled={pending}
           className={cn(multiline && "min-h-[120px] resize-y", inputClassName)}
-          placeholder={placeholder}
+          placeholder={editPlaceholder ?? placeholder}
           aria-label={label}
         />
         {error ? (
