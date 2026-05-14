@@ -93,18 +93,28 @@ export function LessonProgressCard({
 
       <div className="flex flex-col gap-2 sm:max-w-md">
         {talentHref ? (
-          <Button
-            asChild
-            size="lg"
-            className="w-full gap-2 bg-[#8B4513] hover:bg-[#6B3410] text-white"
-          >
-            <a href={talentHref} target="_blank" rel="noopener noreferrer">
-              <PlayCircle className="h-5 w-5 shrink-0" />
-              {snapshot.kind === "ready"
-                ? lessonActionLabel(snapshot.percent)
-                : "Open Talent lesson"}
-            </a>
-          </Button>
+          <>
+            <Button
+              asChild
+              size="lg"
+              className="w-full gap-2 bg-[#8B4513] hover:bg-[#6B3410] text-white"
+            >
+              <a href={talentHref} target="_blank" rel="noopener noreferrer">
+                <PlayCircle className="h-5 w-5 shrink-0" />
+                {snapshot.kind === "ready"
+                  ? lessonActionLabel(snapshot.percent)
+                  : "Open Talent lesson"}
+              </a>
+            </Button>
+            <p className="text-xs leading-snug">
+              <span className="font-medium text-muted-foreground">
+                Debug — exact href:
+              </span>{" "}
+              <span className="font-mono break-all text-muted-foreground select-all">
+                {talentHref}
+              </span>
+            </p>
+          </>
         ) : (
           <Button size="lg" className="w-full" disabled variant="secondary">
             <PlayCircle className="h-5 w-5 shrink-0 mr-2" />
