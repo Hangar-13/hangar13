@@ -2,21 +2,19 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { 
-  BookOpen, 
-  Calendar, 
-  FileText, 
-  ChevronDown, 
-  ChevronUp,
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  BookOpen,
+  Calendar,
+  FileText,
   Target,
   Clock,
   MessageSquare,
   ArrowLeft,
   ArrowRight,
-  Image as ImageIcon,
   Edit,
-  PlayCircle,
+  Percent,
+  CheckCircle,
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/student/collapsible-section";
 import { LessonMarkdownBody } from "@/components/student/lesson-markdown-body";
@@ -26,9 +24,13 @@ import {
   fetchLessonsForTrainingPath,
   resolveLessonIdForProgramWeek,
 } from "@/lib/training-lessons";
-import { extractFirstTalentLmsUrlFromMarkdown } from "@/lib/talentlms/lesson-url";
+import {
+  fetchTalentLessonProgressSnapshot,
+  type TalentLessonProgressSnapshot,
+} from "@/lib/talentlms/fetch-lesson-progress";
+import { LessonProgressCard } from "@/components/student/lesson-progress-card";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
-import { formatUiDate } from "@/lib/format-ui-date";
+import { formatUiDate, formatUiDateTime } from "@/lib/format-ui-date";
 
 async function getStudentTrainingData(userId: string, week?: number) {
   const supabase = await createServerSupabaseClient();
@@ -175,6 +177,22 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         .maybeSingle()
     : { data: null };
 
+  let lessonProgressSnapshot: TalentLessonProgressSnapshot;
+
+  if (lessonId && user.email) {
+    lessonProgressSnapshot = await fetchTalentLessonProgressSnapshot(supabase, {
+      userEmail: user.email,
+      lessonId,
+      trainingPathId: data.student.training_path_id,
+    });
+  } else {
+    lessonProgressSnapshot = {
+      kind: "unavailable",
+      talentUrl: null,
+      message: "Lesson progress is unavailable for this week.",
+    };
+  }
+
   const prevWeek = data.currentWeek > 1 ? data.currentWeek - 1 : null;
   const nextWeek = data.currentWeek < data.totalWeeks ? data.currentWeek + 1 : null;
 
@@ -211,12 +229,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
 
   const learningObjectives = w.learning_objectives || [];
   const mentorQuestions = w.mentor_discussion_questions || [];
-
-  const talentLessonDeepUrl = extractFirstTalentLmsUrlFromMarkdown(
-    [w.study_materials, w.practical_application, w.weekly_deliverable]
-      .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
-      .join("\n\n")
-  );
 
   const pageTitle = data.trainingPlanName ?? "Training";
 
@@ -285,7 +297,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         <CardContent className="p-3">
           <div className="flex items-start gap-4">
             <BookOpen className="h-6 w-6 mt-1 shrink-0" />
-            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-1 flex-col gap-3">
               <div className="min-w-0 space-y-2">
                 <p className="text-sm text-primary-foreground/80">
                   {ataChapterLine}
@@ -298,22 +310,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                   <span>Due: {formatUiDate(data.dueDate)}</span>
                 </div>
               </div>
-              {talentLessonDeepUrl ? (
-                <Button
-                  asChild
-                  variant="secondary"
-                  className="shrink-0 gap-2 border border-primary/20 bg-background/80 text-primary hover:bg-background"
-                >
-                  <a
-                    href={talentLessonDeepUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <PlayCircle className="h-5 w-5" />
-                    Start lesson
-                  </a>
-                </Button>
-              ) : null}
             </div>
           </div>
         </CardContent>
@@ -346,6 +342,17 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           defaultOpen={true}
         >
           <LessonMarkdownBody markdown={w.study_materials ?? ""} />
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title="Lesson Progress"
+          icon={<Percent className="h-5 w-5" />}
+          defaultOpen={true}
+        >
+          <LessonProgressCard
+            weekNumber={data.currentWeek}
+            initialSnapshot={lessonProgressSnapshot}
+          />
         </CollapsibleSection>
 
         <CollapsibleSection
@@ -398,12 +405,67 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                 </p>
               </div>
 
+              {submission.talent_lms_unit_completed === true &&
+                submission.talent_lms_completion_checked_at && (
+                  <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-100">
+                    <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium">Talent LMS lesson verified</p>
+                      <p className="text-xs opacity-90">
+                        Checked{" "}
+                        {formatUiDateTime(
+                          submission.talent_lms_completion_checked_at as string
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+              {submission.talent_lms_unit_completed == null &&
+                (() => {
+                  const meta = submission.talent_lms_completion_meta as Record<
+                    string,
+                    unknown
+                  > | null;
+                  const reason =
+                    meta && typeof meta.skip_reason === "string"
+                      ? meta.skip_reason
+                      : null;
+                  if (reason === "unit_not_in_link") {
+                    return (
+                      <p className="text-xs text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-100 rounded-md px-3 py-2 border border-amber-200 dark:border-amber-900">
+                        Talent completion was not checked because the lesson link does not
+                        include a unit id (expected in URLs like{" "}
+                        <span className="font-mono text-[11px]">
+                          …/course/play/id:COURSE/unit:UNIT
+                        </span>
+                        ). Your reflection was still saved.
+                      </p>
+                    );
+                  }
+                  if (reason === "could_not_resolve_course_id") {
+                    return (
+                      <p className="text-xs text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-100 rounded-md px-3 py-2 border border-amber-200 dark:border-amber-900">
+                        Talent completion was not checked because neither the lesson URL nor
+                        your training path specifies a Talent course id.
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+
               {submission.lesson_submission_files &&
                submission.lesson_submission_files.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold">Attached Files</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {submission.lesson_submission_files.map((file: any) => (
+                    {submission.lesson_submission_files.map(
+                      (file: {
+                        id: string;
+                        file_url: string;
+                        file_name: string;
+                        file_type?: string | null;
+                      }) => (
                       <div
                         key={file.id}
                         className="relative group rounded-lg overflow-hidden border"
@@ -452,7 +514,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           ) : (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                You haven't submitted a reflection for this week yet.
+                You have not submitted a reflection for this week yet.
               </p>
               <Button asChild variant="outline" size="sm">
                 <Link href={`/dashboard/student/training/submit?week=${data.currentWeek}`}>

@@ -108,14 +108,22 @@ export async function talentLmsApiAddUserToCourse(options: Readonly<{
   return { ok: false, status: res.status, message };
 }
 
-/** GET /users/email:… — returns whether a learner row exists. */
-async function talentLmsUserExistsByEmail(
+/**
+ * GET /users/email:… — Talent user id for progress APIs (e.g. getuserstatusincourse).
+ */
+export async function talentLmsGetUserIdByEmail(
   config: TalentLmsApiConfig,
   email: string
 ): Promise<
-  { ok: true; exists: boolean } | { ok: false; status: number; message: string }
+  | { ok: true; userId: string }
+  | { ok: false; status: number; message: string }
 > {
-  const url = `${baseUrl(config)}/users/email:${encodeURIComponent(email)}`;
+  const norm = email.trim().toLowerCase();
+  if (!norm) {
+    return { ok: false, status: 400, message: "Missing user email." };
+  }
+
+  const url = `${baseUrl(config)}/users/email:${encodeURIComponent(norm)}`;
   let res: Response;
   try {
     res = await fetch(url, {
@@ -132,17 +140,220 @@ async function talentLmsUserExistsByEmail(
     return { ok: false, status: 0, message: msg };
   }
 
-  if (res.ok) {
+  if (res.status === 404) {
+    return { ok: false, status: 404, message: "Talent LMS user not found for this email." };
+  }
+  if (!res.ok) {
+    return {
+      ok: false,
+      status: res.status,
+      message: await readTalentApiErrorMessage(res),
+    };
+  }
+
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return { ok: false, status: 500, message: "Invalid Talent LMS user response." };
+  }
+
+  const id =
+    body &&
+    typeof body === "object" &&
+    "id" in body &&
+    String((body as { id: unknown }).id).trim()
+      ? String((body as { id: unknown }).id).trim()
+      : "";
+
+  if (!id) {
+    return { ok: false, status: 500, message: "Talent LMS user response missing id." };
+  }
+
+  return { ok: true, userId: id };
+}
+
+/** GET /users/email:… — returns whether a learner row exists. */
+async function talentLmsUserExistsByEmail(
+  config: TalentLmsApiConfig,
+  email: string
+): Promise<
+  { ok: true; exists: boolean } | { ok: false; status: number; message: string }
+> {
+  const got = await talentLmsGetUserIdByEmail(config, email);
+  if (got.ok) {
     return { ok: true, exists: true };
   }
-  if (res.status === 404) {
+  if (got.status === 404) {
     return { ok: true, exists: false };
   }
-  return {
-    ok: false,
-    status: res.status,
-    message: await readTalentApiErrorMessage(res),
-  };
+  return { ok: false, status: got.status, message: got.message };
+}
+
+export type TalentLmsUserCourseStatusPayload = {
+  completion_status?: string;
+  completion_percentage?: string | number;
+  units?: Array<{
+    id?: string;
+    name?: string;
+    completion_status?: string;
+    completed_on?: string;
+    completion_percentage?: string | number;
+  }>;
+};
+
+export type TalentLmsUnitUserProgressRow = {
+  user_id?: string;
+  status?: string;
+  score?: string;
+};
+
+/**
+ * GET /getusersprogressinunits/unit_id:{unitId},user_id:{userId}
+ * @see TalentLMS API PDF — Units → getUsersProgress
+ */
+export async function talentLmsGetUsersProgressInUnit(options: Readonly<{
+  config: TalentLmsApiConfig;
+  unitId: string;
+  userId: string;
+}>): Promise<
+  | { ok: true; entries: TalentLmsUnitUserProgressRow[] }
+  | { ok: false; status: number; message: string }
+> {
+  const unitId = options.unitId.trim();
+  const userId = options.userId.trim();
+  if (!unitId || !userId) {
+    return { ok: false, status: 400, message: "Missing unit or user id." };
+  }
+
+  const url = `${baseUrl(options.config)}/getusersprogressinunits/unit_id:${unitId},user_id:${userId}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: basicAuthHeader(options.config.apiKey),
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+  } catch (e) {
+    const msg =
+      e instanceof Error ? e.message : "TalentLMS API request failed.";
+    return { ok: false, status: 0, message: msg };
+  }
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      status: res.status,
+      message: await readTalentApiErrorMessage(res),
+    };
+  }
+
+  let payload: unknown;
+  try {
+    payload = await res.json();
+  } catch {
+    return {
+      ok: false,
+      status: 500,
+      message: "Invalid Talent LMS unit progress response.",
+    };
+  }
+
+  const entries: TalentLmsUnitUserProgressRow[] = Array.isArray(payload)
+    ? (payload as TalentLmsUnitUserProgressRow[])
+    : [];
+
+  return { ok: true, entries };
+}
+
+/**
+ * GET /getuserstatusincourse/course_id:{courseId},user_id:{userId}
+ * @see TalentLMS API PDF — "Get user status in course"
+ */
+export async function talentLmsGetUserStatusInCourse(options: Readonly<{
+  config: TalentLmsApiConfig;
+  userId: string;
+  courseId: string;
+}>): Promise<
+  | { ok: true; payload: TalentLmsUserCourseStatusPayload }
+  | { ok: false; status: number; message: string }
+> {
+  const courseId = options.courseId.trim();
+  const userId = options.userId.trim();
+  if (!courseId || !userId) {
+    return { ok: false, status: 400, message: "Missing course or user id." };
+  }
+
+  const url = `${baseUrl(options.config)}/getuserstatusincourse/course_id:${courseId},user_id:${userId}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: basicAuthHeader(options.config.apiKey),
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+  } catch (e) {
+    const msg =
+      e instanceof Error ? e.message : "TalentLMS API request failed.";
+    return { ok: false, status: 0, message: msg };
+  }
+
+  if (!res.ok) {
+    return {
+      ok: false,
+      status: res.status,
+      message: await readTalentApiErrorMessage(res),
+    };
+  }
+
+  let payload: unknown;
+  try {
+    payload = await res.json();
+  } catch {
+    return {
+      ok: false,
+      status: 500,
+      message: "Invalid Talent LMS course status response.",
+    };
+  }
+
+  if (!payload || typeof payload !== "object") {
+    return {
+      ok: false,
+      status: 500,
+      message: "Invalid Talent LMS course status response.",
+    };
+  }
+
+  return { ok: true, payload: payload as TalentLmsUserCourseStatusPayload };
+}
+
+/** Whether the given unit id is marked Completed in a getuserstatusincourse payload. */
+export function talentLmsIsUnitCompletedInPayload(
+  payload: TalentLmsUserCourseStatusPayload,
+  unitId: string
+): { found: boolean; completed: boolean } {
+  const units = payload.units;
+  if (!Array.isArray(units) || units.length === 0) {
+    return { found: false, completed: false };
+  }
+
+  const match = units.find((u) => String(u.id ?? "") === String(unitId));
+  if (!match) {
+    return { found: false, completed: false };
+  }
+
+  const done =
+    String(match.completion_status ?? "").toLowerCase() === "completed";
+  return { found: true, completed: done };
 }
 
 /** POST /usersignup — password is unused when learners use SSO only. */

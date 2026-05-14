@@ -64,3 +64,67 @@ function pushTalentCandidate(bucket: string[], raw: string): void {
 function sanitizeMarkdownUrlTail(s: string): string {
   return s.replace(/[.,;]+$/, "").replace(/\)+$/, "");
 }
+
+/**
+ * Extract Talent course and unit ids from a learner URL (markdown links often use
+ * `/course/play/id:{courseId}/unit:{unitId}` or query params).
+ */
+export function parseTalentLmsCourseAndUnitFromUrl(href: string): {
+  courseId: string | null;
+  unitId: string | null;
+} {
+  try {
+    const u = new URL(href);
+    const pathLower = u.pathname.toLowerCase();
+    const combined = `${u.pathname}${u.search}`;
+
+    let courseId: string | null = null;
+    let unitId: string | null = null;
+
+    const unitColon = combined.match(/(?:^|[/?#,])unit:(\d+)/);
+    if (unitColon) {
+      unitId = unitColon[1];
+    }
+
+    if (pathLower.includes("/course/play/")) {
+      const playCourse = combined.match(/\/course\/play\/id:(\d+)/i);
+      if (playCourse) {
+        courseId = playCourse[1];
+      }
+    }
+
+    if (!courseId) {
+      const courseKw = combined.match(/course_id:(\d+)/i);
+      if (courseKw) {
+        courseId = courseKw[1];
+      }
+    }
+
+    if (!courseId) {
+      const idColon = combined.match(/(?:^|[/?#,])id:(\d+)/);
+      if (
+        idColon &&
+        !pathLower.includes("/certificate/") &&
+        !pathLower.includes("/download/")
+      ) {
+        courseId = idColon[1];
+      }
+    }
+
+    const qpCourse =
+      u.searchParams.get("course_id") ?? u.searchParams.get("courseId");
+    if (qpCourse && /^\d+$/.test(qpCourse.trim())) {
+      courseId = qpCourse.trim();
+    }
+
+    const qpUnit =
+      u.searchParams.get("unit_id") ?? u.searchParams.get("unitId");
+    if (qpUnit && /^\d+$/.test(qpUnit.trim())) {
+      unitId = qpUnit.trim();
+    }
+
+    return { courseId, unitId };
+  } catch {
+    return { courseId: null, unitId: null };
+  }
+}
