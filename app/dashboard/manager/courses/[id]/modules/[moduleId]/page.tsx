@@ -94,7 +94,11 @@ export default async function ManagerModuleDetailPage({ params }: PageProps) {
 
   return (
     <ManagerModuleDetailClient
-      course={{ id: course.id, name: course.name }}
+      course={{
+        id: course.id,
+        name: course.name,
+        talentLmsCourseId: course.talent_lms_course_id,
+      }}
       moduleIndex={moduleIndex}
       module={{
         id: module.id,

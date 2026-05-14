@@ -36,6 +36,15 @@ export function coerceTalentLmsUnitId(
   return t;
 }
 
+/** Normalizes Talent LMS course id from DB; null if empty or invalid. */
+export function coerceTalentLmsCourseId(
+  raw: string | null | undefined
+): string | null {
+  const t = raw?.trim();
+  if (!t || !/^\d+$/.test(t)) return null;
+  return t;
+}
+
 /** Validates manager-supplied Talent unit id; empty clears the field. */
 export function validateTalentLmsUnitIdForSave(
   raw: string | null | undefined
@@ -54,6 +63,26 @@ export function validateTalentLmsUnitIdForSave(
     return { ok: false, error: "TalentLMS Unit id is too long." };
   }
   return { ok: true, unitId: t };
+}
+
+/** Validates manager-supplied Talent LMS course id for Hangar courses. */
+export function validateTalentLmsCourseIdForSave(
+  raw: string | null | undefined
+):
+  | { ok: true; courseId: string | null }
+  | { ok: false; error: string } {
+  const t = raw?.trim();
+  if (!t) return { ok: true, courseId: null };
+  if (!/^\d+$/.test(t)) {
+    return {
+      ok: false,
+      error: "Talent LMS course ID must be numeric (digits only), e.g. 126.",
+    };
+  }
+  if (t.length > 24) {
+    return { ok: false, error: "Talent LMS course ID is too long." };
+  }
+  return { ok: true, courseId: t };
 }
 
 /**

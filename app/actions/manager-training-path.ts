@@ -106,8 +106,6 @@ export async function updateTrainingPathFields(
     name?: string;
     description?: string | null;
     visibility?: CatalogVisibility;
-    /** Talent LMS numeric course id; empty string clears. */
-    talentLmsCourseId?: string | null;
   }
 ): Promise<ActionResult> {
   const supabase = await createServerSupabaseClient();
@@ -124,20 +122,6 @@ export async function updateTrainingPathFields(
   if (!path) return { ok: false, error: "Training path not found." };
 
   const update: Record<string, string | null> = {};
-  if (patch.talentLmsCourseId !== undefined) {
-    const raw = patch.talentLmsCourseId?.trim() ?? "";
-    if (raw === "") {
-      update.talent_lms_course_id = null;
-    } else if (!/^\d+$/.test(raw)) {
-      return {
-        ok: false,
-        error:
-          "TalentLMS course ID must be numeric (digits only), e.g. 126.",
-      };
-    } else {
-      update.talent_lms_course_id = raw;
-    }
-  }
   if (patch.name !== undefined) {
     const n = patch.name.trim();
     if (!n) return { ok: false, error: "Title cannot be empty." };

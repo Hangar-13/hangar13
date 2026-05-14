@@ -6,7 +6,7 @@ import { resolveLessonIdForProgramWeek } from "@/lib/training-lessons";
 import { noActiveTrainingServerError } from "@/lib/training-enrollment-messages";
 import {
   getTalentLmsApiEnrollmentConfig,
-  talentLmsGetUserIdByEmail,
+  talentLmsResolveLearnerUserId,
   talentLmsGetUserStatusInCourse,
   talentLmsIsUnitCompletedInPayload,
 } from "@/lib/talentlms/api-enroll";
@@ -23,12 +23,10 @@ async function resolveTalentCompletionSnapshot(options: Readonly<{
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
   userEmail: string | null | undefined;
   lessonId: string;
-  trainingPathId: string;
 }>): Promise<{ error: string } | TalentCompletionFields> {
   const ctx = await getLessonTalentContext(
     options.supabase,
-    options.lessonId,
-    options.trainingPathId
+    options.lessonId
   );
 
   const { talentUrl, courseId, unitId } = ctx;
@@ -83,7 +81,7 @@ async function resolveTalentCompletionSnapshot(options: Readonly<{
     };
   }
 
-  const tlUser = await talentLmsGetUserIdByEmail(apiConfig, email);
+  const tlUser = await talentLmsResolveLearnerUserId(apiConfig, email);
   if (!tlUser.ok) {
     if (tlUser.status === 404) {
       return {
@@ -193,7 +191,6 @@ export async function submitWeeklyReflection(formData: {
     supabase,
     userEmail: user.email,
     lessonId,
-    trainingPathId: student.training_path_id,
   });
 
   if ("error" in talentSnap) {

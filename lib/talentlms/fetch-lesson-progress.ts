@@ -2,11 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   buildTalentLmsCoursePlayUrl,
-  coerceTalentLmsUnitId,
 } from "@/lib/talentlms/lesson-url";
+import { resolveTalentLmsCourseAndUnitForLesson } from "@/lib/talentlms/lesson-talent-context";
 import {
   getTalentLmsApiEnrollmentConfig,
-  talentLmsGetUserIdByEmail,
+  talentLmsResolveLearnerUserId,
   talentLmsGetUserStatusInCourse,
   talentLmsGetUsersProgressInUnit,
   talentLmsIsUnitCompletedInPayload,
@@ -91,43 +91,31 @@ function unitPercentFromCoursePayload(
 }
 
 /**
- * Progress for the learner’s weekly lesson — uses **only** `lessons.talent_lms_unit_id`
- * and `training_paths.talent_lms_course_id` (plus `TALENTLMS_SUBDOMAIN` for the play URL).
+ * Progress for the learner’s weekly lesson — unit id from `lessons.talent_lms_unit_id`;
+ * Talent LMS course id from the Hangar **`courses`** row for that lesson (via module).
+ *
+ * Play URL: `https://{TALENTLMS_SUBDOMAIN}.talentlms.com/course/play/id:{course}/unit:{unit}`.
  */
 export async function fetchTalentLessonProgressSnapshot(
   supabase: SupabaseClient,
   options: Readonly<{
     userEmail: string | null | undefined;
     lessonId: string;
-    trainingPathId: string;
   }>
 ): Promise<TalentLessonProgressSnapshot> {
-  const [{ data: lessonRow }, { data: pathRow }] = await Promise.all([
-    supabase
-      .from("lessons")
-      .select("talent_lms_unit_id")
-      .eq("id", options.lessonId)
-      .maybeSingle(),
-    supabase
-      .from("training_paths")
-      .select("talent_lms_course_id")
-      .eq("id", options.trainingPathId)
-      .maybeSingle(),
-  ]);
-
-  const unitId = coerceTalentLmsUnitId(
-    typeof lessonRow?.talent_lms_unit_id === "string"
-      ? lessonRow.talent_lms_unit_id
-      : null
-  );
-
-  const courseIdRaw =
-    typeof pathRow?.talent_lms_course_id === "string" &&
-    pathRow.talent_lms_course_id.trim()
-      ? pathRow.talent_lms_course_id.trim()
-      : null;
+  const { courseId: effectiveCourseId, unitId } =
+    await resolveTalentLmsCourseAndUnitForLesson(supabase, options.lessonId);
 
   const subdomain = process.env.TALENTLMS_SUBDOMAIN?.trim() ?? "";
+
+  const talentUrl =
+    unitId && effectiveCourseId && subdomain
+      ? buildTalentLmsCoursePlayUrl({
+          subdomain,
+          courseId: effectiveCourseId,
+          unitId,
+        })
+      : null;
 
   const apiConfig = getTalentLmsApiEnrollmentConfig();
   const checkedAt = new Date().toISOString();
@@ -135,17 +123,17 @@ export async function fetchTalentLessonProgressSnapshot(
   if (!unitId) {
     return {
       kind: "unavailable",
-      talentUrl: null,
+      talentUrl,
       message: "No TalentLMS lesson specified.",
     };
   }
 
-  if (!courseIdRaw) {
+  if (!effectiveCourseId) {
     return {
       kind: "unavailable",
-      talentUrl: null,
+      talentUrl,
       message:
-        "Set the Talent LMS course id on this training path so Hangar can load unit progress.",
+        "Set the Talent LMS course ID on this Hangar course so unit progress can load.",
     };
   }
 
@@ -157,12 +145,6 @@ export async function fetchTalentLessonProgressSnapshot(
         "TALENTLMS_SUBDOMAIN is not set on the server; Hangar cannot build your lesson link.",
     };
   }
-
-  const talentUrl = buildTalentLmsCoursePlayUrl({
-    subdomain,
-    courseId: courseIdRaw,
-    unitId,
-  });
 
   if (!apiConfig) {
     return {
@@ -182,7 +164,7 @@ export async function fetchTalentLessonProgressSnapshot(
     };
   }
 
-  const tlUser = await talentLmsGetUserIdByEmail(apiConfig, email);
+  const tlUser = await talentLmsResolveLearnerUserId(apiConfig, email);
   if (!tlUser.ok) {
     return {
       kind: "error",
@@ -210,7 +192,7 @@ export async function fetchTalentLessonProgressSnapshot(
       kind: "ready",
       percent: parsePercentFromUnitProgressRow(row),
       talentUrl,
-      courseId: courseIdRaw,
+      courseId: effectiveCourseId,
       unitId,
       statusLabel: row.status ?? null,
       checkedAt,
@@ -221,7 +203,7 @@ export async function fetchTalentLessonProgressSnapshot(
   const courseStatus = await talentLmsGetUserStatusInCourse({
     config: apiConfig,
     userId: tlUser.userId,
-    courseId: courseIdRaw,
+    courseId: effectiveCourseId,
   });
 
   if (!courseStatus.ok) {
@@ -241,7 +223,7 @@ export async function fetchTalentLessonProgressSnapshot(
     kind: "ready",
     percent,
     talentUrl,
-    courseId: courseIdRaw,
+    courseId: effectiveCourseId,
     unitId,
     statusLabel,
     checkedAt,

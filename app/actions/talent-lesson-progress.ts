@@ -61,6 +61,5 @@ export async function refreshTalentLessonProgress(
   return fetchTalentLessonProgressSnapshot(supabase, {
     userEmail: user.email,
     lessonId,
-    trainingPathId: student.training_path_id,
   });
 }

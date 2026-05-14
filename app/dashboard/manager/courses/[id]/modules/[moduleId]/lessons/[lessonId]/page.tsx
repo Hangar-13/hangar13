@@ -92,6 +92,7 @@ export default async function ManagerLessonDetailPage({ params }: PageProps) {
     <ManagerLessonDetailClient
       courseId={courseId}
       courseName={course.name}
+      courseTalentLmsCourseId={course.talent_lms_course_id}
       moduleId={moduleId}
       moduleTitle={moduleTitleInBar}
       lesson={{

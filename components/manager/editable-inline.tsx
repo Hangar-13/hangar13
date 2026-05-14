@@ -11,6 +11,8 @@ type EditableInlineProps = {
   value: string;
   onSave: (next: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   multiline?: boolean;
+  /** When true, mount with the editor open (e.g. deep-linked course settings). */
+  initialEditing?: boolean;
   /** Shown when the value is empty (display mode) and as edit placeholder if `editPlaceholder` is omitted */
   placeholder?: string;
   /** Placeholder while editing (optional) */
@@ -25,13 +27,14 @@ export function EditableInline({
   value,
   onSave,
   multiline,
+  initialEditing,
   placeholder,
   editPlaceholder,
   displayClassName,
   inputClassName,
   label,
 }: EditableInlineProps) {
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(() => initialEditing ?? false);
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();

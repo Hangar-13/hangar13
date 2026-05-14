@@ -44,9 +44,10 @@ import {
 } from "@/components/manager/manager-string-list-editor";
 import { ManagerMarkdownTextarea } from "@/components/manager/manager-markdown-textarea";
 import { AcsInclusionSwitchRow } from "@/components/manager/manager-acs-inclusion-toggle-row";
+import { coerceTalentLmsCourseId } from "@/lib/talentlms/lesson-url";
 
 type Props = {
-  course: { id: string; name: string };
+  course: { id: string; name: string; talentLmsCourseId: string | null };
   moduleIndex: number;
   module: {
     id: string;
@@ -536,21 +537,36 @@ export function ManagerModuleDetailClient({
             </div>
             <div className="min-w-0 space-y-2 py-3">
               <h3 className="text-base font-semibold tracking-tight">
-                TalentLMS Unit
+                Talent LMS
               </h3>
-              <Input
-                id="les-talent-unit"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                autoComplete="off"
-                placeholder="4 digit unit id"
-                aria-label="TalentLMS Unit"
-                value={talentLmsUnitId}
-                onChange={(e) => setTalentLmsUnitId(e.target.value)}
-                disabled={pending}
-                className="max-w-xs font-mono text-sm tabular-nums"
-              />
+              {coerceTalentLmsCourseId(course.talentLmsCourseId) ? (
+                <Input
+                  id="les-talent-unit"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  placeholder="Unit id (digits)"
+                  aria-label="Talent LMS unit"
+                  value={talentLmsUnitId}
+                  onChange={(e) => setTalentLmsUnitId(e.target.value)}
+                  disabled={pending}
+                  className="max-w-xs font-mono text-sm tabular-nums"
+                />
+              ) : (
+                <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    No Talent LMS course defined
+                  </p>
+                  <Button asChild variant="secondary" size="sm" className="shrink-0">
+                    <Link
+                      href={`/dashboard/manager/courses/${course.id}?editTalentLms=1#talent-lms-course-id`}
+                    >
+                      Add Talent LMS Course ID
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="min-w-0 space-y-2 py-3">
               <Label

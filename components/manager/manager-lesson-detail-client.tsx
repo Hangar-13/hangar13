@@ -12,6 +12,7 @@ import { ManagerLessonAtaChaptersSection } from "@/components/manager/manager-le
 import { ManagerLessonStringListSection } from "@/components/manager/manager-lesson-string-list-section";
 import type { AcsCodePickerRow } from "@/components/manager/acs-codes-picker";
 import type { AtaChapterPickerRow } from "@/components/manager/ata-chapters-picker";
+import { coerceTalentLmsCourseId } from "@/lib/talentlms/lesson-url";
 
 export type LessonDetail = {
   id: string;
@@ -31,6 +32,8 @@ export type LessonDetail = {
 type Props = {
   courseId: string;
   courseName: string;
+  /** Hangar course Talent LMS course id (digits); controls whether unit editing is shown. */
+  courseTalentLmsCourseId: string | null;
   moduleId: string;
   moduleTitle: string;
   lesson: LessonDetail;
@@ -42,6 +45,7 @@ type Props = {
 export function ManagerLessonDetailClient({
   courseId,
   courseName,
+  courseTalentLmsCourseId,
   moduleId,
   moduleTitle,
   lesson,
@@ -125,22 +129,37 @@ export function ManagerLessonDetailClient({
 
             <div className="max-w-3xl space-y-2">
               <h3 className="text-base font-semibold tracking-tight">
-                TalentLMS Unit
+                Talent LMS
               </h3>
-              <EditableInline
-                label="TalentLMS Unit"
-                value={lesson.talent_lms_unit_id ?? ""}
-                displayClassName="text-sm font-mono tabular-nums"
-                placeholder="No TalentLMS lesson specified"
-                editPlaceholder="e.g. 2065"
-                onSave={async (v) => {
-                  const r = await updateLessonFields(lesson.id, {
-                    talent_lms_unit_id: v.trim() || null,
-                  });
-                  if (r.ok) router.refresh();
-                  return r;
-                }}
-              />
+              {coerceTalentLmsCourseId(courseTalentLmsCourseId) ? (
+                <EditableInline
+                  label="Talent LMS unit"
+                  value={lesson.talent_lms_unit_id ?? ""}
+                  displayClassName="text-sm font-mono tabular-nums"
+                  placeholder="No TalentLMS lesson specified"
+                  editPlaceholder="e.g. 2065"
+                  onSave={async (v) => {
+                    const r = await updateLessonFields(lesson.id, {
+                      talent_lms_unit_id: v.trim() || null,
+                    });
+                    if (r.ok) router.refresh();
+                    return r;
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    No Talent LMS course defined
+                  </p>
+                  <Button asChild variant="secondary" size="sm" className="shrink-0">
+                    <Link
+                      href={`/dashboard/manager/courses/${courseId}?editTalentLms=1#talent-lms-course-id`}
+                    >
+                      Add Talent LMS Course ID
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </div>
 
             <EditableMarkdownField

@@ -2,9 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   buildTalentLmsCoursePlayUrl,
+  coerceTalentLmsCourseId,
   coerceTalentLmsUnitId,
-  extractFirstTalentLmsUrlFromMarkdown,
-  parseTalentLmsCourseAndUnitFromUrl,
 } from "@/lib/talentlms/lesson-url";
 
 export type LessonTalentContext = {
@@ -13,74 +12,67 @@ export type LessonTalentContext = {
   unitId: string | null;
 };
 
-export async function getLessonTalentContext(
+/**
+ * Resolves Talent LMS course id (from the Hangar catalog course) and unit id (lesson field).
+ */
+export async function resolveTalentLmsCourseAndUnitForLesson(
   supabase: SupabaseClient,
-  lessonId: string,
-  trainingPathId: string
-): Promise<LessonTalentContext> {
-  const [{ data: lessonRow }, { data: pathRow }] = await Promise.all([
-    supabase
-      .from("lessons")
-      .select(
-        "talent_lms_unit_id, study_materials, practical_application, weekly_deliverable"
-      )
-      .eq("id", lessonId)
-      .maybeSingle(),
-    supabase
-      .from("training_paths")
-      .select("talent_lms_course_id")
-      .eq("id", trainingPathId)
-      .maybeSingle(),
-  ]);
+  lessonId: string
+): Promise<{ courseId: string | null; unitId: string | null }> {
+  const { data: lessonRow } = await supabase
+    .from("lessons")
+    .select("talent_lms_unit_id, module_id")
+    .eq("id", lessonId)
+    .maybeSingle();
 
-  const markdownBlob = [
-    lessonRow?.study_materials,
-    lessonRow?.practical_application,
-    lessonRow?.weekly_deliverable,
-  ]
-    .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
-    .join("\n\n");
-
-  const extractedUrl =
-    extractFirstTalentLmsUrlFromMarkdown(markdownBlob);
-  const parsedFromMarkdown = extractedUrl
-    ? parseTalentLmsCourseAndUnitFromUrl(extractedUrl)
-    : { courseId: null, unitId: null };
-
-  const pathCourseId =
-    typeof pathRow?.talent_lms_course_id === "string" &&
-    pathRow.talent_lms_course_id.trim()
-      ? pathRow.talent_lms_course_id.trim()
-      : null;
-
-  const unitFromLesson = coerceTalentLmsUnitId(
+  const unitId = coerceTalentLmsUnitId(
     typeof lessonRow?.talent_lms_unit_id === "string"
       ? lessonRow.talent_lms_unit_id
       : null
   );
 
+  const moduleId = lessonRow?.module_id ?? null;
+  const { data: modRow } = moduleId
+    ? await supabase.from("modules").select("course_id").eq("id", moduleId).maybeSingle()
+    : { data: null };
+
+  const hangarCourseId = modRow?.course_id ?? null;
+  const { data: courseRow } = hangarCourseId
+    ? await supabase
+        .from("courses")
+        .select("talent_lms_course_id")
+        .eq("id", hangarCourseId)
+        .maybeSingle()
+    : { data: null };
+
+  const courseId = coerceTalentLmsCourseId(
+    typeof courseRow?.talent_lms_course_id === "string"
+      ? courseRow.talent_lms_course_id
+      : null
+  );
+
+  return { courseId, unitId };
+}
+
+export async function getLessonTalentContext(
+  supabase: SupabaseClient,
+  lessonId: string
+): Promise<LessonTalentContext> {
+  const { courseId, unitId } = await resolveTalentLmsCourseAndUnitForLesson(
+    supabase,
+    lessonId
+  );
+
   const subdomain = process.env.TALENTLMS_SUBDOMAIN?.trim() ?? "";
 
-  const courseId =
-    pathCourseId ?? parsedFromMarkdown.courseId ?? null;
-
-  const unitId =
-    unitFromLesson ?? parsedFromMarkdown.unitId ?? null;
-
-  let talentUrl: string | null = null;
-
-  const courseForPlayUrl =
-    pathCourseId ?? parsedFromMarkdown.courseId ?? null;
-
-  if (unitFromLesson && courseForPlayUrl && subdomain) {
-    talentUrl = buildTalentLmsCoursePlayUrl({
-      subdomain,
-      courseId: courseForPlayUrl,
-      unitId: unitFromLesson,
-    });
-  } else {
-    talentUrl = extractedUrl;
-  }
+  const talentUrl =
+    unitId && courseId && subdomain
+      ? buildTalentLmsCoursePlayUrl({
+          subdomain,
+          courseId,
+          unitId,
+        })
+      : null;
 
   return {
     talentUrl,

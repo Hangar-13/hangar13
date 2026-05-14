@@ -11,7 +11,7 @@ import {
   isCatalogVisibility,
   type CatalogVisibility,
 } from "@/lib/catalog-visibility";
-import { validateTalentLmsUnitIdForSave } from "@/lib/talentlms/lesson-url";
+import { validateTalentLmsUnitIdForSave, validateTalentLmsCourseIdForSave } from "@/lib/talentlms/lesson-url";
 
 function linesToTextArray(text: string): string[] {
   return text
@@ -86,6 +86,8 @@ export async function updateCourseFields(
     name?: string;
     description?: string | null;
     visibility?: CatalogVisibility;
+    /** Talent LMS numeric course id; null clears. */
+    talentLmsCourseId?: string | null;
   }
 ): Promise<ActionResult> {
   const supabase = await createServerSupabaseClient();
@@ -111,6 +113,11 @@ export async function updateCourseFields(
       return { ok: false, error: "Invalid visibility." };
     }
     update.visibility = patch.visibility;
+  }
+  if (patch.talentLmsCourseId !== undefined) {
+    const v = validateTalentLmsCourseIdForSave(patch.talentLmsCourseId);
+    if (!v.ok) return { ok: false, error: v.error };
+    update.talent_lms_course_id = v.courseId;
   }
 
   if (Object.keys(update).length === 0) return { ok: true };

@@ -197,7 +197,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
       lessonProgressSnapshot = await fetchTalentLessonProgressSnapshot(supabase, {
         userEmail: user.email,
         lessonId,
-        trainingPathId: data.student.training_path_id,
       });
     }
   }

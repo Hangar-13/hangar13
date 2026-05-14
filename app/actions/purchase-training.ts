@@ -28,7 +28,7 @@ export async function purchaseTrainingPlan(
       supabase
         .from("training_paths")
         .select(
-          "id, organization_id, is_active, visibility, monetization, talent_lms_course_id"
+          "id, organization_id, is_active, visibility, monetization"
         )
         .eq("id", trainingPathId)
         .maybeSingle(),
@@ -116,8 +116,34 @@ export async function purchaseTrainingPlan(
     return { error: userErr.message };
   }
 
-  const tlCourseRaw = path.talent_lms_course_id as string | null | undefined;
-  const tlCourse = tlCourseRaw?.trim();
+  let tlCourse: string | null = null;
+  const { data: pathCourseRows } = await supabase
+    .from("training_path_items")
+    .select("course_id")
+    .eq("training_path_id", trainingPathId)
+    .not("course_id", "is", null);
+
+  const distinctHangarCourseIds = [
+    ...new Set(
+      (pathCourseRows ?? [])
+        .map((r) => r.course_id as string | null | undefined)
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+    ),
+  ];
+
+  const enrollHangarCourseId =
+    distinctHangarCourseIds.length === 1 ? distinctHangarCourseIds[0]! : null;
+
+  if (enrollHangarCourseId) {
+    const { data: hangarCourse } = await supabase
+      .from("courses")
+      .select("talent_lms_course_id")
+      .eq("id", enrollHangarCourseId)
+      .maybeSingle();
+    const raw = hangarCourse?.talent_lms_course_id as string | null | undefined;
+    tlCourse = raw?.trim() ? raw.trim() : null;
+  }
+
   if (tlCourse) {
     const apiConfig = getTalentLmsApiEnrollmentConfig();
     if (apiConfig) {

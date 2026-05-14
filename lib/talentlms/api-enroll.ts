@@ -173,6 +173,114 @@ export async function talentLmsGetUserIdByEmail(
   return { ok: true, userId: id };
 }
 
+/**
+ * GET /users/username:… — matches SAML `login` when Talent stores no email match.
+ * @see TalentLMS API PDF — `/v1/users/username:{userName}`
+ */
+export async function talentLmsGetUserIdByUsername(
+  config: TalentLmsApiConfig,
+  username: string
+): Promise<
+  | { ok: true; userId: string }
+  | { ok: false; status: number; message: string }
+> {
+  const login = username.trim();
+  if (!login) {
+    return { ok: false, status: 400, message: "Missing Talent LMS username." };
+  }
+
+  const url = `${baseUrl(config)}/users/username:${encodeURIComponent(login)}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: basicAuthHeader(config.apiKey),
+        Accept: "application/json",
+      },
+      cache: "no-store",
+    });
+  } catch (e) {
+    const msg =
+      e instanceof Error ? e.message : "TalentLMS API request failed.";
+    return { ok: false, status: 0, message: msg };
+  }
+
+  if (res.status === 404) {
+    return {
+      ok: false,
+      status: 404,
+      message: "Talent LMS user not found for this username.",
+    };
+  }
+  if (!res.ok) {
+    return {
+      ok: false,
+      status: res.status,
+      message: await readTalentApiErrorMessage(res),
+    };
+  }
+
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return { ok: false, status: 500, message: "Invalid Talent LMS user response." };
+  }
+
+  const id =
+    body &&
+    typeof body === "object" &&
+    "id" in body &&
+    String((body as { id: unknown }).id).trim()
+      ? String((body as { id: unknown }).id).trim()
+      : "";
+
+  if (!id) {
+    return { ok: false, status: 500, message: "Talent LMS user response missing id." };
+  }
+
+  return { ok: true, userId: id };
+}
+
+/**
+ * Resolves Talent `user_id` for a Hangar learner: email first, then SAML login (local part)
+ * when `TALENTLMS_SAML_USERNAME_MODE` is `emailLocalPart`.
+ */
+export async function talentLmsResolveLearnerUserId(
+  config: TalentLmsApiConfig,
+  email: string
+): Promise<
+  | { ok: true; userId: string }
+  | { ok: false; status: number; message: string }
+> {
+  const norm = email.trim().toLowerCase();
+  if (!norm) {
+    return { ok: false, status: 400, message: "Missing user email." };
+  }
+
+  const byEmail = await talentLmsGetUserIdByEmail(config, norm);
+  if (byEmail.ok) {
+    return byEmail;
+  }
+  if (byEmail.status !== 404) {
+    return byEmail;
+  }
+
+  const policy = getTalentLmsUsernamePolicyFromEnv();
+  const login = resolveTalentLmsUsername(norm, policy);
+  if (login === norm) {
+    return byEmail;
+  }
+
+  const byUsername = await talentLmsGetUserIdByUsername(config, login);
+  if (byUsername.ok) {
+    return byUsername;
+  }
+
+  return byEmail;
+}
+
 /** GET /users/email:… — returns whether a learner row exists. */
 async function talentLmsUserExistsByEmail(
   config: TalentLmsApiConfig,

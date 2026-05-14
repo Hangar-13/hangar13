@@ -5,6 +5,17 @@ import { hasOrgRoleAtLeast } from "@/lib/organization";
 
 type PlatformOrOrgElevated = OrganizationRole | "god" | "admin";
 
+/** Hangar `courses` row after manager access check (includes optional Talent LMS numeric course id). */
+export type ManagerOwnedCourse = {
+  id: string;
+  name: string;
+  description: string | null;
+  created_by: string;
+  organization_id: string;
+  visibility: string;
+  talent_lms_course_id: string | null;
+};
+
 /**
  * System `admin` or `god` OR org manager/admin in any organization (assignments, org admin UI).
  */
@@ -80,7 +91,7 @@ export async function getTrainingPathOwnedByUser(
   const { data: path } = await supabase
     .from("training_paths")
     .select(
-      "id, name, description, created_by, is_active, organization_id, visibility, talent_lms_course_id"
+      "id, name, description, created_by, is_active, organization_id, visibility"
     )
     .eq("id", trainingPathId)
     .maybeSingle();
@@ -115,12 +126,31 @@ export async function getCourseOwnedByUser(
   supabase: SupabaseClient,
   courseId: string,
   userId: string
-) {
-  const { data: course } = await supabase
+): Promise<ManagerOwnedCourse | null> {
+  const selectWithTalent =
+    "id, name, description, created_by, organization_id, visibility, talent_lms_course_id";
+  const selectBase =
+    "id, name, description, created_by, organization_id, visibility";
+
+  const first = await supabase
     .from("courses")
-    .select("id, name, description, created_by, organization_id, visibility")
+    .select(selectWithTalent)
     .eq("id", courseId)
     .maybeSingle();
+
+  let course: Record<string, unknown> | null = first.data ?? null;
+
+  // Until migration 083 is applied, `talent_lms_course_id` does not exist — full select fails.
+  if (first.error && course === null) {
+    const second = await supabase
+      .from("courses")
+      .select(selectBase)
+      .eq("id", courseId)
+      .maybeSingle();
+    course = second.data
+      ? { ...second.data, talent_lms_course_id: null }
+      : null;
+  }
 
   if (!course?.organization_id) {
     return null;
@@ -133,7 +163,7 @@ export async function getCourseOwnedByUser(
     .maybeSingle();
 
   if (hasPlatformAdminAccess(normalizeSystemRole(sys?.role as string | undefined) as SystemRole)) {
-    return course;
+    return course as ManagerOwnedCourse;
   }
 
   const canEdit = await hasOrgRoleAtLeast(
@@ -145,7 +175,7 @@ export async function getCourseOwnedByUser(
   if (!canEdit) {
     return null;
   }
-  return course;
+  return course as ManagerOwnedCourse;
 }
 
 export async function getModuleInOwnedCourse(
