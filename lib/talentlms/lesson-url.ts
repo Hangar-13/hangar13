@@ -28,6 +28,50 @@ export function isTalentLmsTenantPortalHttpsUrl(href: string): boolean {
 }
 
 /**
+ * Normalizes a stored lesson URL; returns null if empty or not a valid Talent LMS https URL.
+ */
+export function coerceTalentLmsLessonUrl(
+  raw: string | null | undefined
+): string | null {
+  const t = raw?.trim();
+  if (!t) return null;
+  try {
+    const href = new URL(t).href;
+    return isTalentLmsHttpsUrl(href) ? href : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Validates manager-supplied lesson URL; empty clears the field.
+ */
+export function validateTalentLmsLessonUrlForSave(
+  raw: string | null | undefined
+):
+  | { ok: true; url: string | null }
+  | { ok: false; error: string } {
+  const t = raw?.trim();
+  if (!t) return { ok: true, url: null };
+  try {
+    const href = new URL(t).href;
+    if (!isTalentLmsHttpsUrl(href)) {
+      return {
+        ok: false,
+        error:
+          "Talent LMS lesson link must use https and point to a *.talentlms.com host.",
+      };
+    }
+    return { ok: true, url: href };
+  } catch {
+    return {
+      ok: false,
+      error: "Talent LMS lesson link must be a valid URL.",
+    };
+  }
+}
+
+/**
  * First Talent LMS URL in markdown — prefers tenant portal URLs over www / apex links.
  * Used for “Start lesson” (deep link as authored).
  */

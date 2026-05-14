@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  coerceTalentLmsLessonUrl,
   extractFirstTalentLmsUrlFromMarkdown,
   parseTalentLmsCourseAndUnitFromUrl,
 } from "@/lib/talentlms/lesson-url";
@@ -19,7 +20,9 @@ export async function getLessonTalentContext(
   const [{ data: lessonRow }, { data: pathRow }] = await Promise.all([
     supabase
       .from("lessons")
-      .select("study_materials, practical_application, weekly_deliverable")
+      .select(
+        "talent_lms_lesson_url, study_materials, practical_application, weekly_deliverable"
+      )
       .eq("id", lessonId)
       .maybeSingle(),
     supabase
@@ -37,7 +40,14 @@ export async function getLessonTalentContext(
     .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
     .join("\n\n");
 
-  const talentUrl = extractFirstTalentLmsUrlFromMarkdown(markdownBlob);
+  const explicitUrl = coerceTalentLmsLessonUrl(
+    typeof lessonRow?.talent_lms_lesson_url === "string"
+      ? lessonRow.talent_lms_lesson_url
+      : null
+  );
+
+  const talentUrl =
+    explicitUrl ?? extractFirstTalentLmsUrlFromMarkdown(markdownBlob);
   const parsed = talentUrl
     ? parseTalentLmsCourseAndUnitFromUrl(talentUrl)
     : { courseId: null, unitId: null };

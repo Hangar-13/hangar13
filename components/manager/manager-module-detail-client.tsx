@@ -100,6 +100,7 @@ export function ManagerModuleDetailClient({
     StringListRow[]
   >(() => []);
   const [weeklyDeliverable, setWeeklyDeliverable] = useState("");
+  const [talentLmsLessonUrl, setTalentLmsLessonUrl] = useState("");
   const [lessonHours, setLessonHours] = useState("0");
   const [acsCodesSelected, setAcsCodesSelected] = useState<number[]>([]);
   const [includeAcsCodes, setIncludeAcsCodes] = useState(false);
@@ -114,6 +115,7 @@ export function ManagerModuleDetailClient({
     setPracticalApplication("");
     setMentorDiscussionRows([]);
     setWeeklyDeliverable("");
+    setTalentLmsLessonUrl("");
     setAcsCodesSelected([]);
     setIncludeAcsCodes(false);
     setLessonError(null);
@@ -207,6 +209,7 @@ export function ManagerModuleDetailClient({
         practicalApplication: practicalApplication.trim() || null,
         mentorDiscussionQuestions: stringsFromRows(mentorDiscussionRows),
         weeklyDeliverable: weeklyDeliverable.trim() || null,
+        talentLmsLessonUrl: talentLmsLessonUrl.trim() || null,
       });
       if (!result.ok) {
         setLessonError(result.error);
@@ -530,6 +533,29 @@ export function ManagerModuleDetailClient({
                 addLabel="Add objective"
                 itemPlaceholder="Objective text"
               />
+            </div>
+            <div className="min-w-0 space-y-2 py-3">
+              <Label
+                htmlFor="les-talent-url"
+                className="text-sm font-medium text-muted-foreground"
+              >
+                Talent LMS lesson link
+              </Label>
+              <Input
+                id="les-talent-url"
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                placeholder="https://yourtenant.talentlms.com/course/play/id:…/unit:…"
+                value={talentLmsLessonUrl}
+                onChange={(e) => setTalentLmsLessonUrl(e.target.value)}
+                disabled={pending}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional when creating; you can edit anytime on the lesson page. Must be https on
+                *.talentlms.com.
+              </p>
             </div>
             <div className="min-w-0 space-y-2 py-3">
               <Label

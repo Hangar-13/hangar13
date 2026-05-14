@@ -102,6 +102,11 @@ export default async function ManagerLessonDetailPage({ params }: PageProps) {
         ata_chapter_ids: ataChapterIds,
         acs_codes: acsCodes,
         learning_objectives: lesson.learning_objectives ?? [],
+        talent_lms_lesson_url:
+          typeof (lesson as { talent_lms_lesson_url?: unknown }).talent_lms_lesson_url ===
+          "string"
+            ? (lesson as { talent_lms_lesson_url: string }).talent_lms_lesson_url
+            : null,
         study_materials: lesson.study_materials,
         practical_application: lesson.practical_application,
         mentor_discussion_questions: lesson.mentor_discussion_questions ?? [],

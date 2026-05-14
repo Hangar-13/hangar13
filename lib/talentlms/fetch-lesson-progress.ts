@@ -133,7 +133,7 @@ export async function fetchTalentLessonProgressSnapshot(
       kind: "unavailable",
       talentUrl: ctx.talentUrl,
       message:
-        "Set a Talent course on this lesson link or on the training path, then tap Update progress.",
+        "Set this lesson’s Talent LMS lesson URL (manager lesson editor), or include course/play URLs in study materials. You can also set the training path’s Talent course id.",
     };
   }
 

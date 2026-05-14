@@ -21,6 +21,7 @@ export type LessonDetail = {
   ata_chapter_ids: number[];
   acs_codes: number[];
   learning_objectives: string[];
+  talent_lms_lesson_url: string | null;
   study_materials: string | null;
   practical_application: string | null;
   mentor_discussion_questions: string[];
@@ -121,6 +122,26 @@ export function ManagerLessonDetailClient({
               itemPlaceholder="Objective text"
               idPrefix="lesson-lo"
             />
+
+            <div className="max-w-3xl space-y-2">
+              <EditableInline
+                label="Talent LMS lesson link"
+                value={lesson.talent_lms_lesson_url ?? ""}
+                displayClassName="text-sm font-mono break-all"
+                placeholder="https://yourtenant.talentlms.com/course/play/id:COURSE/unit:UNIT"
+                onSave={async (v) => {
+                  const r = await updateLessonFields(lesson.id, {
+                    talent_lms_lesson_url: v.trim() || null,
+                  });
+                  if (r.ok) router.refresh();
+                  return r;
+                }}
+              />
+              <p className="text-xs text-muted-foreground max-w-2xl">
+                Learners use this for Start lesson and Talent progress; course (and ideally unit)
+                ids should be in the URL. Separate from study materials.
+              </p>
+            </div>
 
             <EditableMarkdownField
               id="lesson-study-materials"
