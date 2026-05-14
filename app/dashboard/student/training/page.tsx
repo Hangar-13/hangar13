@@ -27,6 +27,7 @@ import {
   resolveLessonIdForProgramWeek,
 } from "@/lib/training-lessons";
 import { extractFirstTalentLmsUrlFromMarkdown } from "@/lib/talentlms/lesson-url";
+import { talentLmsSpInitiatedSsoLaunchUrl } from "@/lib/talentlms/sso-launch-url";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
 import { formatUiDate } from "@/lib/format-ui-date";
 
@@ -223,6 +224,13 @@ export default async function TrainingPage({ searchParams }: PageProps) {
       .join("\n\n")
   );
 
+  const talentLessonSsoStartUrl =
+    talentLessonDeepUrl != null
+      ? talentLmsSpInitiatedSsoLaunchUrl(talentLessonDeepUrl, {
+          portalOrigin: talentPortalOrigin,
+        })
+      : null;
+
   const pageTitle = data.trainingPlanName ?? "Training";
 
   return (
@@ -303,14 +311,14 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                   <span>Due: {formatUiDate(data.dueDate)}</span>
                 </div>
               </div>
-              {talentLessonDeepUrl ? (
+              {talentLessonDeepUrl && talentLessonSsoStartUrl ? (
                 <Button
                   asChild
                   variant="secondary"
                   className="shrink-0 gap-2 border border-primary/20 bg-background/80 text-primary hover:bg-background"
                 >
                   <a
-                    href={talentLessonDeepUrl}
+                    href={talentLessonSsoStartUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
