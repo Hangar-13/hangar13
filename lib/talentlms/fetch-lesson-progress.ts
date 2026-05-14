@@ -94,7 +94,7 @@ function unitPercentFromCoursePayload(
  * Progress for the learner’s weekly lesson — unit id from `lessons.talent_lms_unit_id`;
  * Talent LMS course id from the Hangar **`courses`** row for that lesson (via module).
  *
- * Play URL: `https://{TALENTLMS_SUBDOMAIN}.talentlms.com/course/play/id:{course}/unit:{unit}`.
+ * Play URL: `https://{TALENTLMS_SUBDOMAIN}.talentlms.com/plus/my/training/{course}/units/{unit}`.
  */
 export async function fetchTalentLessonProgressSnapshot(
   supabase: SupabaseClient,

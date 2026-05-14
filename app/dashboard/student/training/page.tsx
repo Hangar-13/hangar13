@@ -447,6 +447,10 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                         Talent completion was not checked because the lesson link does not
                         include a unit id (expected in URLs like{" "}
                         <span className="font-mono text-[11px]">
+                          …/plus/my/training/COURSE/units/UNIT
+                        </span>{" "}
+                        or{" "}
+                        <span className="font-mono text-[11px]">
                           …/course/play/id:COURSE/unit:UNIT
                         </span>
                         ). Your reflection was still saved.

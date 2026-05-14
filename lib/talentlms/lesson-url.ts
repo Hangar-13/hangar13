@@ -86,7 +86,10 @@ export function validateTalentLmsCourseIdForSave(
 }
 
 /**
- * Learner deep link: `/course/play/id:{courseId}/unit:{unitId}` on the tenant host.
+ * Learner deep link for Talent LMS Plus-style portal:
+ * `/plus/my/training/{courseId}/units/{unitId}` on the tenant host.
+ *
+ * @see Classic format was `/course/play/id:{courseId}/unit:{unitId}` — Plus rejects that with an error page on many tenants.
  */
 export function buildTalentLmsCoursePlayUrl(options: Readonly<{
   subdomain: string;
@@ -96,7 +99,7 @@ export function buildTalentLmsCoursePlayUrl(options: Readonly<{
   const sub = options.subdomain.trim().toLowerCase();
   const cid = options.courseId.trim();
   const uid = options.unitId.trim();
-  return `https://${sub}.talentlms.com/course/play/id:${cid}/unit:${uid}`;
+  return `https://${sub}.talentlms.com/plus/my/training/${cid}/units/${uid}`;
 }
 
 /**
@@ -138,8 +141,8 @@ function sanitizeMarkdownUrlTail(s: string): string {
 }
 
 /**
- * Extract Talent course and unit ids from a learner URL (markdown links often use
- * `/course/play/id:{courseId}/unit:{unitId}` or query params).
+ * Extract Talent course and unit ids from a learner URL (Plus `/plus/my/training/…/units/…`,
+ * classic `/course/play/id:…/unit:…`, or query params).
  */
 export function parseTalentLmsCourseAndUnitFromUrl(href: string): {
   courseId: string | null;
@@ -152,6 +155,14 @@ export function parseTalentLmsCourseAndUnitFromUrl(href: string): {
 
     let courseId: string | null = null;
     let unitId: string | null = null;
+
+    const plusTraining = u.pathname.match(
+      /\/plus\/my\/training\/(\d+)\/units\/(\d+)/i
+    );
+    if (plusTraining) {
+      courseId = plusTraining[1];
+      unitId = plusTraining[2];
+    }
 
     const unitColon = combined.match(/(?:^|[/?#,])unit:(\d+)/);
     if (unitColon) {
