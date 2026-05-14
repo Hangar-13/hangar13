@@ -5,8 +5,6 @@ import { MarkdownContent } from "@/components/ui/markdown-content";
 type Props = {
   markdown: string;
   emptyMessage?: string;
-  /** From `TALENTLMS_SUBDOMAIN`; rewrites Talent links to SSO bookmark URL (new tab). */
-  talentPortalOrigin?: string | null;
 };
 
 /**
@@ -15,7 +13,6 @@ type Props = {
 export function LessonMarkdownBody({
   markdown,
   emptyMessage,
-  talentPortalOrigin,
 }: Props) {
   if (!markdown?.trim()) {
     return (
@@ -25,10 +22,6 @@ export function LessonMarkdownBody({
     );
   }
   return (
-    <MarkdownContent
-      markdown={markdown}
-      className="text-muted-foreground"
-      talentPortalOrigin={talentPortalOrigin}
-    />
+    <MarkdownContent markdown={markdown} className="text-muted-foreground" />
   );
 }

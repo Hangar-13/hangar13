@@ -27,7 +27,6 @@ import {
   resolveLessonIdForProgramWeek,
 } from "@/lib/training-lessons";
 import { extractFirstTalentLmsUrlFromMarkdown } from "@/lib/talentlms/lesson-url";
-import { talentLmsSpInitiatedSsoLaunchUrl } from "@/lib/talentlms/sso-launch-url";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
 import { formatUiDate } from "@/lib/format-ui-date";
 
@@ -213,23 +212,11 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const learningObjectives = w.learning_objectives || [];
   const mentorQuestions = w.mentor_discussion_questions || [];
 
-  const tlSubRaw = process.env.TALENTLMS_SUBDOMAIN?.trim() ?? "";
-  const tlSubdomain = tlSubRaw.replace(/\.talentlms\.com$/i, "").trim();
-  const talentPortalOrigin =
-    tlSubdomain.length > 0 ? `https://${tlSubdomain}.talentlms.com` : null;
-
   const talentLessonDeepUrl = extractFirstTalentLmsUrlFromMarkdown(
     [w.study_materials, w.practical_application, w.weekly_deliverable]
       .filter((s): s is string => typeof s === "string" && s.trim().length > 0)
       .join("\n\n")
   );
-
-  const talentLessonSsoStartUrl =
-    talentLessonDeepUrl != null
-      ? talentLmsSpInitiatedSsoLaunchUrl(talentLessonDeepUrl, {
-          portalOrigin: talentPortalOrigin,
-        })
-      : null;
 
   const pageTitle = data.trainingPlanName ?? "Training";
 
@@ -311,14 +298,14 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                   <span>Due: {formatUiDate(data.dueDate)}</span>
                 </div>
               </div>
-              {talentLessonDeepUrl && talentLessonSsoStartUrl ? (
+              {talentLessonDeepUrl ? (
                 <Button
                   asChild
                   variant="secondary"
                   className="shrink-0 gap-2 border border-primary/20 bg-background/80 text-primary hover:bg-background"
                 >
                   <a
-                    href={talentLessonSsoStartUrl}
+                    href={talentLessonDeepUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -358,10 +345,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           icon={<BookOpen className="h-5 w-5" />}
           defaultOpen={true}
         >
-          <LessonMarkdownBody
-            markdown={w.study_materials ?? ""}
-            talentPortalOrigin={talentPortalOrigin}
-          />
+          <LessonMarkdownBody markdown={w.study_materials ?? ""} />
         </CollapsibleSection>
 
         <CollapsibleSection
@@ -369,10 +353,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           icon={<Clock className="h-5 w-5" />}
           defaultOpen={true}
         >
-          <LessonMarkdownBody
-            markdown={w.practical_application ?? ""}
-            talentPortalOrigin={talentPortalOrigin}
-          />
+          <LessonMarkdownBody markdown={w.practical_application ?? ""} />
         </CollapsibleSection>
 
         <CollapsibleSection
@@ -399,10 +380,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           defaultOpen={true}
         >
           <div className="mb-4">
-            <LessonMarkdownBody
-              markdown={w.weekly_deliverable ?? ""}
-              talentPortalOrigin={talentPortalOrigin}
-            />
+            <LessonMarkdownBody markdown={w.weekly_deliverable ?? ""} />
           </div>
         </CollapsibleSection>
 

@@ -4,8 +4,6 @@ import type { ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { isTalentLmsHttpsUrl } from "@/lib/talentlms/lesson-url";
-import { talentLmsSpInitiatedSsoLaunchUrl } from "@/lib/talentlms/sso-launch-url";
 import { cn } from "@/lib/utils";
 
 const bodyClass = cn(
@@ -32,11 +30,6 @@ const tableWrap = "my-2 overflow-x-auto rounded-md border border-border";
 type Props = {
   markdown: string;
   className?: string;
-  /**
-   * When provided (including `null`), `*.talentlms.com` links use SP-initiated SAML in a new tab.
-   * Omit for previews / non-training contexts (links stay as authored).
-   */
-  talentPortalOrigin?: string | null;
 };
 
 /**
@@ -46,7 +39,6 @@ type Props = {
 export function MarkdownContent({
   markdown,
   className,
-  talentPortalOrigin,
 }: Props) {
   return (
     <div className={cn(bodyClass, className)}>
@@ -56,18 +48,10 @@ export function MarkdownContent({
           a: ({ href, children }) => {
             const raw = typeof href === "string" ? href : "";
             const isHttp = raw.startsWith("http");
-            const resolvedHref =
-              typeof talentPortalOrigin !== "undefined" &&
-              isHttp &&
-              isTalentLmsHttpsUrl(raw)
-                ? talentLmsSpInitiatedSsoLaunchUrl(raw, {
-                    portalOrigin: talentPortalOrigin ?? null,
-                  })
-                : raw;
 
             return (
               <a
-                href={resolvedHref || undefined}
+                href={raw || undefined}
                 className="text-primary underline underline-offset-2"
                 target={isHttp ? "_blank" : undefined}
                 rel={isHttp ? "noopener noreferrer" : undefined}
