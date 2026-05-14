@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 
 import { isTalentLmsHttpsUrl } from "@/lib/talentlms/lesson-url";
 import { talentLmsSpInitiatedSsoLaunchUrl } from "@/lib/talentlms/sso-launch-url";
+import type { TalentLmsWebviewOpenPayload } from "@/lib/talentlms/webview-payload";
 import { cn } from "@/lib/utils";
 
 const bodyClass = cn(
@@ -40,7 +41,7 @@ type Props = {
   talentPortalOrigin?: string | null;
   /** Plain-click opens SSO launch URL inside Hangar webview dialog instead of a new tab. */
   talentOpenInWebview?: boolean;
-  onTalentWebviewOpenAction?: (ssoLaunchUrl: string) => void;
+  onTalentWebviewOpenAction?: (payload: TalentLmsWebviewOpenPayload) => void;
 };
 
 /**
@@ -106,7 +107,10 @@ export function MarkdownContent({
                           return;
                         }
                         event.preventDefault();
-                        onTalentWebviewOpenAction(resolvedHref);
+                        onTalentWebviewOpenAction({
+                          ssoLaunchUrl: resolvedHref,
+                          originalLessonUrl: raw,
+                        });
                       }
                     : undefined
                 }
