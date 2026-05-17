@@ -244,8 +244,10 @@ export async function talentLmsGetUserIdByUsername(
 }
 
 /**
- * Resolves Talent `user_id` for a Hangar learner: email first, then SAML login (local part)
- * when `TALENTLMS_SAML_USERNAME_MODE` is `emailLocalPart`.
+ * Resolves Talent `user_id` for a Hangar learner:
+ * 1. GET `/users/email:{email}`
+ * 2. On 404, GET `/users/username:{login}` for each candidate — SAML policy login first,
+ *    then the email local part (Talent often stores SSO login as local part while `/users/email:` misses).
  */
 export async function talentLmsResolveLearnerUserId(
   config: TalentLmsApiConfig,
@@ -268,17 +270,69 @@ export async function talentLmsResolveLearnerUserId(
   }
 
   const policy = getTalentLmsUsernamePolicyFromEnv();
-  const login = resolveTalentLmsUsername(norm, policy);
-  if (login === norm) {
-    return byEmail;
+  const fromPolicy = resolveTalentLmsUsername(norm, policy);
+
+  const loginCandidates: string[] = [];
+  if (fromPolicy !== norm) {
+    loginCandidates.push(fromPolicy);
+  }
+  const at = norm.indexOf("@");
+  if (at > 0) {
+    const local = norm.slice(0, at).trim();
+    if (local && !loginCandidates.includes(local)) {
+      loginCandidates.push(local);
+    }
   }
 
-  const byUsername = await talentLmsGetUserIdByUsername(config, login);
-  if (byUsername.ok) {
-    return byUsername;
+  for (const login of loginCandidates) {
+    const byUsername = await talentLmsGetUserIdByUsername(config, login);
+    if (byUsername.ok) {
+      return byUsername;
+    }
   }
 
   return byEmail;
+}
+
+/**
+ * Tries {@link talentLmsResolveLearnerUserId} for each distinct email (e.g. Supabase Auth vs `users.email`)
+ * until one succeeds or a non-404 error is returned.
+ */
+export async function talentLmsResolveLearnerUserIdFromEmails(
+  config: TalentLmsApiConfig,
+  emails: readonly (string | null | undefined)[]
+): Promise<
+  | { ok: true; userId: string }
+  | { ok: false; status: number; message: string }
+> {
+  const seen = new Set<string>();
+  let last404:
+    | { ok: false; status: number; message: string }
+    | null = null;
+
+  for (const raw of emails) {
+    const norm = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+    if (!norm || seen.has(norm)) continue;
+    seen.add(norm);
+
+    const r = await talentLmsResolveLearnerUserId(config, norm);
+    if (r.ok) {
+      return r;
+    }
+    if (r.status === 404) {
+      last404 = r;
+      continue;
+    }
+    return r;
+  }
+
+  return (
+    last404 ?? {
+      ok: false,
+      status: 404,
+      message: "Talent LMS user not found for this email.",
+    }
+  );
 }
 
 /** GET /users/email:… — returns whether a learner row exists. */

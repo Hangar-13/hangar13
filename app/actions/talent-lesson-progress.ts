@@ -58,8 +58,17 @@ export async function refreshTalentLessonProgress(
     return { error: "No TalentLMS unit is configured for this lesson." };
   }
 
+  const { data: profileRow } = await supabase
+    .from("users")
+    .select("email")
+    .eq("id", user.id)
+    .maybeSingle();
+
   return fetchTalentLessonProgressSnapshot(supabase, {
     userEmail: user.email,
+    additionalEmails: [
+      typeof profileRow?.email === "string" ? profileRow.email : undefined,
+    ],
     lessonId,
   });
 }

@@ -6,7 +6,7 @@ import {
 import { resolveTalentLmsCourseAndUnitForLesson } from "@/lib/talentlms/lesson-talent-context";
 import {
   getTalentLmsApiEnrollmentConfig,
-  talentLmsResolveLearnerUserId,
+  talentLmsResolveLearnerUserIdFromEmails,
   talentLmsGetUserStatusInCourse,
   talentLmsGetUsersProgressInUnit,
   talentLmsIsUnitCompletedInPayload,
@@ -100,6 +100,8 @@ export async function fetchTalentLessonProgressSnapshot(
   supabase: SupabaseClient,
   options: Readonly<{
     userEmail: string | null | undefined;
+    /** Extra emails to try (e.g. `public.users.email` when it differs from Auth). */
+    additionalEmails?: readonly (string | null | undefined)[];
     lessonId: string;
   }>
 ): Promise<TalentLessonProgressSnapshot> {
@@ -155,8 +157,12 @@ export async function fetchTalentLessonProgressSnapshot(
     };
   }
 
-  const email = options.userEmail?.trim().toLowerCase();
-  if (!email) {
+  const lookupEmails = [
+    options.userEmail,
+    ...(options.additionalEmails ?? []),
+  ].filter((e): e is string => typeof e === "string" && e.trim().length > 0);
+
+  if (lookupEmails.length === 0) {
     return {
       kind: "error",
       message: "Your account has no email; Talent progress cannot load.",
@@ -164,13 +170,16 @@ export async function fetchTalentLessonProgressSnapshot(
     };
   }
 
-  const tlUser = await talentLmsResolveLearnerUserId(apiConfig, email);
+  const tlUser = await talentLmsResolveLearnerUserIdFromEmails(
+    apiConfig,
+    lookupEmails
+  );
   if (!tlUser.ok) {
     return {
       kind: "error",
       message:
         tlUser.status === 404
-          ? "No Talent LMS learner matches your email yet. Open your lesson in Talent once, then update progress."
+          ? "Talent LMS API could not match your Hangar account to a learner. Your Talent profile may use a different email or username than Hangar; ask an admin to align them so progress can sync."
           : tlUser.message,
       talentUrl,
     };

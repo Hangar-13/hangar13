@@ -6,7 +6,7 @@ import { resolveLessonIdForProgramWeek } from "@/lib/training-lessons";
 import { noActiveTrainingServerError } from "@/lib/training-enrollment-messages";
 import {
   getTalentLmsApiEnrollmentConfig,
-  talentLmsResolveLearnerUserId,
+  talentLmsResolveLearnerUserIdFromEmails,
   talentLmsGetUserStatusInCourse,
   talentLmsIsUnitCompletedInPayload,
 } from "@/lib/talentlms/api-enroll";
@@ -22,6 +22,7 @@ type TalentCompletionFields = {
 async function resolveTalentCompletionSnapshot(options: Readonly<{
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
   userEmail: string | null | undefined;
+  additionalEmails?: readonly (string | null | undefined)[];
   lessonId: string;
 }>): Promise<{ error: string } | TalentCompletionFields> {
   const ctx = await getLessonTalentContext(
@@ -73,20 +74,27 @@ async function resolveTalentCompletionSnapshot(options: Readonly<{
     };
   }
 
-  const email = options.userEmail?.trim().toLowerCase();
-  if (!email) {
+  const lookupEmails = [
+    options.userEmail,
+    ...(options.additionalEmails ?? []),
+  ].filter((e): e is string => typeof e === "string" && e.trim().length > 0);
+
+  if (lookupEmails.length === 0) {
     return {
       error:
         "Your account does not have an email address; Talent LMS verification cannot run.",
     };
   }
 
-  const tlUser = await talentLmsResolveLearnerUserId(apiConfig, email);
+  const tlUser = await talentLmsResolveLearnerUserIdFromEmails(
+    apiConfig,
+    lookupEmails
+  );
   if (!tlUser.ok) {
     if (tlUser.status === 404) {
       return {
         error:
-          "No Talent LMS learner matches your email yet. Open your Talent lesson once (or contact support), then try submitting again.",
+          "Talent LMS API could not match your Hangar account to a learner. Your Talent profile may use a different email or username than Hangar; ask an admin to align them.",
       };
     }
     return {
@@ -187,9 +195,18 @@ export async function submitWeeklyReflection(formData: {
     return { error: "Maximum 5 files allowed." };
   }
 
+  const { data: profileRow } = await supabase
+    .from("users")
+    .select("email")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const talentSnap = await resolveTalentCompletionSnapshot({
     supabase,
     userEmail: user.email,
+    additionalEmails: [
+      typeof profileRow?.email === "string" ? profileRow.email : undefined,
+    ],
     lessonId,
   });
 

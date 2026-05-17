@@ -194,8 +194,17 @@ export default async function TrainingPage({ searchParams }: PageProps) {
     );
 
     if (hasTalentUnit) {
+      const { data: profileRow } = await supabase
+        .from("users")
+        .select("email")
+        .eq("id", user.id)
+        .maybeSingle();
+
       lessonProgressSnapshot = await fetchTalentLessonProgressSnapshot(supabase, {
         userEmail: user.email,
+        additionalEmails: [
+          typeof profileRow?.email === "string" ? profileRow.email : undefined,
+        ],
         lessonId,
       });
     }
