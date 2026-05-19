@@ -26,7 +26,12 @@ const logbookEntrySchema = z.object({
     .positive("Hours must be greater than 0")
     .max(24, "Hours cannot exceed 24"),
   entryType: z.string().min(1, "Entry type is required"),
-  notes: z.string().min(10, "Notes must be at least 10 characters"),
+  notes: z
+    .string()
+    .max(2000, "Notes cannot exceed 2000 characters")
+    .refine((s) => s.trim().length >= 1, {
+      message: "Notes must contain at least one character.",
+    }),
 });
 
 type LogbookEntryFormData = z.infer<typeof logbookEntrySchema>;
@@ -221,9 +226,6 @@ export function LogbookEntryForm() {
             {errors.notes && (
               <p className="text-sm text-destructive">{errors.notes.message}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Minimum 10 characters required
-            </p>
           </div>
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>

@@ -81,6 +81,8 @@ There is **no enrollment directly on courses** in the current model—see below.
 
 **`training_paths`** are managerial groupings layered on top of catalog content. Metadata includes name, organization, totals, `visibility`, `monetization`, `is_active`, optional **`talent_lms_course_id`** (numeric Talent LMS course id for REST enrollment after Hangar checkout when `TALENTLMS_API_KEY` is configured), etc.
 
+**Talent LMS learner identity (Hangar policy):** Hangar does not persist a separate Talent “username” column on users. Integrations assume the **Talent learner login matches the Hangar email** (Supabase Auth email and `public.users.email` kept in sync). SAML uses `TALENTLMS_SAML_USERNAME_MODE` (usually full email so `login` equals email); REST progress resolves learners via `/users/email:{email}` and username fallbacks derived from that policy. If API lookup fails, align Talent user login and Hangar/Auth email or SAML mode—do not maintain alternate Talent logins as a first-class pattern.
+
 **`training_path_items`** glue a path to **exactly one** of:
 
 - a **whole course**, or  

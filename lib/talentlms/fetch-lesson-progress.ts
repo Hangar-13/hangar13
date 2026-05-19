@@ -179,7 +179,7 @@ export async function fetchTalentLessonProgressSnapshot(
       kind: "error",
       message:
         tlUser.status === 404
-          ? "Talent LMS API could not match your Hangar account to a learner. Your Talent profile may use a different email or username than Hangar; ask an admin to align them so progress can sync."
+          ? "Talent LMS API could not match your Hangar account to a learner. Hangar expects the Talent learner login to match your Hangar email (same value in Supabase Auth and public.users). If you use SSO, ensure TALENTLMS_SAML_USERNAME_MODE matches how Talent stores login (usually full email)."
           : tlUser.message,
       talentUrl,
     };

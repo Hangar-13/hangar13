@@ -94,7 +94,7 @@ async function resolveTalentCompletionSnapshot(options: Readonly<{
     if (tlUser.status === 404) {
       return {
         error:
-          "Talent LMS API could not match your Hangar account to a learner. Your Talent profile may use a different email or username than Hangar; ask an admin to align them.",
+          "Talent LMS API could not match your Hangar account to a learner. Hangar expects the Talent learner login to match your Hangar email; check Supabase Auth email, public.users.email, and SAML username mode.",
       };
     }
     return {

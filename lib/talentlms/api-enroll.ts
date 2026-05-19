@@ -54,6 +54,16 @@ function baseUrl(config: TalentLmsApiConfig): string {
 }
 
 /**
+ * Path segment value for `/users/email:{value}` and `/users/username:{value}`.
+ * We still encode dangerous characters, but restore `@` after encoding — some Talent LMS
+ * portals route these URLs using a literal `@`; `%40` can incorrectly return 404 while
+ * `GET /users/id:{id}` shows the same email/login (verified against hangar13.talentlms.com).
+ */
+function talentUserLookupPathSegment(value: string): string {
+  return encodeURIComponent(value).replace(/%40/g, "@");
+}
+
+/**
  * Enrolls by email. Idempotent for “already enrolled”.
  */
 export async function talentLmsApiAddUserToCourse(options: Readonly<{
@@ -123,7 +133,7 @@ export async function talentLmsGetUserIdByEmail(
     return { ok: false, status: 400, message: "Missing user email." };
   }
 
-  const url = `${baseUrl(config)}/users/email:${encodeURIComponent(norm)}`;
+  const url = `${baseUrl(config)}/users/email:${talentUserLookupPathSegment(norm)}`;
   let res: Response;
   try {
     res = await fetch(url, {
@@ -189,7 +199,7 @@ export async function talentLmsGetUserIdByUsername(
     return { ok: false, status: 400, message: "Missing Talent LMS username." };
   }
 
-  const url = `${baseUrl(config)}/users/username:${encodeURIComponent(login)}`;
+  const url = `${baseUrl(config)}/users/username:${talentUserLookupPathSegment(login)}`;
   let res: Response;
   try {
     res = await fetch(url, {
@@ -246,8 +256,10 @@ export async function talentLmsGetUserIdByUsername(
 /**
  * Resolves Talent `user_id` for a Hangar learner:
  * 1. GET `/users/email:{email}`
- * 2. On 404, GET `/users/username:{login}` for each candidate — SAML policy login first,
- *    then the email local part (Talent often stores SSO login as local part while `/users/email:` misses).
+ * 2. On 404, GET `/users/username:{login}` for candidates in order:
+ *    full email (lowercase), full email (original casing if different), SAML-policy login,
+ *    then email local part — Talent often sets **username** to the full email while the
+ *    profile **email** field is empty, so `/users/email` 404s but `/users/username` works.
  */
 export async function talentLmsResolveLearnerUserId(
   config: TalentLmsApiConfig,
@@ -269,24 +281,42 @@ export async function talentLmsResolveLearnerUserId(
     return byEmail;
   }
 
+  const rawTrimmed = email.trim();
+  const usernameTries: string[] = [];
+  const seenLogin = new Set<string>();
+
+  function pushLogin(candidate: string): void {
+    const t = candidate.trim();
+    if (!t || seenLogin.has(t)) return;
+    seenLogin.add(t);
+    usernameTries.push(t);
+  }
+
+  pushLogin(norm);
+  if (rawTrimmed !== norm) {
+    pushLogin(rawTrimmed);
+  }
+
   const policy = getTalentLmsUsernamePolicyFromEnv();
   const fromPolicy = resolveTalentLmsUsername(norm, policy);
-
-  const loginCandidates: string[] = [];
   if (fromPolicy !== norm) {
-    loginCandidates.push(fromPolicy);
+    pushLogin(fromPolicy);
   }
+
   const at = norm.indexOf("@");
   if (at > 0) {
     const local = norm.slice(0, at).trim();
-    if (local && !loginCandidates.includes(local)) {
-      loginCandidates.push(local);
+    if (local) {
+      pushLogin(local);
     }
   }
 
-  for (const login of loginCandidates) {
+  for (const login of usernameTries) {
     const byUsername = await talentLmsGetUserIdByUsername(config, login);
     if (byUsername.ok) {
+      return byUsername;
+    }
+    if (byUsername.status !== 404) {
       return byUsername;
     }
   }

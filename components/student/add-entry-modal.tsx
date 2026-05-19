@@ -83,8 +83,10 @@ const logbookEntrySchema = z
     endTime: z.string().min(1, "End time is required"),
     taskDescription: z
       .string()
-      .min(10, "Task description must be at least 10 characters")
-      .max(500, "Task description cannot exceed 500 characters"),
+      .max(500, "Task description cannot exceed 500 characters")
+      .refine((s) => s.trim().length >= 1, {
+        message: "Task description must contain at least one character.",
+      }),
     ataChapter: z.string().min(1, "ATA Chapter is required"),
     certified: z.boolean(),
     logPageNumber: z
@@ -688,7 +690,8 @@ export function AddEntryModal({
   };
 
   // Check if form is valid for submission
-  const isFormValid = ataChapter && taskDescription && taskDescription.length >= 10;
+  const isFormValid =
+    Boolean(ataChapter) && Boolean(taskDescription?.trim().length >= 1);
 
   const hasAssignedMentor =
     mentorCtx !== null && "hasAssignedMentor" in mentorCtx && mentorCtx.hasAssignedMentor;
