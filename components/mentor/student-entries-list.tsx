@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 import { Calendar, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { approveLogbookEntry, rejectLogbookEntry } from "@/app/actions/logbook-approval";
@@ -106,8 +106,8 @@ export function StudentEntriesList({
       <div
         key={entry.id}
         className={cn(
-          "p-4 rounded-lg border border-border bg-card transition-shadow space-y-3",
-          "hover:shadow-md cursor-pointer"
+          "cursor-pointer space-y-3 rounded-md bg-muted/15 px-4 py-3 ring-1 ring-black/[0.04] transition-colors",
+          "hover:bg-muted/30"
         )}
         onClick={() => setSelectedEntry(entry)}
       >
@@ -213,12 +213,9 @@ export function StudentEntriesList({
   };
 
   return (
-    <Card className="bg-card">
-      <CardHeader>
-        <CardTitle>Logbook Entries</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="all" className="w-full">
+    <div className="space-y-4">
+      <DashboardSectionLabel>Logbook entries</DashboardSectionLabel>
+      <Tabs defaultValue="all" className="w-full">
           <TabsList>
             <TabsTrigger value="all">All ({entries.length})</TabsTrigger>
             <TabsTrigger value="submitted">
@@ -272,7 +269,6 @@ export function StudentEntriesList({
             )}
           </TabsContent>
         </Tabs>
-      </CardContent>
 
       <RejectReasonDialog
         open={!!rejectingEntryId}
@@ -307,7 +303,7 @@ export function StudentEntriesList({
           }}
         />
       )}
-    </Card>
+    </div>
   );
 }
 

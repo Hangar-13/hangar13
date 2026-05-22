@@ -10,6 +10,7 @@ import {
 import type { OrgEntitlementRow } from "@/lib/org-dashboard-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DashboardTableShell } from "@/components/dashboard/page-shell";
 
 function formatDate(iso: string | null) {
   if (!iso) return "";
@@ -109,7 +110,7 @@ export function OrgSubscriptionsPanel({
           {error}
         </p>
       )}
-      <div className="overflow-x-auto rounded-lg border">
+      <DashboardTableShell>
         <table className="w-full min-w-[560px] text-sm">
           <thead>
             <tr className="border-b bg-muted/50 text-left">
@@ -131,7 +132,7 @@ export function OrgSubscriptionsPanel({
             ))}
           </tbody>
         </table>
-      </div>
+      </DashboardTableShell>
     </div>
   );
 }

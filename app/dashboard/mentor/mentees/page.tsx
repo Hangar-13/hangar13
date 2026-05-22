@@ -2,6 +2,10 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { AssignedStudentsList } from "@/components/mentor/assigned-students-list";
 import { AddStudentButton } from "@/components/mentor/add-student-button";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
 import {
   fetchActiveEnrollmentIdsForMentor,
@@ -136,18 +140,20 @@ export default async function MenteeListPage() {
   const orgCtx = await getActiveOrgDashboardContext();
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
+    <DashboardPageShell>
+      <div className="flex items-center justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">My Students</h1>
-          <p className="text-muted-foreground text-base">
+          <p className="text-base text-muted-foreground">
             View and manage all your assigned students.
           </p>
         </div>
         <AddStudentButton mentorId={user.id} organizationId={orgCtx?.organizationId ?? null} />
       </div>
 
-      <AssignedStudentsList students={data.mentees} />
-    </div>
+      <DashboardContentFrame>
+        <AssignedStudentsList students={data.mentees} />
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

@@ -55,6 +55,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { DashboardSectionLabel, DashboardTableShell } from "@/components/dashboard/page-shell";
 
 const supervisorInviteRoles: OrganizationRole[] = ["student", "mentor", "manager"];
 
@@ -648,7 +649,7 @@ export function OrgMembersPanel({ members, mode, organizationId }: OrgMembersPan
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-medium">Members</h2>
+        <DashboardSectionLabel>Members</DashboardSectionLabel>
       </div>
 
       {message && (
@@ -658,11 +659,8 @@ export function OrgMembersPanel({ members, mode, organizationId }: OrgMembersPan
       )}
 
       <div className="space-y-3">
-        <div
-          className={cn(
-            "rounded-lg border border-border bg-card text-card-foreground shadow-sm",
-            showInviteSearchPanel ? "overflow-visible" : "overflow-x-auto"
-          )}
+        <DashboardTableShell
+          className={showInviteSearchPanel ? "overflow-visible" : undefined}
         >
           <table className="relative z-0 w-full min-w-[640px] text-sm">
             <thead>
@@ -845,7 +843,7 @@ export function OrgMembersPanel({ members, mode, organizationId }: OrgMembersPan
               ))}
             </tbody>
           </table>
-        </div>
+        </DashboardTableShell>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Button

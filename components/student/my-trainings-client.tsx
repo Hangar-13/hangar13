@@ -10,6 +10,7 @@ import {
   type UserTrainingEnrollmentRow,
 } from "@/lib/my-trainings-display";
 import { formatUiDate } from "@/lib/format-ui-date";
+import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 
 type Props = {
   inProgress: UserTrainingEnrollmentRow[];
@@ -49,15 +50,13 @@ export function MyTrainingsClient({
       ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">
-          In-progress programs
-        </h2>
+        <DashboardSectionLabel>In-progress programs</DashboardSectionLabel>
         {inProgress.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No programs in progress. Enroll via Find Training or your organization.
           </p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border/80">
+          <ul className="divide-y divide-border/25">
             {inProgress.map((row) => {
               const { title, detail } = describeUserTrainingEnrollment(row);
               const isCurrent = currentUserTrainingId === row.id;
@@ -102,15 +101,13 @@ export function MyTrainingsClient({
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">
-          Completed programs
-        </h2>
+        <DashboardSectionLabel>Completed programs</DashboardSectionLabel>
         {completed.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No completed programs yet.
           </p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border/80">
+          <ul className="divide-y divide-border/25">
             {completed.map((row) => {
               const { title, detail } = describeUserTrainingEnrollment(row);
               const when =

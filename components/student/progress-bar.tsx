@@ -15,26 +15,24 @@ export function ProgressBar({
   trainingProgramName,
 }: ProgressBarProps) {
   const percentage = Math.min(100, Math.max(0, Math.round(percent)));
-  const label = `${trainingProgramName?.trim() || "Program"} Progress`;
+  const label = `${trainingProgramName?.trim() || "Program"} progress`;
 
   return (
-    <div className="py-2 gap-0">
-      <div className="pb-1 px-4 pt-4">
-        <div className="flex items-center justify-between gap-2 text-base">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
-            <span className="font-semibold leading-none">{label}</span>
-          </div>
-          <span className="font-bold text-primary">{percentage}%</span>
+    <div className="space-y-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-muted-foreground">
+            {label}
+          </p>
+          {summary ? (
+            <p className="mt-0.5 text-sm text-muted-foreground">{summary}</p>
+          ) : null}
         </div>
-        {summary ? (
-          <p className="text-sm text-muted-foreground mt-1 pl-2">{summary}</p>
-        ) : null}
+        <span className="shrink-0 text-2xl font-bold tabular-nums text-primary">
+          {percentage}%
+        </span>
       </div>
-      <div className="px-4 pb-4 pt-1">
-        <Progress value={percentage} className="h-3" />
-      </div>
+      <Progress value={percentage} className="h-2" />
     </div>
   );
 }
-

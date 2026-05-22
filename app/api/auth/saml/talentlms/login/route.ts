@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { supabaseSsrAuthCookieSerializeOptions } from "@/lib/supabase-ssr-cookie-options";
 import { getTalentLmsSamlEnvironment } from "@/lib/talentlms/saml-config";
 import {
   extractRawUrlQueryWithoutLeadingQuestion,
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
 
     const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
+      cookieOptions: supabaseSsrAuthCookieSerializeOptions(),
       cookies: {
         getAll() {
           return cookieStore.getAll();
@@ -56,6 +58,9 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+
+    // Refresh cookie session before getUser() so cross-site hops still see an up-to-date session when possible.
+    await supabase.auth.getSession();
 
     const {
       data: { user },

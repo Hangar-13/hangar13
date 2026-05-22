@@ -8,6 +8,10 @@ import { getCertificationAwardsForUser } from "@/app/actions/user-credentials";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { getAcsCertificationProgressStats } from "@/app/actions/acs-certification-progress";
 import { fetchActiveEnrollmentIdsForMentor, mentorHasAccessToEnrollment } from "@/lib/mentor-enrollments";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 
 async function getMentorStudents(mentorId: string) {
   const supabase = await createServerSupabaseClient();
@@ -62,14 +66,15 @@ export default async function MentorStudentCertificationPage({ searchParams }: P
 
   if (students.length === 0) {
     return (
-      <div className="space-y-6">
+      <DashboardPageShell>
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">Student certification</h1>
-          <p className="text-muted-foreground text-base">
-            You have no assigned students. Assign students from My Students to view certification progress.
+          <p className="text-base text-muted-foreground">
+            You have no assigned students. Assign students from My Students to view certification
+            progress.
           </p>
         </div>
-      </div>
+      </DashboardPageShell>
     );
   }
 
@@ -105,8 +110,11 @@ export default async function MentorStudentCertificationPage({ searchParams }: P
   const hasCompletedCerts = certificationAwards.length > 0;
   const defaultExistingOpen = !hasCurrentCert && hasCompletedCerts;
 
+  const selectedStudent = students.find((s) => s.id === studentId);
+  const studentName = selectedStudent?.full_name?.trim() || "Student";
+
   return (
-    <div className="space-y-6">
+    <DashboardPageShell>
       <div className="space-y-1">
         <StudentProgressHeader
           students={students}
@@ -114,23 +122,26 @@ export default async function MentorStudentCertificationPage({ searchParams }: P
           basePath="/dashboard/mentor/mentees/certification"
           heading="Certification for"
         />
-        <p className="text-muted-foreground text-base">
+        <p className="text-base text-muted-foreground">
           Certification history and ACS progress for this student
         </p>
       </div>
 
-      <CertificationDashboardClient
-        currentCertification={ctx.currentCertification}
-        certificationAwards={certificationAwards}
-        progressData={progressData}
-        ataChapters={ataChapters.map((c) => ({
-          chapter_number: c.chapter_number,
-          title: c.title,
-        }))}
-        defaultExistingOpen={defaultExistingOpen}
-        acsProgressStats={acsProgressStats}
-        mentorMode
-      />
-    </div>
+      <DashboardContentFrame>
+        <CertificationDashboardClient
+          studentName={studentName}
+          currentCertification={ctx.currentCertification}
+          certificationAwards={certificationAwards}
+          progressData={progressData}
+          ataChapters={ataChapters.map((c) => ({
+            chapter_number: c.chapter_number,
+            title: c.title,
+          }))}
+          defaultExistingOpen={defaultExistingOpen}
+          acsProgressStats={acsProgressStats}
+          mentorMode
+        />
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

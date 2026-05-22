@@ -1,26 +1,7 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Clock } from "lucide-react";
-
-interface SummaryCardProps {
-  label: string;
-  value: string | number;
-}
-
-function SummaryCard({ label, value }: SummaryCardProps) {
-  return (
-    <Card className="bg-card">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-2xl font-bold">{value}</div>
-            <p className="text-sm text-muted-foreground mt-1">{label}</p>
-          </div>
-          <Clock className="h-5 w-5 text-muted-foreground" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+import {
+  DashboardStatCell,
+  DashboardStatStrip,
+} from "@/components/dashboard/page-shell";
 
 interface LogbookSummaryCardsProps {
   totalHours: number;
@@ -36,11 +17,13 @@ export function LogbookSummaryCards({
   totalEntries,
 }: LogbookSummaryCardsProps) {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <SummaryCard label="Total Hours" value={totalHours} />
-      <SummaryCard label="Pending" value={pendingCount} />
-      <SummaryCard label="Signed" value={signedCount} />
-      <SummaryCard label="Entries" value={totalEntries} />
-    </div>
+    <DashboardStatStrip>
+      <div className="grid grid-cols-2 gap-y-5 sm:grid-cols-4 sm:gap-y-0 sm:divide-x sm:divide-border/30">
+        <DashboardStatCell value={totalHours} label="Total hours" />
+        <DashboardStatCell value={pendingCount} label="Pending" />
+        <DashboardStatCell value={signedCount} label="Signed" />
+        <DashboardStatCell value={totalEntries} label="Entries" />
+      </div>
+    </DashboardStatStrip>
   );
 }

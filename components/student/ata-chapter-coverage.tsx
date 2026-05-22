@@ -1,7 +1,7 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 
 export type AtaChapterItem = { chapter_number: string; title: string };
 
@@ -12,14 +12,14 @@ interface AtaChapterCoverageProps {
   acsCoverageByChapter?: Record<string, { satisfied: number; total: number; satisfiedCodeIds: number[] }>;
   coverageMode?: "log" | "acs";
   onChapterSelect?: (chapterCode: string) => void;
-  /** When true, renders without the Card wrapper (for embedding in a parent card) */
+  /** When true, renders without an outer card wrapper */
   embedded?: boolean;
-  /** Override section header when embedded (e.g. "ATA Chapters") */
+  /** Override section header when embedded */
   sectionTitle?: string;
 }
 
-export function AtaChapterCoverage({ 
-  ataChapterHours, 
+export function AtaChapterCoverage({
+  ataChapterHours,
   ataChapterData,
   ataChapters,
   acsCoverageByChapter = {},
@@ -46,127 +46,116 @@ export function AtaChapterCoverage({
     return "bg-green-500";
   };
 
-  const sectionHeader = sectionTitle ? (
-    <div className="px-6 pb-1">
-      <CardTitle className="text-sm">{sectionTitle}</CardTitle>
-    </div>
-  ) : (
-    <CardHeader>
-      <div className="flex items-center justify-between">
-        <CardTitle>ATA Chapter Coverage</CardTitle>
-        <span className="text-sm text-muted-foreground">
-          {chaptersWithHours} of {totalChapters} chapters
-        </span>
+  const content = (
+    <div className={embedded ? "space-y-3" : "space-y-4"}>
+      {!embedded ? (
+        <div className="flex items-center justify-between gap-3">
+          <DashboardSectionLabel>ATA chapter coverage</DashboardSectionLabel>
+          <span className="text-xs text-muted-foreground">
+            {chaptersWithHours} of {totalChapters} chapters
+          </span>
+        </div>
+      ) : sectionTitle ? (
+        <p className="text-sm font-semibold text-foreground">{sectionTitle}</p>
+      ) : null}
+
+      <div className="mb-3 flex flex-wrap gap-1">
+        {ataChapters.map(({ chapter_number: chapter }) => {
+          const hours = ataChapterHours[chapter] || 0;
+          const acsCoverage = acsCoverageByChapter[chapter] ?? {
+            satisfied: 0,
+            total: 0,
+            satisfiedCodeIds: [],
+          };
+          const { satisfied: acsSatisfied, total: acsTotal } = acsCoverage;
+          const chapterData = ataChapterData?.[chapter];
+          const status = chapterData?.status || "none";
+          const chapterTitle = ataChaptersMap[chapter] || `ATA ${chapter}`;
+
+          const isLogMode = coverageMode === "log";
+          const cellColor = isLogMode
+            ? getCellColorLog(hours)
+            : getCellColorAcs(acsSatisfied, acsTotal);
+          const hasContent = isLogMode ? hours > 0 : acsSatisfied > 0;
+
+          const tooltipText = isLogMode
+            ? (() => {
+                const getStatusLabel = (s: string) => {
+                  switch (s) {
+                    case "draft":
+                      return "Draft";
+                    case "submitted":
+                      return "Pending Signature";
+                    case "approved":
+                      return "Approved";
+                    default:
+                      return null;
+                  }
+                };
+                const statusLabel = getStatusLabel(status);
+                return statusLabel
+                  ? `${chapterTitle}\n${hours}h logged\nStatus: ${statusLabel}`
+                  : `${chapterTitle}\n${hours}h logged`;
+              })()
+            : `${chapterTitle}\n${acsSatisfied}/${acsTotal} codes complete`;
+
+          return (
+            <div
+              key={chapter}
+              className={cn(
+                "flex size-8 shrink-0 items-center justify-center rounded border border-gray-300 text-xs font-medium",
+                cellColor,
+                hasContent ? "text-white" : "text-gray-400",
+                onChapterSelect ? "cursor-pointer hover:opacity-80" : "cursor-default"
+              )}
+              title={tooltipText}
+              onClick={() => onChapterSelect?.(chapter)}
+            >
+              {chapter}
+            </div>
+          );
+        })}
       </div>
-    </CardHeader>
-  );
 
-  const gridContent = (
-    <CardContent className={sectionTitle ? "pt-0" : undefined}>
-        <div className="flex flex-wrap gap-1 mb-4">
-          {ataChapters.map(({ chapter_number: chapter }) => {
-            const hours = ataChapterHours[chapter] || 0;
-            const acsCoverage = acsCoverageByChapter[chapter] ?? { satisfied: 0, total: 0, satisfiedCodeIds: [] };
-            const { satisfied: acsSatisfied, total: acsTotal } = acsCoverage;
-            const chapterData = ataChapterData?.[chapter];
-            const status = chapterData?.status || "none";
-            const chapterTitle = ataChaptersMap[chapter] || `ATA ${chapter}`;
-
-            const isLogMode = coverageMode === "log";
-            const cellColor = isLogMode
-              ? getCellColorLog(hours)
-              : getCellColorAcs(acsSatisfied, acsTotal);
-            const hasContent = isLogMode ? hours > 0 : acsSatisfied > 0;
-
-            const tooltipText = isLogMode
-              ? (() => {
-                  const getStatusLabel = (s: string) => {
-                    switch (s) {
-                      case "draft": return "Draft";
-                      case "submitted": return "Pending Signature";
-                      case "approved": return "Approved";
-                      default: return null;
-                    }
-                  };
-                  const statusLabel = getStatusLabel(status);
-                  return statusLabel
-                    ? `${chapterTitle}\n${hours}h logged\nStatus: ${statusLabel}`
-                    : `${chapterTitle}\n${hours}h logged`;
-                })()
-              : `${chapterTitle}\n${acsSatisfied}/${acsTotal} codes complete`;
-
-            const handleClick = () => {
-              onChapterSelect?.(chapter);
-            };
-
-            return (
-              <div
-                key={chapter}
-                className={cn(
-                  "size-8 rounded border border-gray-300 flex items-center justify-center text-xs font-medium shrink-0",
-                  cellColor,
-                  hasContent ? "text-white" : "text-gray-400",
-                  onChapterSelect ? "cursor-pointer hover:opacity-80" : "cursor-default"
-                )}
-                title={tooltipText}
-                onClick={handleClick}
-              >
-                {chapter}
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-4 text-xs">
-          {coverageMode === "log" ? (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded border-2 border-gray-300 bg-[#F5F0E8]"></div>
-                <span className="text-muted-foreground">0 hrs</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded border-2 border-gray-300 bg-[#CC5A2A]"></div>
-                <span className="text-muted-foreground">1-9 hrs</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded border-2 border-gray-300 bg-green-500"></div>
-                <span className="text-muted-foreground">10+ hrs</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded border-2 border-gray-300 bg-[#F5F0E8]"></div>
-                <span className="text-muted-foreground">No codes complete</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded border-2 border-gray-300 bg-[#CC5A2A]"></div>
-                <span className="text-muted-foreground">Some codes complete</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded border-2 border-gray-300 bg-green-500"></div>
-                <span className="text-muted-foreground">All codes complete</span>
-              </div>
-            </>
-          )}
-        </div>
-    </CardContent>
-  );
-
-  const content = sectionTitle && embedded ? (
-    <div className="space-y-1">
-      {sectionHeader}
-      {gridContent}
+      <div className="flex flex-wrap items-center gap-4 text-xs">
+        {coverageMode === "log" ? (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded border-2 border-gray-300 bg-[#F5F0E8]" />
+              <span className="text-muted-foreground">0 hrs</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded border-2 border-gray-300 bg-[#CC5A2A]" />
+              <span className="text-muted-foreground">1-9 hrs</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded border-2 border-gray-300 bg-green-500" />
+              <span className="text-muted-foreground">10+ hrs</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded border-2 border-gray-300 bg-[#F5F0E8]" />
+              <span className="text-muted-foreground">No codes complete</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded border-2 border-gray-300 bg-[#CC5A2A]" />
+              <span className="text-muted-foreground">Some codes complete</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded border-2 border-gray-300 bg-green-500" />
+              <span className="text-muted-foreground">All codes complete</span>
+            </div>
+          </>
+        )}
+      </div>
     </div>
-  ) : (
-    <>
-      {sectionHeader}
-      {gridContent}
-    </>
   );
 
   if (embedded) {
     return content;
   }
 
-  return <Card className="bg-card">{content}</Card>;
+  return <section>{content}</section>;
 }

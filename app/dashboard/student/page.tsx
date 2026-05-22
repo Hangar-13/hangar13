@@ -18,10 +18,15 @@ import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
 import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 import { queryLogbookEntriesForOwner, type LogbookEntryRow } from "@/lib/logbook-entries-query";
 import { fetchLessonsForTrainingPath } from "@/lib/training-lessons";
+import { buildVersionContextForUserTraining } from "@/lib/course-versions";
 import {
   computeProgramLessonWeek,
   DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS,
 } from "@/lib/training-program-week";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 
 function ataChaptersTouchedFromLogbook(
   entries: { skills_practiced?: unknown }[]
@@ -190,7 +195,8 @@ async function getStudentData(userId: string) {
 
   const lessonsOrdered = await fetchLessonsForTrainingPath(
     supabase,
-    student.training_path_id
+    student.training_path_id,
+    await buildVersionContextForUserTraining(supabase, userId, student)
   );
   const lessonCount = lessonsOrdered.length;
   const { currentWeek, totalWeeks } = computeProgramLessonWeek({
@@ -292,13 +298,13 @@ export default async function StudentDashboard() {
   ]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="space-y-0.5">
+    <DashboardPageShell>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">
             Welcome back, {firstName}
           </h1>
-          <p className="text-muted-foreground text-base">
+          <p className="text-base text-muted-foreground">
             {data.hasActiveCurriculum ? (
               "Keep up the great work on your aviation journey"
             ) : (
@@ -315,7 +321,7 @@ export default async function StudentDashboard() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
           <Button asChild>
             <Link href="/dashboard/student/logbook?add=true">+ Log Entry</Link>
           </Button>
@@ -330,54 +336,49 @@ export default async function StudentDashboard() {
         </div>
       </div>
 
-      <div className="space-y-2 -mt-4">
-        <ProgressBar
-          percent={data.progress.trainingPercent}
-          summary={
-            data.progress.hoursRequired > 0
-              ? `${data.progress.hoursCompleted.toFixed(1)} / ${data.progress.hoursRequired.toFixed(1)} training hours`
-              : null
-          }
-          trainingProgramName={data.trainingPlanName}
-        />
-
-        <div className="grid gap-3 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <CurrentTrainingCard
-              currentWeek={data.weeks.current}
-              totalWeeks={data.weeks.total}
-              topic={data.currentTraining.topic}
-              dueDate={data.currentTraining.dueDate}
-            />
-          </div>
-          <div className="lg:col-span-1">
-            <HoursProgressCard
-              completedHours={data.hours.total}
-              targetHours={data.hours.target}
-              status={data.hours.thisWeek === 0 ? "behind" : "on_pace"}
-            />
-          </div>
+      <DashboardContentFrame className="space-y-6 sm:space-y-7">
+        <div className="grid gap-7 lg:grid-cols-2 lg:gap-10">
+          <ProgressBar
+            percent={data.progress.trainingPercent}
+            summary={
+              data.progress.hoursRequired > 0
+                ? `${data.progress.hoursCompleted.toFixed(1)} / ${data.progress.hoursRequired.toFixed(1)} training hours`
+                : null
+            }
+            trainingProgramName={data.trainingPlanName}
+          />
+          <HoursProgressCard
+            completedHours={data.hours.total}
+            targetHours={data.hours.target}
+            status={data.hours.thisWeek === 0 ? "behind" : "on_pace"}
+          />
         </div>
-      </div>
 
-      <div className="mt-3">
         <MetricCards
-          totalHours={data.hours.total}
-          targetHours={data.hours.target}
           thisWeekHours={data.hours.thisWeek}
           currentWeek={data.weeks.current}
           totalWeeks={data.weeks.total}
+          lessonsCompleted={data.progress.lessonsCompleted}
+          lessonsTotal={data.progress.lessonsTotal}
           ataChaptersCompleted={data.ataChapters.completed}
           totalAtaChapters={data.ataChapters.total}
         />
-      </div>
 
-      <CredentialsSummaryCard
-        trainingCount={trainings.length}
-        certificationCount={certifications.length}
-      />
+        <CurrentTrainingCard
+          currentWeek={data.weeks.current}
+          totalWeeks={data.weeks.total}
+          topic={data.currentTraining.topic}
+          dueDate={data.currentTraining.dueDate}
+        />
 
-      <RecentActivityCard entries={data.logbookEntries} />
-    </div>
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+          <CredentialsSummaryCard
+            trainingCount={trainings.length}
+            certificationCount={certifications.length}
+          />
+          <RecentActivityCard entries={data.logbookEntries} />
+        </div>
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

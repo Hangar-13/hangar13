@@ -2,6 +2,11 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { AssignedStudentsList, type AssignedStudent } from "@/components/mentor/assigned-students-list";
 import { PendingLogbookEntries } from "@/components/mentor/pending-logbook-entries";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+  DashboardSectionLabel,
+} from "@/components/dashboard/page-shell";
 import { getAcsCodesByEntry } from "@/app/actions/logbook";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
@@ -182,25 +187,33 @@ export default async function MentorDashboard() {
       : {};
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Mentor Dashboard</h1>
-        <p className="text-muted-foreground text-base">
+        <p className="text-base text-muted-foreground">
           Manage your students and review their logbook entries.
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <AssignedStudentsList students={data.students} compact />
-        <PendingLogbookEntries
-          entries={data.logbookEntries}
-          acsCodesByEntry={acsCodesByEntry}
-          ataChapters={ataChapters.map((c: { chapter_number: string; title: string }) => ({
-            value: c.chapter_number,
-            label: `${c.chapter_number} - ${c.title}`,
-          }))}
-        />
-      </div>
-    </div>
+      <DashboardContentFrame>
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
+          <section className="space-y-4">
+            <DashboardSectionLabel>Assigned students</DashboardSectionLabel>
+            <AssignedStudentsList students={data.students} compact />
+          </section>
+          <section className="space-y-4">
+            <DashboardSectionLabel>Logbook entries</DashboardSectionLabel>
+            <PendingLogbookEntries
+              entries={data.logbookEntries}
+              acsCodesByEntry={acsCodesByEntry}
+              ataChapters={ataChapters.map((c: { chapter_number: string; title: string }) => ({
+                value: c.chapter_number,
+                label: `${c.chapter_number} - ${c.title}`,
+              }))}
+            />
+          </section>
+        </div>
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

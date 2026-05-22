@@ -5,6 +5,10 @@ import { StudentProgressHeader } from "@/components/mentor/student-progress-head
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getProgressDataForStudent } from "@/app/actions/progress";
 import { fetchActiveEnrollmentIdsForMentor, mentorHasAccessToEnrollment } from "@/lib/mentor-enrollments";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 
 async function getMentorStudents(mentorId: string) {
   const supabase = await createServerSupabaseClient();
@@ -63,17 +67,14 @@ export default async function MentorStudentProgressPage({
 
   if (students.length === 0) {
     return (
-      <div className="space-y-6">
+      <DashboardPageShell>
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Student Progress
-          </h1>
-          <p className="text-muted-foreground text-base">
-            You have no assigned students. Assign students from My
-            Students to view their progress.
+          <h1 className="text-2xl font-bold tracking-tight">Student Progress</h1>
+          <p className="text-base text-muted-foreground">
+            You have no assigned students. Assign students from My Students to view their progress.
           </p>
         </div>
-      </div>
+      </DashboardPageShell>
     );
   }
 
@@ -102,24 +103,23 @@ export default async function MentorStudentProgressPage({
   ]);
 
   return (
-    <div className="space-y-6">
+    <DashboardPageShell>
       <div className="space-y-1">
-        <StudentProgressHeader
-          students={students}
-          currentStudentId={studentId}
-        />
-        <p className="text-muted-foreground text-base">
+        <StudentProgressHeader students={students} currentStudentId={studentId} />
+        <p className="text-base text-muted-foreground">
           Track progress through the 30-month program
         </p>
       </div>
 
-      <ProgressTrackingDashboard
-        progressData={progressData}
-        ataChapters={ataChapters.map((c) => ({
-          chapter_number: c.chapter_number,
-          title: c.title,
-        }))}
-      />
-    </div>
+      <DashboardContentFrame>
+        <ProgressTrackingDashboard
+          progressData={progressData}
+          ataChapters={ataChapters.map((c) => ({
+            chapter_number: c.chapter_number,
+            title: c.title,
+          }))}
+        />
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

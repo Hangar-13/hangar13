@@ -1,7 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UserTrainingRow } from "@/lib/current-user-training";
+import {
+  fetchVersionLessonBySourceId,
+  fetchVersionLessonsForCourse,
+  resolveEffectiveCourseVersionsForPath,
+  type ResolveCourseVersionContext,
+} from "@/lib/course-versions";
 
-/** Lessons for a course, ordered by module number then lesson number. */
+export type TrainingPathLessonContext = ResolveCourseVersionContext;
+
+/** Lessons for a course, ordered by module number then lesson number (live catalog). */
 export async function fetchLessonsForCourse(
   supabase: SupabaseClient,
   courseId: string
@@ -32,6 +40,18 @@ export async function fetchLessonsForCourse(
   return ordered;
 }
 
+async function fetchVersionedLessonsForCourseId(
+  supabase: SupabaseClient,
+  courseId: string,
+  versionByCourseId: Map<string, { id: string; course_id: string; major_version: number; minor_version: number; release_notes: string | null; published_at: string; published_by: string | null }>
+): Promise<Record<string, unknown>[]> {
+  const version = versionByCourseId.get(courseId);
+  if (!version) {
+    return fetchLessonsForCourse(supabase, courseId);
+  }
+  return fetchVersionLessonsForCourse(supabase, version);
+}
+
 /**
  * Program week index (1-based) maps to the Nth lesson in path expansion order
  * (`fetchLessonsForTrainingPath`), not to `lessons.number` within a single course.
@@ -39,7 +59,8 @@ export async function fetchLessonsForCourse(
 export async function resolveLessonIdForProgramWeek(
   supabase: SupabaseClient,
   ut: Pick<UserTrainingRow, "training_path_id">,
-  weekNumber: number
+  weekNumber: number,
+  versionContext?: TrainingPathLessonContext
 ): Promise<string | null> {
   if (!ut.training_path_id) {
     return null;
@@ -47,7 +68,8 @@ export async function resolveLessonIdForProgramWeek(
 
   const lessons = await fetchLessonsForTrainingPath(
     supabase,
-    ut.training_path_id
+    ut.training_path_id,
+    versionContext
   );
   if (lessons.length === 0) {
     return null;
@@ -65,14 +87,25 @@ export async function resolveLessonIdForProgramWeek(
  */
 export async function fetchLessonsForEnrollment(
   supabase: SupabaseClient,
-  ut: Pick<UserTrainingRow, "training_path_id">
+  ut: Pick<UserTrainingRow, "training_path_id"> & { user_id?: string; enrollment_source?: string | null },
+  versionContext?: TrainingPathLessonContext
 ) {
-  return fetchLessonsForTrainingPath(supabase, ut.training_path_id);
+  const ctx =
+    versionContext ??
+    (ut.user_id
+      ? {
+          userId: ut.user_id,
+          enrollmentSource: ut.enrollment_source,
+        }
+      : undefined);
+
+  return fetchLessonsForTrainingPath(supabase, ut.training_path_id, ctx);
 }
 
 export async function fetchLessonsForTrainingPath(
   supabase: SupabaseClient,
-  trainingPathId: string
+  trainingPathId: string,
+  versionContext?: TrainingPathLessonContext
 ) {
   const { data: items, error } = await supabase
     .from("training_path_items")
@@ -84,12 +117,76 @@ export async function fetchLessonsForTrainingPath(
     return [];
   }
 
+  let versionByCourseId = new Map<
+    string,
+    {
+      id: string;
+      course_id: string;
+      major_version: number;
+      minor_version: number;
+      release_notes: string | null;
+      published_at: string;
+      published_by: string | null;
+    }
+  >();
+
+  if (versionContext) {
+    let pathOrganizationId = versionContext.pathOrganizationId ?? null;
+    if (pathOrganizationId == null) {
+      const { data: pathRow } = await supabase
+        .from("training_paths")
+        .select("organization_id")
+        .eq("id", trainingPathId)
+        .maybeSingle();
+      pathOrganizationId = (pathRow?.organization_id as string | null) ?? null;
+    }
+
+    versionByCourseId = await resolveEffectiveCourseVersionsForPath(
+      supabase,
+      trainingPathId,
+      {
+        ...versionContext,
+        pathOrganizationId,
+      }
+    );
+  }
+
   const seen = new Set<string>();
   const ordered: Record<string, unknown>[] = [];
 
   for (const item of items) {
     if (item.lesson_id) {
       if (seen.has(item.lesson_id)) continue;
+
+      if (versionContext && versionByCourseId.size > 0) {
+        const { data: lesMeta } = await supabase
+          .from("lessons")
+          .select("module_id")
+          .eq("id", item.lesson_id)
+          .maybeSingle();
+        if (lesMeta?.module_id) {
+          const { data: modMeta } = await supabase
+            .from("modules")
+            .select("course_id")
+            .eq("id", lesMeta.module_id)
+            .maybeSingle();
+          const courseId = modMeta?.course_id as string | undefined;
+          const version = courseId ? versionByCourseId.get(courseId) : undefined;
+          if (version) {
+            const snap = await fetchVersionLessonBySourceId(
+              supabase,
+              version.id,
+              item.lesson_id
+            );
+            if (snap) {
+              seen.add(snap.id);
+              ordered.push(snap);
+              continue;
+            }
+          }
+        }
+      }
+
       const { data: les } = await supabase
         .from("lessons")
         .select("*")
@@ -102,6 +199,30 @@ export async function fetchLessonsForTrainingPath(
       continue;
     }
     if (item.module_id) {
+      if (versionContext && versionByCourseId.size > 0) {
+        const { data: modMeta } = await supabase
+          .from("modules")
+          .select("course_id")
+          .eq("id", item.module_id)
+          .maybeSingle();
+        const courseId = modMeta?.course_id as string | undefined;
+        const version = courseId ? versionByCourseId.get(courseId) : undefined;
+        if (version) {
+          const allCourseLessons = await fetchVersionLessonsForCourse(
+            supabase,
+            version
+          );
+          for (const les of allCourseLessons) {
+            if (les.module_id !== item.module_id) continue;
+            if (!seen.has(les.id)) {
+              seen.add(les.id);
+              ordered.push(les);
+            }
+          }
+          continue;
+        }
+      }
+
       const { data: modLessons } = await supabase
         .from("lessons")
         .select("*")
@@ -116,7 +237,14 @@ export async function fetchLessonsForTrainingPath(
       continue;
     }
     if (item.course_id) {
-      const courseLessons = await fetchLessonsForCourse(supabase, item.course_id);
+      const courseLessons =
+        versionContext && versionByCourseId.size > 0
+          ? await fetchVersionedLessonsForCourseId(
+              supabase,
+              item.course_id,
+              versionByCourseId
+            )
+          : await fetchLessonsForCourse(supabase, item.course_id);
       for (const les of courseLessons) {
         const lid = les["id"];
         if (typeof lid !== "string") continue;

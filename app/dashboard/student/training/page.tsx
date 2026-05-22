@@ -2,7 +2,6 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   BookOpen,
   Calendar,
@@ -25,6 +24,10 @@ import {
   resolveLessonIdForProgramWeek,
 } from "@/lib/training-lessons";
 import {
+  buildVersionContextForUserTraining,
+  formatCourseVersion,
+} from "@/lib/course-versions";
+import {
   fetchTalentLessonProgressSnapshot,
   type TalentLessonProgressSnapshot,
 } from "@/lib/talentlms/fetch-lesson-progress";
@@ -32,6 +35,12 @@ import { coerceTalentLmsUnitId } from "@/lib/talentlms/lesson-url";
 import { LessonProgressCard } from "@/components/student/lesson-progress-card";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
 import { formatUiDate, formatUiDateTime } from "@/lib/format-ui-date";
+import { CourseVersionUpdateBanner } from "@/components/student/course-version-update-banner";
+import { getCourseVersionUpdatesForCurrentEnrollment } from "@/app/actions/course-version-adoption";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 
 async function getStudentTrainingData(userId: string, week?: number) {
   const supabase = await createServerSupabaseClient();
@@ -48,14 +57,21 @@ async function getStudentTrainingData(userId: string, week?: number) {
 
   const { data: pathMeta } = await supabase
     .from("training_paths")
-    .select("name")
+    .select("name, organization_id")
     .eq("id", student.training_path_id)
     .maybeSingle();
   trainingPlanName = pathMeta?.name ?? null;
 
+  const versionContext = await buildVersionContextForUserTraining(
+    supabase,
+    userId,
+    student
+  );
+
   const lessonsOrdered = await fetchLessonsForTrainingPath(
     supabase,
-    student.training_path_id
+    student.training_path_id,
+    versionContext
   );
   const lessonCount = lessonsOrdered.length;
 
@@ -142,6 +158,8 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const week = params.week ? parseInt(params.week) : undefined;
   const data = await getStudentTrainingData(user.id, week);
+  const updatesResult = await getCourseVersionUpdatesForCurrentEnrollment();
+  const versionUpdates = updatesResult.ok ? updatesResult.updates : [];
 
   if (!data) {
     return (
@@ -161,7 +179,8 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const lessonId = await resolveLessonIdForProgramWeek(
     supabase,
     data.student,
-    data.currentWeek
+    data.currentWeek,
+    await buildVersionContextForUserTraining(supabase, user.id, data.student)
   );
 
   const { data: submission } = lessonId
@@ -177,6 +196,21 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         .eq("lesson_id", lessonId)
         .maybeSingle()
     : { data: null };
+
+  let submissionVersionLabel: string | null = null;
+  if (submission?.course_version_id) {
+    const { data: versionRow } = await supabase
+      .from("course_versions")
+      .select("major_version, minor_version")
+      .eq("id", submission.course_version_id)
+      .maybeSingle();
+    if (versionRow) {
+      submissionVersionLabel = formatCourseVersion(
+        versionRow.major_version as number,
+        versionRow.minor_version as number
+      );
+    }
+  }
 
   let lessonProgressSnapshot: TalentLessonProgressSnapshot | null = null;
 
@@ -248,16 +282,17 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const mentorQuestions = w.mentor_discussion_questions || [];
 
   const pageTitle = data.trainingPlanName ?? "Training";
+  const sectionTitleClass =
+    "text-[0.8125rem] font-semibold uppercase tracking-wide text-muted-foreground";
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <DashboardPageShell>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
-          <p className="text-muted-foreground text-base">Your weekly learning materials</p>
+          <p className="text-base text-muted-foreground">Your weekly learning materials</p>
         </div>
-        <Button asChild className="bg-primary text-primary-foreground">
+        <Button asChild className="shrink-0 bg-primary text-primary-foreground">
           <Link href={`/dashboard/student/training/submit?week=${data.currentWeek}`}>
             <FileText className="mr-2 h-4 w-4" />
             Submit Week
@@ -265,80 +300,78 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         </Button>
       </div>
 
-      {/* Weekly Navigation */}
-      <Card className="bg-card">
-        <CardContent className="p-2">
-          <div className="flex items-center justify-between">
-            {prevWeek ? (
-              <Link
-                href={`/dashboard/student/training?week=${prevWeek}`}
-                className="text-base font-bold text-muted-foreground hover:text-foreground flex items-center gap-2"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                Previous
-              </Link>
-            ) : (
-              <span className="text-base font-bold text-muted-foreground/50 flex items-center gap-2">
-                <ArrowLeft className="h-5 w-5" />
-                Previous
-              </span>
-            )}
-            
-            <div className="text-center">
-              <p className="text-base text-muted-foreground mb-0">Current Week</p>
-              <p className="text-4xl font-bold text-primary">
-                Week {data.currentWeek} of {data.totalWeeks}
-              </p>
-            </div>
+      <DashboardContentFrame className="px-5 py-7 sm:px-8 sm:py-9">
+        <CourseVersionUpdateBanner updates={versionUpdates} />
 
-            {nextWeek ? (
-              <Link
-                href={`/dashboard/student/training?week=${nextWeek}`}
-                className="text-base font-bold text-muted-foreground hover:text-foreground flex items-center gap-2"
-              >
-                Next
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-            ) : (
-              <span className="text-base font-bold text-muted-foreground/50 flex items-center gap-2">
-                Next
-                <ArrowRight className="h-5 w-5" />
-              </span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Current Chapter Card */}
-      <Card className="bg-primary/50 text-primary-foreground border-primary">
-        <CardContent className="p-3">
-          <div className="flex items-start gap-4">
-            <BookOpen className="h-6 w-6 mt-1 shrink-0" />
-            <div className="flex min-w-0 flex-1 flex-col gap-3">
-              <div className="min-w-0 space-y-2">
-                <p className="text-sm text-primary-foreground/80">
-                  {ataChapterLine}
-                </p>
-                <h2 className="text-2xl font-bold">
-                  {w.title ?? "Training Content"}
-                </h2>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 shrink-0" />
-                  <span>Due: {formatUiDate(data.dueDate)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Content Sections */}
-      <div className="space-y-4">
-        <CollapsibleSection
-          title="Learning Objectives"
-          icon={<Target className="h-5 w-5" />}
-          defaultOpen={true}
+        {/* Week navigation */}
+        <nav
+          aria-label="Week navigation"
+          className="mb-8 flex items-center justify-between"
         >
+          {prevWeek ? (
+            <Link
+              href={`/dashboard/student/training?week=${prevWeek}`}
+              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Previous</span>
+            </Link>
+          ) : (
+            <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/40">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Previous</span>
+            </span>
+          )}
+
+          <p className="text-sm font-semibold tabular-nums text-foreground">
+            Week {data.currentWeek}
+            <span className="font-normal text-muted-foreground"> of {data.totalWeeks}</span>
+          </p>
+
+          {nextWeek ? (
+            <Link
+              href={`/dashboard/student/training?week=${nextWeek}`}
+              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <span className="hidden sm:inline">Next</span>
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground/40">
+              <span className="hidden sm:inline">Next</span>
+              <ArrowRight className="h-4 w-4" />
+            </span>
+          )}
+        </nav>
+
+        {/* Lesson hero */}
+        <header className="mb-12">
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Week {data.currentWeek} of {data.totalWeeks}
+              <span className="mx-2 text-muted-foreground/40">·</span>
+              {ataChapterLine}
+            </p>
+            <h2 className="text-2xl font-bold tracking-tight sm:text-[1.75rem]">
+              {w.title ?? "Training Content"}
+            </h2>
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Due {formatUiDate(data.dueDate)}
+            </p>
+          </div>
+        </header>
+
+        {/* Content sections — generous vertical rhythm, no dividers */}
+        <div className="space-y-12">
+          <CollapsibleSection
+            variant="section"
+            title="Learning Objectives"
+            icon={<Target className="h-4 w-4" />}
+            titleClassName={sectionTitleClass}
+            headerHoverHighlight={false}
+            defaultOpen={true}
+          >
           {learningObjectives.length > 0 ? (
             <ul className="space-y-3">
               {learningObjectives.map((objective: string, index: number) => (
@@ -353,40 +386,52 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           )}
         </CollapsibleSection>
 
-        <CollapsibleSection
-          title="Study Materials"
-          icon={<BookOpen className="h-5 w-5" />}
-          defaultOpen={true}
-        >
-          <LessonMarkdownBody markdown={w.study_materials ?? ""} />
-        </CollapsibleSection>
-
-        {lessonProgressSnapshot ? (
           <CollapsibleSection
-            title="Lesson Progress"
-            icon={<Percent className="h-5 w-5" />}
+            variant="section"
+            title="Study Materials"
+            icon={<BookOpen className="h-4 w-4" />}
+            titleClassName={sectionTitleClass}
+            headerHoverHighlight={false}
             defaultOpen={true}
           >
-            <LessonProgressCard
-              weekNumber={data.currentWeek}
-              initialSnapshot={lessonProgressSnapshot}
-            />
+            <LessonMarkdownBody markdown={w.study_materials ?? ""} />
           </CollapsibleSection>
-        ) : null}
 
-        <CollapsibleSection
-          title="Practical Application"
-          icon={<Clock className="h-5 w-5" />}
-          defaultOpen={true}
-        >
-          <LessonMarkdownBody markdown={w.practical_application ?? ""} />
-        </CollapsibleSection>
+          {lessonProgressSnapshot ? (
+            <CollapsibleSection
+              variant="section"
+              title="Lesson Progress"
+              icon={<Percent className="h-4 w-4" />}
+              titleClassName={sectionTitleClass}
+              headerHoverHighlight={false}
+              defaultOpen={true}
+            >
+              <LessonProgressCard
+                weekNumber={data.currentWeek}
+                initialSnapshot={lessonProgressSnapshot}
+              />
+            </CollapsibleSection>
+          ) : null}
 
-        <CollapsibleSection
-          title="Questions for Mentor Discussion"
-          icon={<MessageSquare className="h-5 w-5" />}
-          defaultOpen={true}
-        >
+          <CollapsibleSection
+            variant="section"
+            title="Practical Application"
+            icon={<Clock className="h-4 w-4" />}
+            titleClassName={sectionTitleClass}
+            headerHoverHighlight={false}
+            defaultOpen={true}
+          >
+            <LessonMarkdownBody markdown={w.practical_application ?? ""} />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            variant="section"
+            title="Questions for Mentor Discussion"
+            icon={<MessageSquare className="h-4 w-4" />}
+            titleClassName={sectionTitleClass}
+            headerHoverHighlight={false}
+            defaultOpen={true}
+          >
           {mentorQuestions.length > 0 ? (
             <ol className="space-y-3 list-decimal list-inside">
               {mentorQuestions.map((question: string, index: number) => (
@@ -398,36 +443,48 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           ) : (
             <p className="text-sm text-muted-foreground">No discussion questions defined for this week.</p>
           )}
-        </CollapsibleSection>
+          </CollapsibleSection>
 
-        <CollapsibleSection
-          title="Weekly Deliverable"
-          icon={<FileText className="h-5 w-5" />}
-          defaultOpen={true}
-        >
-          <div className="mb-4">
+          <CollapsibleSection
+            variant="section"
+            title="Weekly Deliverable"
+            icon={<FileText className="h-4 w-4" />}
+            titleClassName={sectionTitleClass}
+            headerHoverHighlight={false}
+            defaultOpen={true}
+          >
             <LessonMarkdownBody markdown={w.weekly_deliverable ?? ""} />
-          </div>
-        </CollapsibleSection>
+          </CollapsibleSection>
 
-        <CollapsibleSection
-          title="My Submission"
-          icon={<FileText className="h-5 w-5" />}
-          defaultOpen={true}
-        >
+          <CollapsibleSection
+            variant="section"
+            title="My Submission"
+            icon={<FileText className="h-4 w-4" />}
+            titleClassName={sectionTitleClass}
+            headerHoverHighlight={false}
+            defaultOpen={true}
+          >
           {submission ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Your Reflection</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+            <div className="space-y-6">
+              <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[minmax(0,9rem)_1fr]">
+                <dt className="text-sm font-medium text-muted-foreground">Reflection</dt>
+                <dd className="text-sm text-foreground whitespace-pre-wrap">
                   {submission.reflection_text || "No reflection provided."}
-                </p>
-              </div>
+                </dd>
+                {submissionVersionLabel ? (
+                  <>
+                    <dt className="text-sm font-medium text-muted-foreground">Course version</dt>
+                    <dd className="text-sm text-foreground tabular-nums">
+                      v{submissionVersionLabel}
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
 
               {submission.talent_lms_unit_completed === true &&
                 submission.talent_lms_completion_checked_at && (
                   <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-100">
-                    <CheckCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
                     <div>
                       <p className="font-medium">Talent LMS lesson verified</p>
                       <p className="text-xs opacity-90">
@@ -452,7 +509,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                       : null;
                   if (reason === "unit_not_in_link") {
                     return (
-                      <p className="text-xs text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-100 rounded-md px-3 py-2 border border-amber-200 dark:border-amber-900">
+                      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
                         Talent completion was not checked because the lesson link does not
                         include a unit id (expected in URLs like{" "}
                         <span className="font-mono text-[11px]">
@@ -468,7 +525,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                   }
                   if (reason === "could_not_resolve_course_id") {
                     return (
-                      <p className="text-xs text-amber-800 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-100 rounded-md px-3 py-2 border border-amber-200 dark:border-amber-900">
+                      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
                         Talent completion was not checked because neither the lesson URL nor
                         your training path specifies a Talent course id.
                       </p>
@@ -479,53 +536,48 @@ export default async function TrainingPage({ searchParams }: PageProps) {
 
               {submission.lesson_submission_files &&
                submission.lesson_submission_files.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">Attached Files</h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {submission.lesson_submission_files.map(
-                      (file: {
-                        id: string;
-                        file_url: string;
-                        file_name: string;
-                        file_type?: string | null;
-                      }) => (
-                      <div
-                        key={file.id}
-                        className="relative group rounded-lg overflow-hidden border"
-                      >
-                        {file.file_type?.startsWith("image/") ? (
-                          <a
-                            href={file.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block aspect-square"
-                          >
-                            <img
-                              src={file.file_url}
-                              alt={file.file_name}
-                              className="w-full h-full object-cover"
-                            />
-                          </a>
-                        ) : (
-                          <a
-                            href={file.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex flex-col items-center justify-center aspect-square p-4 bg-muted hover:bg-muted/80 transition-colors"
-                          >
-                            <FileText className="h-8 w-8 text-muted-foreground mb-2" />
-                            <p className="text-xs text-center text-muted-foreground truncate w-full">
-                              {file.file_name}
-                            </p>
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <dl className="space-y-3">
+                  <dt className="text-sm font-medium text-muted-foreground">Attached files</dt>
+                  <dd>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                      {submission.lesson_submission_files.map(
+                        (file: {
+                          id: string;
+                          file_url: string;
+                          file_name: string;
+                          file_type?: string | null;
+                        }) => (
+                        <a
+                          key={file.id}
+                          href={file.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="group block overflow-hidden rounded-md transition-opacity hover:opacity-90"
+                        >
+                          {file.file_type?.startsWith("image/") ? (
+                            <div className="aspect-square">
+                              <img
+                                src={file.file_url}
+                                alt={file.file_name}
+                                className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+                              />
+                            </div>
+                          ) : (
+                            <div className="flex aspect-square flex-col items-center justify-center bg-muted/30 p-4 transition-colors group-hover:bg-muted/50">
+                              <FileText className="mb-2 h-7 w-7 text-muted-foreground" />
+                              <p className="w-full truncate text-center text-xs text-muted-foreground">
+                                {file.file_name}
+                              </p>
+                            </div>
+                          )}
+                        </a>
+                      ))}
+                    </div>
+                  </dd>
+                </dl>
               )}
 
-              <div className="pt-2">
+              <div>
                 <Button asChild variant="outline" size="sm">
                   <Link href={`/dashboard/student/training/submit?week=${data.currentWeek}`}>
                     <Edit className="mr-2 h-4 w-4" />
@@ -535,7 +587,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 You have not submitted a reflection for this week yet.
               </p>
@@ -547,8 +599,9 @@ export default async function TrainingPage({ searchParams }: PageProps) {
               </Button>
             </div>
           )}
-        </CollapsibleSection>
-      </div>
-    </div>
+          </CollapsibleSection>
+        </div>
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

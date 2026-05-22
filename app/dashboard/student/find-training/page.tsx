@@ -5,6 +5,10 @@ import {
   discoverableTrainingPathsOrFilter,
   listUserOrganizationIds,
 } from "@/lib/discoverable-training-paths";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 
 export default async function FindTrainingPage() {
   const supabase = await createServerSupabaseClient();
@@ -40,10 +44,10 @@ export default async function FindTrainingPage() {
     ) ?? [];
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Find Training</h1>
-        <p className="text-muted-foreground text-base max-w-2xl">
+        <p className="max-w-2xl text-base text-muted-foreground">
           Browse available training modules.
         </p>
       </div>
@@ -53,11 +57,13 @@ export default async function FindTrainingPage() {
           Could not load training programs. Try again later.
         </p>
       ) : (
-        <FindTrainingProgramsClient
-          plans={plans ?? []}
-          enrolledPlanIds={enrolledPlanIds}
-        />
+        <DashboardContentFrame>
+          <FindTrainingProgramsClient
+            plans={plans ?? []}
+            enrolledPlanIds={enrolledPlanIds}
+          />
+        </DashboardContentFrame>
       )}
-    </div>
+    </DashboardPageShell>
   );
 }

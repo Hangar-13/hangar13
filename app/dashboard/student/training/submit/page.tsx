@@ -8,8 +8,14 @@ import {
   fetchLessonsForTrainingPath,
   resolveLessonIdForProgramWeek,
 } from "@/lib/training-lessons";
+import { buildVersionContextForUserTraining } from "@/lib/course-versions";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
 import Link from "next/link";
+import {
+  DashboardAccentBlock,
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 
 interface PageProps {
   searchParams: Promise<{
@@ -56,9 +62,16 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
     );
   }
 
+  const versionContext = await buildVersionContextForUserTraining(
+    supabase,
+    user.id,
+    student
+  );
+
   const lessonsOrdered = await fetchLessonsForTrainingPath(
     supabase,
-    student.training_path_id
+    student.training_path_id,
+    versionContext
   );
   const lessonCount = lessonsOrdered.length;
 
@@ -88,7 +101,8 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
   const lessonId = await resolveLessonIdForProgramWeek(
     supabase,
     student,
-    currentWeek
+    currentWeek,
+    versionContext
   );
 
   const { data: lessonRow } = lessonId
@@ -123,43 +137,28 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
       : [];
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Weekly Submission</h1>
-        <p className="text-muted-foreground text-base">
+        <p className="text-base text-muted-foreground">
           {submission ? "Edit your Week" : "Submit your Week"} {currentWeek}{" "}
           reflection
         </p>
       </div>
 
-      <div className="bg-[#FAF5E6] border-l-4 border-[#8B4513] rounded-lg p-6">
-        <div className="flex items-start gap-4">
-          <svg
-            className="h-6 w-6 text-[#8B4513] mt-1"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
+      <DashboardContentFrame className="space-y-8">
+        <DashboardAccentBlock>
           <div className="space-y-1">
-            <p className="text-base font-medium text-[#8B4513]">
+            <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-foreground/70">
               Week {currentWeek} of {totalWeeks}
             </p>
-            <p className="text-lg font-semibold text-[#5D4037]">
+            <p className="text-lg font-bold tracking-tight">
               {lessonRow?.title || "Training lesson"}
             </p>
           </div>
-        </div>
-      </div>
+        </DashboardAccentBlock>
 
-      <WeeklySubmissionForm
+        <WeeklySubmissionForm
         weekNumber={currentWeek}
         initialData={
           submission
@@ -176,6 +175,7 @@ export default async function WeeklySubmissionPage({ searchParams }: PageProps) 
             : undefined
         }
       />
-    </div>
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

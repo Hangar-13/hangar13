@@ -5,6 +5,7 @@ import { redirectIfNoUserTrainings } from "@/lib/student-user-trainings-guard";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { DashboardContentFrame, DashboardPageShell } from "@/components/dashboard/page-shell";
 
 export default async function CredentialsPage() {
   const supabase = await createServerSupabaseClient();
@@ -21,11 +22,11 @@ export default async function CredentialsPage() {
   const data = await getMyTrainingsPageData(user.id);
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">My Training Programs</h1>
-          <p className="text-muted-foreground text-base max-w-2xl">
+          <p className="max-w-2xl text-base text-muted-foreground">
             View programs you have completed, are enrolled in, and change which program is active
           </p>
         </div>
@@ -34,11 +35,13 @@ export default async function CredentialsPage() {
         </Button>
       </div>
 
-      <MyTrainingsClient
-        inProgress={data.inProgress}
-        completed={data.completed}
-        currentUserTrainingId={data.currentUserTrainingId}
-      />
-    </div>
+      <DashboardContentFrame>
+        <MyTrainingsClient
+          inProgress={data.inProgress}
+          completed={data.completed}
+          currentUserTrainingId={data.currentUserTrainingId}
+        />
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

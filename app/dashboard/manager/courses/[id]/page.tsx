@@ -1,5 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect, notFound } from "next/navigation";
+import { managerListCourseVersions } from "@/app/actions/manager-course-versions";
+import { CourseVersionsPanel } from "@/components/manager/course-versions-panel";
 import { ManagerCourseDetailClient } from "@/components/manager/manager-course-detail-client";
 import type { LessonMapModule } from "@/components/manager/lesson-map";
 import { normalizeCatalogVisibility } from "@/lib/catalog-visibility";
@@ -53,6 +55,9 @@ export default async function ManagerCourseDetailPage({
     lessons: (lessons ?? []).filter((l) => l.module_id === m.id),
   }));
 
+  const versionsResult = await managerListCourseVersions(id);
+  const versions = versionsResult.ok ? versionsResult.versions : [];
+
   return (
     <ManagerCourseDetailClient
       course={{
@@ -64,6 +69,7 @@ export default async function ManagerCourseDetailPage({
       }}
       moduleTree={moduleTree}
       focusTalentLmsCourseField={editTalentLms === "1"}
+      versionsPanel={<CourseVersionsPanel courseId={id} initialVersions={versions} />}
     />
   );
 }

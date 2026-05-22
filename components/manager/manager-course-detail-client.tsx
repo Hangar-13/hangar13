@@ -43,6 +43,7 @@ type Props = {
   moduleTree: LessonMapModule[];
   /** Open Talent LMS course ID editor and scroll into view (e.g. `?editTalentLms=1`). */
   focusTalentLmsCourseField?: boolean;
+  versionsPanel?: React.ReactNode;
 };
 
 function lessonInTree(
@@ -60,6 +61,7 @@ export function ManagerCourseDetailClient({
   course,
   moduleTree,
   focusTalentLmsCourseField,
+  versionsPanel,
 }: Props) {
   const router = useRouter();
   const talentLmsSectionRef = useRef<HTMLDivElement>(null);
@@ -455,6 +457,8 @@ export function ManagerCourseDetailClient({
           Create New Module
         </Button>
       </section>
+
+      {versionsPanel}
 
       <DestructiveContentDeleteDialog
         open={destructiveOpen}

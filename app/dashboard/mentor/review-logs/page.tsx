@@ -7,6 +7,10 @@ import {
   fetchActiveEnrollmentIdsForMentor,
   fetchTraineeUserIdsForMentor,
 } from "@/lib/mentor-enrollments";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 
 async function getMentorData(userId: string) {
   const supabase = await createServerSupabaseClient();
@@ -111,24 +115,26 @@ export default async function ReviewLogsPage({ searchParams }: PageProps) {
       : {};
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Review Logbook Entries</h1>
-        <p className="text-muted-foreground text-base">
+        <p className="text-base text-muted-foreground">
           Review and approve logbook entries from your mentees.
         </p>
       </div>
 
-      <PendingLogbookEntries
-        entries={data.allEntries}
-        acsCodesByEntry={acsCodesByEntry}
-        ataChapters={ataChapters.map((c: { chapter_number: string; title: string }) => ({
-          value: c.chapter_number,
-          label: `${c.chapter_number} - ${c.title}`,
-        }))}
-        initialNameFilter={studentName}
-        initialOpenEntryId={openLogId}
-      />
-    </div>
+      <DashboardContentFrame>
+        <PendingLogbookEntries
+          entries={data.allEntries}
+          acsCodesByEntry={acsCodesByEntry}
+          ataChapters={ataChapters.map((c: { chapter_number: string; title: string }) => ({
+            value: c.chapter_number,
+            label: `${c.chapter_number} - ${c.title}`,
+          }))}
+          initialNameFilter={studentName}
+          initialOpenEntryId={openLogId}
+        />
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

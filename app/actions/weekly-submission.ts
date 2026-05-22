@@ -3,6 +3,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { resolveLessonIdForProgramWeek } from "@/lib/training-lessons";
+import { resolveCourseVersionForLessonSubmission } from "@/lib/course-versions";
 import { noActiveTrainingServerError } from "@/lib/training-enrollment-messages";
 import {
   getTalentLmsApiEnrollmentConfig,
@@ -175,10 +176,23 @@ export async function submitWeeklyReflection(formData: {
     };
   }
 
+  const { data: pathMeta } = await supabase
+    .from("training_paths")
+    .select("organization_id")
+    .eq("id", student.training_path_id)
+    .maybeSingle();
+
+  const versionContext = {
+    userId: user.id,
+    enrollmentSource: student.enrollment_source,
+    pathOrganizationId: (pathMeta?.organization_id as string | null) ?? null,
+  };
+
   const lessonId = await resolveLessonIdForProgramWeek(
     supabase,
     student,
-    formData.weekNumber
+    formData.weekNumber,
+    versionContext
   );
 
   if (!lessonId) {
@@ -214,6 +228,12 @@ export async function submitWeeklyReflection(formData: {
     return { error: talentSnap.error };
   }
 
+  const courseVersion = await resolveCourseVersionForLessonSubmission(
+    supabase,
+    lessonId,
+    versionContext
+  );
+
   const { data: submission, error: submissionError } = await supabase
     .from("lesson_submissions")
     .upsert(
@@ -224,6 +244,7 @@ export async function submitWeeklyReflection(formData: {
         reflection_text: formData.reflectionText,
         status: "submitted",
         submitted_at: new Date().toISOString(),
+        course_version_id: courseVersion?.id ?? null,
         talent_lms_unit_completed: talentSnap.talent_lms_unit_completed,
         talent_lms_completion_checked_at: talentSnap.talent_lms_completion_checked_at,
         talent_lms_completion_meta: talentSnap.talent_lms_completion_meta,
@@ -283,7 +304,15 @@ export async function getWeeklySubmission(weekNumber: number) {
     return { error: noActiveTrainingServerError() };
   }
 
-  const lessonId = await resolveLessonIdForProgramWeek(supabase, student, weekNumber);
+  const lessonId = await resolveLessonIdForProgramWeek(
+    supabase,
+    student,
+    weekNumber,
+    {
+      userId: user.id,
+      enrollmentSource: student.enrollment_source,
+    }
+  );
 
   if (!lessonId) {
     return { submission: null };

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 import { CatalogVisibilityBadge } from "@/components/manager/catalog-visibility-badge";
 import { normalizeCatalogVisibility } from "@/lib/catalog-visibility";
 
@@ -100,13 +101,13 @@ export function ManagerContentClient({ lists }: { lists: ManagerContentLists }) 
   return (
     <div className="space-y-10">
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold tracking-tight">Training Paths</h2>
+        <DashboardSectionLabel>Training paths</DashboardSectionLabel>
         {lists.trainingPaths.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             You have not created any training paths yet.
           </p>
         ) : (
-          <ul className="divide-y rounded-lg border bg-card overflow-hidden">
+          <ul className="divide-y divide-border/60 overflow-hidden rounded-md ring-1 ring-black/[0.04]">
             {lists.trainingPaths.map((p) => (
               <li key={p.id}>
                 <Link
@@ -142,13 +143,13 @@ export function ManagerContentClient({ lists }: { lists: ManagerContentLists }) 
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold tracking-tight">Courses</h2>
+        <DashboardSectionLabel>Courses</DashboardSectionLabel>
         {lists.courses.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             You have not created any courses yet.
           </p>
         ) : (
-          <ul className="divide-y rounded-lg border bg-card overflow-hidden">
+          <ul className="divide-y divide-border/60 overflow-hidden rounded-md ring-1 ring-black/[0.04]">
             {lists.courses.map((c) => (
               <li key={c.id}>
                 <Link

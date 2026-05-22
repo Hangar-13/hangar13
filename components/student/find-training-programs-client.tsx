@@ -76,7 +76,7 @@ export function FindTrainingProgramsClient({
 
   return (
     <>
-      <ul className="divide-y divide-border rounded-lg border border-border/80">
+      <ul className="divide-y divide-border/25">
         {plans.map((plan) => {
           const enrolled = enrolledSet.has(plan.id);
           return (

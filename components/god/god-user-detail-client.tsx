@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DashboardSectionLabel, DashboardTableShell } from "@/components/dashboard/page-shell";
 
 const systemRoleLabel: Record<SystemRole, string> = {
   guest: "Guest",
@@ -170,9 +171,9 @@ export function GodUserDetailClient({
         </p>
       </div>
 
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Organizations</h2>
-        <div className="overflow-x-auto rounded-lg border">
+      <section className="space-y-3">
+        <DashboardSectionLabel>Organizations</DashboardSectionLabel>
+        <DashboardTableShell>
           <table className="w-full min-w-[480px] text-sm">
             <thead>
               <tr className="border-b bg-muted/50 text-left">
@@ -206,12 +207,12 @@ export function GodUserDetailClient({
               )}
             </tbody>
           </table>
-        </div>
+        </DashboardTableShell>
       </section>
 
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold">Training</h2>
-        <div className="overflow-x-auto rounded-lg border">
+      <section className="space-y-3">
+        <DashboardSectionLabel>Training</DashboardSectionLabel>
+        <DashboardTableShell>
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b bg-muted/50 text-left">
@@ -242,7 +243,7 @@ export function GodUserDetailClient({
               )}
             </tbody>
           </table>
-        </div>
+        </DashboardTableShell>
       </section>
     </div>
   );

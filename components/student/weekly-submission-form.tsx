@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 import { submitWeeklyReflection } from "@/app/actions/weekly-submission";
 import { createClient } from "@/lib/supabase-browser";
 import { Send, Upload, X, File as FileIcon, Image as ImageIcon } from "lucide-react";
@@ -226,46 +226,43 @@ export function WeeklySubmissionForm({
   const remainingChars = 1000 - characterCount;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Reflection Section */}
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle>Your Reflection</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="reflection" className="text-base font-medium">
-              How did this week's training apply to your actual work?
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Reflect on your learning this week and how it connected to your hands-on work in the hangar...
-            </p>
-            <Textarea
-              id="reflection"
-              value={reflectionText}
-              onChange={(e) => {
-                setReflectionText(e.target.value);
-                setError(null);
-              }}
-              placeholder="Share your thoughts and experiences from this week..."
-              className="min-h-32 resize-none"
-              maxLength={1000}
-            />
-            <div className="flex justify-between items-center text-sm text-muted-foreground">
-              <span className={cn(remainingChars < 100 && "text-orange-600", remainingChars < 0 && "text-red-600")}>
-                {characterCount}/1000 characters
-              </span>
-            </div>
+    <form onSubmit={handleSubmit} className="space-y-10">
+      <section className="space-y-4">
+        <DashboardSectionLabel>Your reflection</DashboardSectionLabel>
+        <div className="space-y-2">
+          <Label htmlFor="reflection" className="text-base font-medium">
+            How did this week&apos;s training apply to your actual work?
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            Reflect on your learning this week and how it connected to your hands-on work in the hangar...
+          </p>
+          <Textarea
+            id="reflection"
+            value={reflectionText}
+            onChange={(e) => {
+              setReflectionText(e.target.value);
+              setError(null);
+            }}
+            placeholder="Share your thoughts and experiences from this week..."
+            className="min-h-32 resize-none"
+            maxLength={1000}
+          />
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span
+              className={cn(
+                remainingChars < 100 && "text-orange-600",
+                remainingChars < 0 && "text-red-600"
+              )}
+            >
+              {characterCount}/1000 characters
+            </span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
-      {/* File Upload Section */}
-      <Card className="bg-white">
-        <CardHeader>
-          <CardTitle>Upload Photos/Documents (optional)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <section className="space-y-4">
+        <DashboardSectionLabel>Upload photos/documents (optional)</DashboardSectionLabel>
+        <div className="space-y-4">
           <div
             className={cn(
               "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
@@ -368,12 +365,12 @@ export function WeeklySubmissionForm({
           )}
 
           {(existingFiles.length + newFiles.length) >= 5 && (
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-center text-xs text-muted-foreground">
               Maximum 5 files reached. Remove a file to upload more.
             </p>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       {/* Error Message */}
       {error && (

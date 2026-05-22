@@ -2,10 +2,16 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { LogbookSummaryCards } from "@/components/student/logbook-summary-cards";
 import { LogbookTable, type LogbookEntry } from "@/components/student/logbook-table";
+import { LogbookExportButton } from "@/components/student/logbook-export-button";
 import { AddEntryModal } from "@/components/student/add-entry-modal";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getAcsCodesByEntry } from "@/app/actions/logbook";
 import { queryLogbookEntriesForOwner, type LogbookEntryRow } from "@/lib/logbook-entries-query";
+import { fetchSessionUserProfile } from "@/lib/session-user-profile";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 
 async function getLogbookEntries(userId: string): Promise<LogbookEntryRow[]> {
   const supabase = await createServerSupabaseClient();
@@ -39,10 +45,13 @@ export default async function LogbookPage({ searchParams }: PageProps) {
     redirect("/auth/login");
   }
 
-  const [entries, ataChapters] = await Promise.all([
+  const [entries, ataChapters, profile] = await Promise.all([
     getLogbookEntries(user.id),
     getAtaChapters(),
+    fetchSessionUserProfile(supabase),
   ]);
+
+  const studentName = profile?.full_name?.trim() || "Student";
 
   const entriesForTable = entries as LogbookEntry[];
 
@@ -57,44 +66,54 @@ export default async function LogbookPage({ searchParams }: PageProps) {
   // Entries already have skills_practiced which we're using for ATA chapter
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between">
+    <DashboardPageShell>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">OJT Logbook</h1>
-          <p className="text-muted-foreground text-base">
+          <p className="text-base text-muted-foreground">
             Track your daily work and hours
           </p>
         </div>
-        <AddEntryModal
+        <div className="flex flex-wrap items-center gap-2">
+          <LogbookExportButton
+            studentName={studentName}
+            entries={entriesForTable}
+            ataChapters={ataChapters.map((c) => ({
+              chapter_number: c.chapter_number,
+              title: c.title,
+            }))}
+            acsCodesByEntry={acsCodesByEntry}
+          />
+          <AddEntryModal
+            ataChapters={ataChapters.map((c) => ({
+              value: c.chapter_number,
+              label: `${c.chapter_number} - ${c.title}`,
+            }))}
+            defaultOpen={openAddModal}
+          />
+        </div>
+      </div>
+
+      <DashboardContentFrame className="space-y-6">
+        <LogbookSummaryCards
+          totalHours={totalHours}
+          pendingCount={pendingCount}
+          signedCount={signedCount}
+          totalEntries={totalEntries}
+        />
+
+        <LogbookTable
+          entries={entriesForTable}
+          runningTotal={totalHours}
           ataChapters={ataChapters.map((c) => ({
             value: c.chapter_number,
             label: `${c.chapter_number} - ${c.title}`,
           }))}
-          defaultOpen={openAddModal}
+          acsCodesByEntry={acsCodesByEntry}
+          initialOpenEntryId={openLogId}
+          defaultOpenAddModal={openAddModal}
         />
-      </div>
-
-      {/* Summary Cards */}
-      <LogbookSummaryCards
-        totalHours={totalHours}
-        pendingCount={pendingCount}
-        signedCount={signedCount}
-        totalEntries={totalEntries}
-      />
-
-      {/* Table */}
-      <LogbookTable
-        entries={entriesForTable}
-        runningTotal={totalHours}
-        ataChapters={ataChapters.map((c) => ({
-          value: c.chapter_number,
-          label: `${c.chapter_number} - ${c.title}`,
-        }))}
-        acsCodesByEntry={acsCodesByEntry}
-        initialOpenEntryId={openLogId}
-        defaultOpenAddModal={openAddModal}
-      />
-    </div>
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

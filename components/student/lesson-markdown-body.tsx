@@ -10,10 +10,7 @@ type Props = {
 /**
  * Renders stored lesson body markdown (study materials, practical, deliverable) for learners.
  */
-export function LessonMarkdownBody({
-  markdown,
-  emptyMessage,
-}: Props) {
+export function LessonMarkdownBody({ markdown, emptyMessage }: Props) {
   if (!markdown?.trim()) {
     return (
       <p className="text-sm text-muted-foreground">

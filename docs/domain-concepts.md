@@ -73,6 +73,26 @@ Important properties:
 
 There is **no enrollment directly on courses** in the current model—see below.
 
+### Course versions
+
+Courses are **versioned independently of training paths**. Each published version is an immutable snapshot (`major.minor`) of the course’s modules and lessons at publish time.
+
+| Concept | Purpose |
+|---------|---------|
+| `course_versions` | Published snapshot metadata (major/minor, release notes, publisher) |
+| `course_version_modules` / `course_version_lessons` | Frozen copy of content at publish time; links back to live rows via `source_*_id` |
+| `course_version_pins` | Which version an **organization** or **individual user** has adopted for a course |
+| `lesson_submissions.course_version_id` | Records which course version was active when the learner submitted |
+
+**Who adopts updates:** The party that purchased access decides when to move forward.
+
+- **Self-service enrollment** (`enrollment_source = self_service`): the learner accepts updates on the Training page.
+- **Org-managed enrollment** (manager-assigned / org seats): the org **supervisor** pins the version under Organization → Subscriptions → Course versions.
+
+Learners always interact with courses **through their training path**, but lesson content is resolved from the pinned version snapshot. Live course edits in the manager UI do not affect learners until a new version is published **and** adopted.
+
+Helpers: [`lib/course-versions.ts`](../lib/course-versions.ts), [`lib/training-lessons.ts`](../lib/training-lessons.ts) (version-aware path expansion).
+
 ---
 
 ## Training paths: the assignment and enrollment layer
@@ -196,5 +216,7 @@ flowchart TB
 | Enrollment on training paths only | `supabase/migrations/040_enrollment_paths_only.sql`, `041_drop_enrollment_source_course_singleton.sql` |
 | Roles split / platform elevation | `031_system_vs_organization_roles.sql`, `039_platform_elevation_sync_system_role.sql` |
 | Lesson progress math | [`lib/training-progress.ts`](../lib/training-progress.ts), [`lib/training-lessons.ts`](../lib/training-lessons.ts) |
+| Course versioning | [`lib/course-versions.ts`](../lib/course-versions.ts), `supabase/migrations/087_course_versions.sql` |
+| Talent LMS reconcile (cron) | **`TALENTLMS_RECONCILE_CRON_ENABLED` + `vercel.json` crons** opt-in ([`talent-lms-reconcile-cron.md`](./talent-lms-reconcile-cron.md)); code in [`lib/talentlms/reconcile-lesson-completion.ts`](../lib/talentlms/reconcile-lesson-completion.ts), [`lib/talentlms/reconcile-schedule.ts`](../lib/talentlms/reconcile-schedule.ts), [`lib/talentlms/reconcile-cron-flag.ts`](../lib/talentlms/reconcile-cron-flag.ts), [`app/api/cron/talent-lesson-completion/route.ts`](../app/api/cron/talent-lesson-completion/route.ts) |
 
 If you extend the product, update this document when behavior diverges from these sources of truth.

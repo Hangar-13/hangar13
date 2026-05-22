@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface HoursProgressCardProps {
   completedHours: number;
@@ -13,46 +13,53 @@ export function HoursProgressCard({
   targetHours,
   status = "behind",
 }: HoursProgressCardProps) {
-  const percentage = targetHours > 0 ? Math.round((completedHours / targetHours) * 100) : 0;
+  const percentage =
+    targetHours > 0 ? Math.min(100, Math.round((completedHours / targetHours) * 100)) : 0;
 
-  const getStatusColor = () => {
-    switch (status) {
-      case "on_pace":
-        return "text-blue-600";
-      case "ahead":
-        return "text-green-600";
-      default:
-        return "text-green-500";
-    }
-  };
+  const statusClass =
+    status === "ahead"
+      ? "text-emerald-600"
+      : status === "on_pace"
+        ? "text-secondary"
+        : "text-amber-600";
 
-  const getStatusText = () => {
-    switch (status) {
-      case "on_pace":
-        return "On Pace";
-      case "ahead":
-        return "Ahead of Pace";
-      default:
-        return "Behind Pace";
-    }
-  };
+  const statusText =
+    status === "ahead"
+      ? "Ahead of pace"
+      : status === "on_pace"
+        ? "On pace"
+        : "Log hours this week";
+
+  const StatusIcon = status === "behind" ? TrendingDown : TrendingUp;
 
   return (
-    <Card className="bg-card">
-      <CardHeader>
-        <CardTitle>Hours Progress</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-2.5">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-3xl font-bold mb-1">{completedHours.toLocaleString()}</div>
-          <p className="text-sm text-muted-foreground">of {targetHours.toLocaleString()} hours</p>
+          <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-muted-foreground">
+            OJT logbook hours
+          </p>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {completedHours.toLocaleString()}
+            </span>
+            {" of "}
+            {targetHours.toLocaleString()} hours
+          </p>
         </div>
-        <Progress value={percentage} className="h-3" />
-        <div className="flex items-center gap-1 text-sm">
-          <TrendingUp className={`h-4 w-4 ${getStatusColor()}`} />
-          <span className={getStatusColor()}>{getStatusText()}</span>
-        </div>
-      </CardContent>
-    </Card>
+        <span className="shrink-0 text-2xl font-bold tabular-nums text-secondary">
+          {percentage}%
+        </span>
+      </div>
+      <Progress
+        value={percentage}
+        className="h-2 bg-secondary/20"
+        indicatorClassName="bg-secondary"
+      />
+      <p className={cn("flex items-center gap-1.5 text-xs font-medium", statusClass)}>
+        <StatusIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        {statusText}
+      </p>
+    </div>
   );
 }

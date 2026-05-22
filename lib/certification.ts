@@ -43,3 +43,8 @@ export function certificationLabel(cert: Certification): string {
   if (cert === "other") return "Other";
   return cert;
 }
+
+/** Section title suffix for certification progress (e.g. "FAA Airframe Certification"). */
+export function certificationProgressTitle(cert: Certification): string {
+  return `${certificationLabel(cert)} Certification`;
+}

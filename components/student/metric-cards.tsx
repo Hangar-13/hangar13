@@ -1,84 +1,48 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, Target, Book } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  DashboardStatCell,
+  DashboardStatStrip,
+} from "@/components/dashboard/page-shell";
 
-interface MetricCardProps {
-  icon: React.ReactNode;
-  value: string | number;
-  label: string;
-  sublabel?: string;
-  status?: "behind" | "on_track";
-}
-
-function MetricCard({ icon, value, label, sublabel, status }: MetricCardProps) {
-  return (
-    <Card className="bg-card">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1 flex-1">
-            <div className="text-2xl font-bold">{value}</div>
-            <p className="text-sm text-muted-foreground">{label}</p>
-            {sublabel && (
-              <p className={cn(
-                "text-xs",
-                status === "behind" ? "text-green-500" : "text-muted-foreground"
-              )}>
-                {sublabel}
-              </p>
-            )}
-          </div>
-          <div className="text-muted-foreground">{icon}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-interface MetricCardsProps {
-  totalHours: number;
-  targetHours: number;
+interface DashboardStatStripProps {
   thisWeekHours: number;
   currentWeek: number;
   totalWeeks: number;
+  lessonsCompleted: number;
+  lessonsTotal: number;
   ataChaptersCompleted: number;
   totalAtaChapters: number;
 }
 
 export function MetricCards({
-  totalHours,
-  targetHours,
   thisWeekHours,
   currentWeek,
   totalWeeks,
+  lessonsCompleted,
+  lessonsTotal,
   ataChaptersCompleted,
   totalAtaChapters,
-}: MetricCardsProps) {
+}: DashboardStatStripProps) {
+  const weekLabel =
+    totalWeeks > 0 ? `${currentWeek} of ${totalWeeks}` : currentWeek > 0 ? String(currentWeek) : "—";
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <MetricCard
-        icon={<Calendar className="h-5 w-5" />}
-        value={totalHours.toLocaleString()}
-        label={`of ${targetHours.toLocaleString()} target`}
-      />
-      <MetricCard
-        icon={<Clock className="h-5 w-5" />}
-        value={`${thisWeekHours}h`}
-        label="This Week"
-        sublabel={thisWeekHours === 0 ? "Behind" : undefined}
-        status={thisWeekHours === 0 ? "behind" : undefined}
-      />
-      <MetricCard
-        icon={<Target className="h-5 w-5" />}
-        value={currentWeek}
-        label={`of ${totalWeeks} weeks`}
-        sublabel="Current Week"
-      />
-      <MetricCard
-        icon={<Book className="h-5 w-5" />}
-        value={ataChaptersCompleted}
-        label={`of ${totalAtaChapters} covered`}
-        sublabel="ATA Chapters"
-      />
-    </div>
+    <DashboardStatStrip>
+      <div className="grid grid-cols-2 gap-y-5 sm:grid-cols-4 sm:gap-y-0 sm:divide-x sm:divide-border/30">
+        <DashboardStatCell
+          value={`${thisWeekHours}h`}
+          label="This week"
+          detail={thisWeekHours === 0 ? "No entries yet" : undefined}
+        />
+        <DashboardStatCell value={weekLabel} label="Program week" />
+        <DashboardStatCell
+          value={lessonsTotal > 0 ? `${lessonsCompleted}/${lessonsTotal}` : lessonsCompleted}
+          label="Lessons complete"
+        />
+        <DashboardStatCell
+          value={`${ataChaptersCompleted}/${totalAtaChapters}`}
+          label="ATA chapters"
+        />
+      </div>
+    </DashboardStatStrip>
   );
 }

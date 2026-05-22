@@ -67,7 +67,10 @@ export function TrainingProgramSwitcherBar({ data }: Props) {
               onValueChange={onProgramChange}
               disabled={pending}
             >
-              <SelectTrigger size="sm" className="h-8 w-full max-w-md min-w-[12rem] border-border shadow-none">
+              <SelectTrigger
+                size="sm"
+                className="h-8 w-full max-w-md min-w-[12rem] border-0 bg-transparent px-2 shadow-none focus-visible:border-transparent focus-visible:ring-0 hover:bg-muted/30"
+              >
                 <SelectValue placeholder="Select program…" />
               </SelectTrigger>
               <SelectContent position="popper">

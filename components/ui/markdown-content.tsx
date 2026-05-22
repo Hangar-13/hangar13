@@ -36,10 +36,7 @@ type Props = {
  * Renders GitHub-flavored markdown (headings, lists, links, code, tables).
  * Does not use raw HTML (react-markdown default is safe; no rehype-raw).
  */
-export function MarkdownContent({
-  markdown,
-  className,
-}: Props) {
+export function MarkdownContent({ markdown, className }: Props) {
   return (
     <div className={cn(bodyClass, className)}>
       <ReactMarkdown

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Award } from "lucide-react";
+import { ArrowRight, Award } from "lucide-react";
+import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 
 type Props = {
   trainingCount: number;
@@ -10,24 +9,26 @@ type Props = {
 
 export function CredentialsSummaryCard({ trainingCount, certificationCount }: Props) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-medium flex items-center gap-2">
-          <Award className="h-4 w-4 text-primary" aria-hidden />
-          My Trainings
-        </CardTitle>
-        <Button variant="outline" size="sm" asChild>
-          <Link href="/dashboard/student/credentials">Manage</Link>
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{trainingCount}</span> completed training
-          {trainingCount === 1 ? "" : "s"},{" "}
-          <span className="font-medium text-foreground">{certificationCount}</span> certification
-          {certificationCount === 1 ? "" : "s"} on record.
-        </p>
-      </CardContent>
-    </Card>
+    <section>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Award className="h-3.5 w-3.5 text-primary" aria-hidden />
+          <DashboardSectionLabel>My trainings</DashboardSectionLabel>
+        </div>
+        <Link
+          href="/dashboard/student/credentials"
+          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Manage
+          <ArrowRight className="h-3 w-3" aria-hidden />
+        </Link>
+      </div>
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        <span className="font-semibold text-foreground">{trainingCount}</span> completed training
+        {trainingCount === 1 ? "" : "s"},{" "}
+        <span className="font-semibold text-foreground">{certificationCount}</span> certification
+        {certificationCount === 1 ? "" : "s"} on record.
+      </p>
+    </section>
   );
 }

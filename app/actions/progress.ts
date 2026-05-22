@@ -13,6 +13,7 @@ import {
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { queryLogbookEntriesForOwner } from "@/lib/logbook-entries-query";
 import { fetchLessonsForTrainingPath } from "@/lib/training-lessons";
+import { buildVersionContextForUserTraining } from "@/lib/course-versions";
 import {
   computeProgramLessonWeek,
   DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS,
@@ -112,7 +113,11 @@ async function buildProgressData(
   const lessonsOrdered = studentRecord.training_path_id
     ? await fetchLessonsForTrainingPath(
         supabase,
-        studentRecord.training_path_id as string
+        studentRecord.training_path_id as string,
+        await buildVersionContextForUserTraining(supabase, studentRecord.user_id, {
+          training_path_id: studentRecord.training_path_id as string,
+          enrollment_source: studentRecord.enrollment_source as string | null,
+        })
       )
     : [];
   const lessonCount = lessonsOrdered.length;

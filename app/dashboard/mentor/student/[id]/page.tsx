@@ -8,8 +8,14 @@ import {
   getTrainingCompletionsForUser,
 } from "@/app/actions/user-credentials";
 import { CredentialsReadOnlyLists } from "@/components/user/credentials-read-only-lists";
-import { Card, CardContent } from "@/components/ui/card";
-import { User, Mail, Calendar, ArrowLeft, Clock, Target, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+  DashboardSectionLabel,
+  DashboardStatCell,
+  DashboardStatStrip,
+} from "@/components/dashboard/page-shell";
+import { User, Mail, Calendar, ArrowLeft, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
@@ -190,7 +196,7 @@ export default async function StudentDetailPage({ params }: PageProps) {
   };
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <div className="flex items-start gap-4">
         <Link href="/dashboard/mentor/mentees">
           <Button variant="ghost" size="icon" className="mt-1">
@@ -240,10 +246,9 @@ export default async function StudentDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Progress Stats */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">Progress Overview</h2>
+      <DashboardContentFrame>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <DashboardSectionLabel>Progress overview</DashboardSectionLabel>
           <Link href={`/dashboard/mentor/mentees/progress?student=${student.id}`}>
             <Button variant="outline" size="sm">
               Student Progress
@@ -251,116 +256,82 @@ export default async function StudentDetailPage({ params }: PageProps) {
           </Link>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Training curriculum progress (planned hours) */}
-          <Card className="bg-card border-2 transition-all hover:shadow-md">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-muted-foreground">Training progress</span>
-                <span className="font-semibold text-lg">{progress?.overall ?? 0}%</span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-3 mb-2">
+        <DashboardStatStrip>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 sm:gap-y-0 sm:divide-x sm:divide-border/30">
+            <div className="min-w-0 space-y-2 px-4 first:pl-0 last:pr-0 sm:px-5">
+              <DashboardStatCell
+                value={`${progress?.overall ?? 0}%`}
+                label="Training progress"
+                detail={
+                  progress && progress.hoursRequired > 0
+                    ? `${progress.hoursCompleted.toFixed(1)} / ${progress.hoursRequired.toFixed(1)} training hours`
+                    : "No training hours defined for this program"
+                }
+              />
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                 <div
-                  className="bg-primary rounded-full h-3 transition-all"
+                  className="h-full rounded-full bg-primary transition-all"
                   style={{ width: `${progress?.overall ?? 0}%` }}
                 />
               </div>
-              <div className="text-xs text-muted-foreground">
-                {progress && progress.hoursRequired > 0
-                  ? `${progress.hoursCompleted.toFixed(1)} / ${progress.hoursRequired.toFixed(1)} training hours`
-                  : "No training hours defined for this program"}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Current Week */}
-          <Card className="bg-card border-2 transition-all hover:shadow-md">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  Current Week
-                </span>
-                <span className="font-semibold text-lg">Week {weeks?.current ?? 0}</span>
-              </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                Started {formatUiDate(student.start_date)}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Hours Progress */}
-          <Card className="bg-card border-2 transition-all hover:shadow-md">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  Hours Progress
-                </span>
-                <span className="font-semibold text-lg">
-                  {(hours?.total ?? 0).toFixed(1)} / {hours?.target ?? 0}
-                </span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-3 mb-2">
+            </div>
+            <DashboardStatCell
+              value={`Week ${weeks?.current ?? 0}`}
+              label="Current week"
+              detail={`Started ${formatUiDate(student.start_date)}`}
+            />
+            <div className="min-w-0 space-y-2 px-4 first:pl-0 last:pr-0 sm:px-5">
+              <DashboardStatCell
+                value={`${(hours?.total ?? 0).toFixed(1)} / ${hours?.target ?? 0}`}
+                label="Hours progress"
+                detail={`${hours?.progress ?? 0}% complete`}
+              />
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
                 <div
-                  className="bg-primary rounded-full h-3 transition-all"
+                  className="h-full rounded-full bg-primary transition-all"
                   style={{ width: `${Math.min(hours?.progress ?? 0, 100)}%` }}
                 />
               </div>
-              <div className="flex items-center justify-between mt-3">
-                <div className="text-xs text-muted-foreground">
-                  {hours?.progress ?? 0}% complete
-                </div>
-                {getStatusBadge(progressStatus)}
-              </div>
-            </CardContent>
-          </Card>
+              <div>{getStatusBadge(progressStatus)}</div>
+            </div>
+            <DashboardStatCell
+              value={pendingEntries ?? 0}
+              label="Pending entries"
+              detail="Awaiting approval"
+              className={(pendingEntries ?? 0) > 0 ? "[&>p:first-child]:text-primary" : undefined}
+            />
+          </div>
+        </DashboardStatStrip>
 
-          {/* Pending Entries */}
-          <Card className="bg-card border-2 transition-all hover:shadow-md hover:border-primary/50">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between text-sm mb-2">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <Target className="h-4 w-4" />
-                  Pending Entries
-                </span>
-                <span className={`font-semibold text-3xl ${(pendingEntries ?? 0) > 0 ? "text-primary" : ""}`}>
-                  {pendingEntries ?? 0}
-                </span>
-              </div>
-              <div className="text-xs text-muted-foreground mt-2">
-                Awaiting approval
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        <section className="space-y-4 border-t border-border/40 pt-6">
+          <DashboardSectionLabel>Training & certifications</DashboardSectionLabel>
+          <CredentialsReadOnlyLists
+            trainingCompletions={trainingCompletions}
+            certificationAwards={certificationAwards}
+            emptyHint="No completed trainings or certifications on file yet."
+          />
+        </section>
 
-      <div className="space-y-3">
-        <h2 className="text-xl font-semibold">Training & certifications</h2>
-        <CredentialsReadOnlyLists
-          trainingCompletions={trainingCompletions}
-          certificationAwards={certificationAwards}
-          emptyHint="No completed trainings or certifications on file yet."
-        />
-      </div>
-
-      {/* Entries List */}
-      <StudentEntriesList
-        entries={entries || []}
-        entriesByStatus={entriesByStatus || {
-          submitted: [],
-          approved: [],
-          rejected: [],
-          draft: [],
-        }}
-        acsCodesByEntry={acsCodesByEntry || {}}
-        ataChapters={ataChapters.map((c: { chapter_number: string; title: string }) => ({
-          value: c.chapter_number,
-          label: `${c.chapter_number} - ${c.title}`,
-        }))}
-      />
-    </div>
+        <section className="space-y-4 border-t border-border/40 pt-6">
+          <StudentEntriesList
+            entries={entries || []}
+            entriesByStatus={
+              entriesByStatus || {
+                submitted: [],
+                approved: [],
+                rejected: [],
+                draft: [],
+              }
+            }
+            acsCodesByEntry={acsCodesByEntry || {}}
+            ataChapters={ataChapters.map((c: { chapter_number: string; title: string }) => ({
+              value: c.chapter_number,
+              label: `${c.chapter_number} - ${c.title}`,
+            }))}
+          />
+        </section>
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }
 

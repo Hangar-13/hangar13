@@ -1,7 +1,7 @@
 import type { CertificationAward, TrainingCompletion } from "@/app/actions/user-credentials";
 import { formatUiDate } from "@/lib/format-ui-date";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 import { Award, GraduationCap, Trash2 } from "lucide-react";
 
 type Props = {
@@ -23,98 +23,94 @@ export function CredentialsReadOnlyLists({
   deleteBusyId,
 }: Props) {
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" aria-hidden />
+    <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
+      <section className="space-y-3">
+        <DashboardSectionLabel>
+          <span className="inline-flex items-center gap-2">
+            <GraduationCap className="h-3.5 w-3.5 text-primary" aria-hidden />
             Completed trainings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {trainingCompletions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{emptyHint}</p>
-          ) : (
-            <ul className="space-y-3">
-              {trainingCompletions.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex items-start justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-foreground">{row.training_name}</div>
-                    <div className="text-muted-foreground text-xs mt-0.5">
-                      Completed {formatUiDate(row.completed_on)}
-                    </div>
-                    {row.notes ? (
-                      <p className="text-muted-foreground text-xs mt-1.5">{row.notes}</p>
-                    ) : null}
+          </span>
+        </DashboardSectionLabel>
+        {trainingCompletions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{emptyHint}</p>
+        ) : (
+          <ul className="divide-y divide-border/50">
+            {trainingCompletions.map((row) => (
+              <li
+                key={row.id}
+                className="flex items-start justify-between gap-2 py-3 text-sm first:pt-0"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-foreground">{row.training_name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    Completed {formatUiDate(row.completed_on)}
                   </div>
-                  {onDeleteTraining ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-destructive"
-                      disabled={deleteBusyId === row.id}
-                      onClick={() => onDeleteTraining(row.id)}
-                      aria-label={`Remove ${row.training_name}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  {row.notes ? (
+                    <p className="mt-1.5 text-xs text-muted-foreground">{row.notes}</p>
                   ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+                {onDeleteTraining ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-destructive"
+                    disabled={deleteBusyId === row.id}
+                    onClick={() => onDeleteTraining(row.id)}
+                    aria-label={`Remove ${row.training_name}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Award className="h-5 w-5 text-primary" aria-hidden />
+      <section className="space-y-3">
+        <DashboardSectionLabel>
+          <span className="inline-flex items-center gap-2">
+            <Award className="h-3.5 w-3.5 text-primary" aria-hidden />
             Certifications awarded
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {certificationAwards.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{emptyHint}</p>
-          ) : (
-            <ul className="space-y-3">
-              {certificationAwards.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex items-start justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-sm"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-foreground">{row.certification_name}</div>
-                    <div className="text-muted-foreground text-xs mt-0.5">
-                      Awarded {formatUiDate(row.awarded_on)}
-                    </div>
-                    {row.notes ? (
-                      <p className="text-muted-foreground text-xs mt-1.5">{row.notes}</p>
-                    ) : null}
+          </span>
+        </DashboardSectionLabel>
+        {certificationAwards.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{emptyHint}</p>
+        ) : (
+          <ul className="divide-y divide-border/50">
+            {certificationAwards.map((row) => (
+              <li
+                key={row.id}
+                className="flex items-start justify-between gap-2 py-3 text-sm first:pt-0"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-foreground">{row.certification_name}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">
+                    Awarded {formatUiDate(row.awarded_on)}
                   </div>
-                  {onDeleteCertification ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-destructive"
-                      disabled={deleteBusyId === row.id}
-                      onClick={() => onDeleteCertification(row.id)}
-                      aria-label={`Remove ${row.certification_name}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  {row.notes ? (
+                    <p className="mt-1.5 text-xs text-muted-foreground">{row.notes}</p>
                   ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+                {onDeleteCertification ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-destructive"
+                    disabled={deleteBusyId === row.id}
+                    onClick={() => onDeleteCertification(row.id)}
+                    aria-label={`Remove ${row.certification_name}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

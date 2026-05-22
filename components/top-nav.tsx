@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { Menu, Search, User, LogOut } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { useAppNavigation } from "@/components/app-navigation-provider";
 import { OrganizationSwitcher } from "@/components/organization-switcher";
 import { NotificationDropdown } from "@/components/notifications/notification-dropdown";
+import { UserMenu } from "@/components/user-menu";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabaseClient } from "@/lib/supabaseClient";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TrainingSwitcherDock } from "@/components/training-switcher-dock";
 
@@ -21,11 +21,6 @@ export function TopNav() {
     refreshOrganizations,
   } = useAppNavigation();
   const [searchQuery, setSearchQuery] = useState("");
-
-  async function handleSignOut() {
-    await supabaseClient.auth.signOut();
-    window.location.href = "/auth/login";
-  }
 
   const handleSearch = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -92,25 +87,7 @@ export function TopNav() {
         <div className="flex items-center gap-1 sm:gap-2">
           <ThemeToggle />
           <NotificationDropdown />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            title="User menu"
-          >
-            <User className="h-5 w-5" />
-            <span className="sr-only">User menu</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9"
-            title="Sign out"
-            onClick={handleSignOut}
-          >
-            <LogOut className="h-5 w-5" />
-            <span className="sr-only">Sign out</span>
-          </Button>
+          <UserMenu />
         </div>
       </div>
       <TrainingSwitcherDock />

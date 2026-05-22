@@ -10,6 +10,7 @@ export type SessionUserProfileRow = {
   last_active_organization_id: string | null;
   current_user_training_id: string | null;
   current_certification: string | null;
+  default_start_path: string | null;
 };
 
 /**

@@ -5,6 +5,7 @@ import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getProgressDataForStudent } from "@/app/actions/progress";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { redirectIfNoUserTrainings } from "@/lib/student-user-trainings-guard";
+import { DashboardPageShell } from "@/components/dashboard/page-shell";
 import Link from "next/link";
 
 export default async function ProgressPage() {
@@ -52,10 +53,10 @@ export default async function ProgressPage() {
   const pageTitle = planRow.data?.name ?? "Progress";
 
   return (
-    <div className="space-y-6">
+    <DashboardPageShell>
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
-        <p className="text-muted-foreground text-base">
+        <p className="text-base text-muted-foreground">
           Track lesson progress, logbook hours, and ACS coverage for your current program.
         </p>
       </div>
@@ -67,6 +68,6 @@ export default async function ProgressPage() {
           title: c.title,
         }))}
       />
-    </div>
+    </DashboardPageShell>
   );
 }

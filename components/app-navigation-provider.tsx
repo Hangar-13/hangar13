@@ -29,6 +29,11 @@ type ActiveOrganizationPayload = {
   memberships: OrgSwitcherMembership[];
 };
 
+type SessionUserSummary = {
+  fullName: string | null;
+  email: string | null;
+};
+
 type AppNavigationContextValue = {
   navigationSections: NavSection[];
   isLoading: boolean;
@@ -42,6 +47,8 @@ type AppNavigationContextValue = {
   organizationRole: OrganizationRole | null;
   memberships: OrgSwitcherMembership[];
   refreshOrganizations: () => Promise<void>;
+  sessionUser: SessionUserSummary | null;
+  refreshSessionUser: () => Promise<void>;
   /** Active enrollment for student training switcher (top bar); null if signed out. */
   trainingSwitcherData: TrainingProgramSwitcherInitialData | null;
   refreshTrainingSwitcher: () => Promise<void>;
@@ -78,6 +85,9 @@ export function AppNavigationProvider({
   >(null);
   const [trainingSwitcherData, setTrainingSwitcherData] =
     useState<TrainingProgramSwitcherInitialData | null>(null);
+  const [sessionUser, setSessionUser] = useState<SessionUserSummary | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -128,6 +138,22 @@ export function AppNavigationProvider({
     await loadTrainingSwitcherForUser(user.id);
   }, [loadTrainingSwitcherForUser]);
 
+  const refreshSessionUser = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabaseClient.auth.getUser();
+    if (!user) {
+      setSessionUser(null);
+      return;
+    }
+
+    const profile = await fetchSessionUserProfile(supabaseClient);
+    setSessionUser({
+      fullName: profile?.full_name ?? null,
+      email: profile?.email ?? user.email ?? null,
+    });
+  }, []);
+
   const refreshOrganizations = useCallback(async () => {
     const payload = await fetchActiveOrganization();
     if (payload) {
@@ -150,6 +176,7 @@ export function AppNavigationProvider({
           setMemberships([]);
           setStudentHasTrainings(null);
           setTrainingSwitcherData(null);
+          setSessionUser(null);
           setIsLoading(false);
           return;
         }
@@ -161,6 +188,10 @@ export function AppNavigationProvider({
 
         const role = normalizeSystemRole(profile?.role as string | undefined);
         setSystemRole(role);
+        setSessionUser({
+          fullName: profile?.full_name ?? null,
+          email: profile?.email ?? user.email ?? null,
+        });
 
         if (payload) {
           setActiveOrganizationId(payload.activeOrganizationId);
@@ -242,6 +273,8 @@ export function AppNavigationProvider({
       organizationRole,
       memberships,
       refreshOrganizations,
+      sessionUser,
+      refreshSessionUser,
       trainingSwitcherData,
       refreshTrainingSwitcher,
     }),
@@ -256,6 +289,8 @@ export function AppNavigationProvider({
       organizationRole,
       memberships,
       refreshOrganizations,
+      sessionUser,
+      refreshSessionUser,
       trainingSwitcherData,
       refreshTrainingSwitcher,
     ]

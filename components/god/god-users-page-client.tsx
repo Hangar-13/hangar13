@@ -9,6 +9,7 @@ import { AddGodUserDialog } from "@/components/god/add-god-user-dialog";
 import { LeadBadge } from "@/components/god/lead-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DashboardPageShell, DashboardTableShell } from "@/components/dashboard/page-shell";
 
 const PAGE_SIZE = 20;
 const searchDebounceMs = 400;
@@ -79,8 +80,8 @@ export function GodUsersPageClient({
   }, [search, page, load]);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Manage Users</h1>
+    <DashboardPageShell>
+      <h1 className="text-2xl font-bold tracking-tight">Manage Users</h1>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="relative flex-1 min-w-0">
@@ -104,7 +105,7 @@ export function GodUsersPageClient({
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
+      <DashboardTableShell>
         <table className="w-full min-w-[56rem] table-fixed text-sm">
           <colgroup>
             {/* Fixed narrow role; last column absorbs the rest (wide for long org names). */}
@@ -195,7 +196,7 @@ export function GodUsersPageClient({
             )}
           </tbody>
         </table>
-      </div>
+      </DashboardTableShell>
 
       {total > 0 && (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm text-muted-foreground">
@@ -242,6 +243,6 @@ export function GodUsersPageClient({
           router.refresh();
         }}
       />
-    </div>
+    </DashboardPageShell>
   );
 }

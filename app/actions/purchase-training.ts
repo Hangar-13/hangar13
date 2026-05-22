@@ -10,6 +10,7 @@ import {
   ensureTalentLmsUserAndEnrollInCourse,
   getTalentLmsApiEnrollmentConfig,
 } from "@/lib/talentlms/api-enroll";
+import { pinLatestCourseVersionsForPathEnrollment } from "@/lib/course-versions";
 
 export async function purchaseTrainingPlan(
   trainingPathId: string
@@ -115,6 +116,15 @@ export async function purchaseTrainingPlan(
   if (userErr) {
     return { error: userErr.message };
   }
+
+  await pinLatestCourseVersionsForPathEnrollment({
+    supabase,
+    trainingPathId,
+    userId: user.id,
+    pinnedByUserId: user.id,
+    enrollmentSource: "self_service",
+    pathOrganizationId: path.organization_id as string,
+  });
 
   let tlCourse: string | null = null;
   const { data: pathCourseRows } = await supabase

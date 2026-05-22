@@ -20,6 +20,7 @@ import { AddEntryModal } from "@/components/student/add-entry-modal";
 import { RejectReasonDialog } from "@/components/mentor/reject-reason-dialog";
 import { cn } from "@/lib/utils";
 import { formatUiDate } from "@/lib/format-ui-date";
+import { DashboardAccentBlock } from "@/components/dashboard/page-shell";
 
 export interface PendingLogbookEntry {
   id: string;
@@ -261,25 +262,22 @@ export function PendingLogbookEntries({
   return (
     <div className="space-y-6">
       {pendingCount > 0 && (
-        <div
-          className={cn(
-            "flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between",
-            "border-primary/25 bg-primary/[0.06] dark:bg-primary/10"
-          )}
-        >
-          <p className="font-medium text-foreground">
-            {pendingCount} log entr{pendingCount === 1 ? "y" : "ies"} awaiting your signature
-          </p>
-          <Button
-            type="button"
-            size="lg"
-            className="shrink-0 gap-2"
-            onClick={openBulkReviewModal}
-          >
-            <CheckCircle2 className="h-4 w-4" />
-            Review and sign
-          </Button>
-        </div>
+        <DashboardAccentBlock>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="font-medium text-foreground">
+              {pendingCount} log entr{pendingCount === 1 ? "y" : "ies"} awaiting your signature
+            </p>
+            <Button
+              type="button"
+              size="lg"
+              className="shrink-0 gap-2"
+              onClick={openBulkReviewModal}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Review and sign
+            </Button>
+          </div>
+        </DashboardAccentBlock>
       )}
 
       <Dialog
@@ -448,8 +446,8 @@ export function PendingLogbookEntries({
               <div
                 key={entry.id}
                 className={cn(
-                  "p-4 rounded-lg border border-border bg-card transition-shadow space-y-3",
-                  "hover:shadow-md cursor-pointer"
+                  "cursor-pointer space-y-3 rounded-md bg-muted/15 px-4 py-3 ring-1 ring-black/[0.04] transition-colors",
+                  "hover:bg-muted/30"
                 )}
                 onClick={() => setSelectedEntry(entry)}
               >

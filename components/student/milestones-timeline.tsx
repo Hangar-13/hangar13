@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { CheckCircle2 } from "lucide-react";
+import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 
 interface MilestonesTimelineProps {
   currentWeek: number;
@@ -44,31 +44,17 @@ export function MilestonesTimeline({
 }: MilestonesTimelineProps) {
   const milestones = buildMilestones(totalWeeks);
 
-  if (milestones.length === 0) {
-    return (
-      <Card className="bg-card">
-        <CardHeader>
-          <CardTitle>Milestones</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Add lessons to your training path to see milestones here.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <Card className="bg-card">
-      <CardHeader>
-        <CardTitle>Milestones</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <section className="space-y-4">
+      <DashboardSectionLabel>Milestones</DashboardSectionLabel>
+      {milestones.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Add lessons to your training path to see milestones here.
+        </p>
+      ) : (
         <div className="relative">
-          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border" />
-
-          <div className="space-y-6">
+          <div className="absolute bottom-0 left-6 top-0 w-px bg-border/40" />
+          <div className="space-y-5">
             {milestones.map((milestone, index) => {
               const isCompleted = currentWeek >= milestone.week;
 
@@ -79,14 +65,14 @@ export function MilestonesTimeline({
                 >
                   <div
                     className={cn(
-                      "relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background",
+                      "relative z-10 flex h-11 w-11 items-center justify-center rounded-full border-2 bg-background",
                       isCompleted
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border"
+                        : "border-border/60"
                     )}
                   >
                     {isCompleted ? (
-                      <CheckCircle2 className="h-6 w-6" />
+                      <CheckCircle2 className="h-5 w-5" />
                     ) : (
                       <span className="text-sm font-semibold">{milestone.week}</span>
                     )}
@@ -104,7 +90,7 @@ export function MilestonesTimeline({
             })}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </section>
   );
 }

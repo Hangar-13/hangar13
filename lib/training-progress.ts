@@ -56,7 +56,7 @@ export async function getEnrollmentLessonSnapshot(
 }> {
   const { data: utRow } = await supabase
     .from("user_trainings")
-    .select("hours_completed, training_path_id")
+    .select("hours_completed, training_path_id, user_id, enrollment_source")
     .eq("id", userTrainingId)
     .maybeSingle();
 
@@ -76,7 +76,16 @@ export async function getEnrollmentLessonSnapshot(
       ? Math.min(100, Math.round((hoursCompleted / hoursRequired) * 100))
       : 0;
 
-  const lessons = await fetchLessonsForEnrollment(supabase, ut);
+  const lessons = await fetchLessonsForEnrollment(supabase, {
+    ...ut,
+    user_id: utRow?.user_id as string | undefined,
+    enrollment_source: utRow?.enrollment_source as string | null | undefined,
+  }, utRow?.user_id
+    ? {
+        userId: utRow.user_id as string,
+        enrollmentSource: utRow.enrollment_source as string | null,
+      }
+    : undefined);
   const submittedIds = await fetchSubmittedLessonIds(supabase, userTrainingId);
 
   const allAtaIds = new Set<number>();

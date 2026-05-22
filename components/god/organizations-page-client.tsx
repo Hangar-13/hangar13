@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { CreateOrganizationDialog } from "@/components/god/create-organization-dialog";
 import { Button } from "@/components/ui/button";
+import { DashboardPageShell, DashboardTableShell } from "@/components/dashboard/page-shell";
 import type { GodOrganizationListRow } from "@/app/actions/god-organizations";
 
 type OrganizationsPageClientProps = {
@@ -18,16 +19,16 @@ export function OrganizationsPageClient({ initialOrgs }: OrganizationsPageClient
   const orgs = initialOrgs;
 
   return (
-    <div className="space-y-6">
+    <DashboardPageShell>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Organizations</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Organizations</h1>
         <Button onClick={() => setCreateOpen(true)} className="w-fit gap-1.5" type="button">
           <Plus className="h-4 w-4" />
           Add New Org
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
+      <DashboardTableShell>
         <table className="w-full min-w-[400px] text-sm">
           <thead>
             <tr className="border-b bg-muted/50 text-left">
@@ -69,7 +70,7 @@ export function OrganizationsPageClient({ initialOrgs }: OrganizationsPageClient
             )}
           </tbody>
         </table>
-      </div>
+      </DashboardTableShell>
 
       <CreateOrganizationDialog
         open={createOpen}
@@ -79,6 +80,6 @@ export function OrganizationsPageClient({ initialOrgs }: OrganizationsPageClient
           router.refresh();
         }}
       />
-    </div>
+    </DashboardPageShell>
   );
 }

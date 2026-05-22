@@ -1,8 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, BarChart3, Users, TrendingUp } from "lucide-react";
+import { FileText, BarChart3, Users } from "lucide-react";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 import { redirect } from "next/navigation";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+  DashboardSectionLabel,
+} from "@/components/dashboard/page-shell";
 
 async function getUserProfile(userId: string) {
   const supabase = await createServerSupabaseClient();
@@ -19,7 +23,7 @@ async function getUserProfile(userId: string) {
 
 export default async function Home() {
   const supabase = await createServerSupabaseClient();
-  
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -31,55 +35,47 @@ export default async function Home() {
   const profile = await getUserProfile(user.id);
   const firstName = profile?.full_name?.split(" ")[0] || "there";
 
+  const links = [
+    {
+      title: "Projects",
+      description: "Manage your projects and track their progress.",
+      icon: FileText,
+    },
+    {
+      title: "Analytics",
+      description: "View detailed analytics and insights.",
+      icon: BarChart3,
+    },
+    {
+      title: "Team",
+      description: "Collaborate with your team members.",
+      icon: Users,
+    },
+  ];
+
   return (
-    <div className="space-y-8">
-      <div className="space-y-0.5">
+    <DashboardPageShell>
+      <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Welcome back, {firstName}</h1>
-        <p className="text-muted-foreground text-base">
+        <p className="text-base text-muted-foreground">
           Keep up the great work on your aviation journey
         </p>
       </div>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="transition-all hover:shadow-md hover:border-primary/50">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Projects</CardTitle>
-              <FileText className="h-5 w-5 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Manage your projects and track their progress.
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="transition-all hover:shadow-md hover:border-primary/50">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Analytics</CardTitle>
-              <BarChart3 className="h-5 w-5 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              View detailed analytics and insights.
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="transition-all hover:shadow-md hover:border-primary/50">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Team</CardTitle>
-              <Users className="h-5 w-5 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Collaborate with your team members.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+
+      <DashboardContentFrame className="space-y-6">
+        <DashboardSectionLabel>Quick links</DashboardSectionLabel>
+        <ul className="divide-y divide-border/25">
+          {links.map(({ title, description, icon: Icon }) => (
+            <li key={title} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
+              <Icon className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+              <div>
+                <p className="font-semibold text-foreground">{title}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

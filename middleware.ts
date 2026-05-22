@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import {
-  defaultDashboardPathForOrgRole,
   hasPlatformAdminAccess,
   highestOrganizationRole,
   normalizeOrganizationRole,
@@ -10,6 +9,24 @@ import {
   type SystemRole,
 } from "@/lib/auth-shared";
 import { fetchSessionUserProfile } from "@/lib/session-user-profile";
+import { supabaseSsrAuthCookieSerializeOptions } from "@/lib/supabase-ssr-cookie-options";
+import { resolveUserStartPath } from "@/lib/user-start-path";
+
+/** Same-origin SAML resume URL from `/auth/login?redirect=…` after Talent sends the learner back to Hangar. */
+function safeTalentSamlResumeUrl(requestUrl: string, redirectRaw: string): URL | null {
+  try {
+    const candidate = new URL(redirectRaw, requestUrl);
+    if (candidate.origin !== new URL(requestUrl).origin) return null;
+
+    if (candidate.pathname.startsWith("/api/auth/saml/talentlms/")) {
+      return candidate;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -26,7 +43,17 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  const redirectForLogin =
+    request.nextUrl.pathname === "/auth/login"
+      ? request.nextUrl.searchParams.get("redirect")
+      : null;
+  const postLoginInterceptUrl =
+    redirectForLogin != null
+      ? safeTalentSamlResumeUrl(request.url, redirectForLogin)
+      : null;
+
   const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
+    cookieOptions: supabaseSsrAuthCookieSerializeOptions(),
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -65,6 +92,7 @@ export async function middleware(request: NextRequest) {
   async function loadUserContext(uid: string): Promise<{
     systemRole: SystemRole;
     lastActiveOrgId: string | null;
+    defaultStartPath: string | null;
     memberships: { organization_id: string; role: string }[];
   }> {
     const profile = await fetchSessionUserProfile(supabase);
@@ -78,6 +106,7 @@ export async function middleware(request: NextRequest) {
       systemRole: normalizeSystemRole(profile?.role as string | undefined),
       lastActiveOrgId:
         (profile?.last_active_organization_id as string | undefined) ?? null,
+      defaultStartPath: profile?.default_start_path ?? null,
       memberships: mem ?? [],
     };
   }
@@ -85,12 +114,15 @@ export async function middleware(request: NextRequest) {
   function redirectForUserContext(
     systemRole: SystemRole,
     orgRole: OrganizationRole | null,
+    defaultStartPath: string | null,
     baseUrl: string
   ) {
-    if (hasPlatformAdminAccess(systemRole)) {
-      return NextResponse.redirect(new URL("/dashboard/god", baseUrl));
-    }
-    const path = defaultDashboardPathForOrgRole(orgRole);
+    const path = resolveUserStartPath(
+      systemRole,
+      orgRole,
+      defaultStartPath,
+      baseUrl
+    );
     return NextResponse.redirect(new URL(path, baseUrl));
   }
 
@@ -105,34 +137,56 @@ export async function middleware(request: NextRequest) {
     return highestOrganizationRole(roles);
   }
 
+  const isResetPasswordPage =
+    request.nextUrl.pathname === "/auth/reset-password";
+
   const isGodRoute = request.nextUrl.pathname.startsWith("/dashboard/god");
   if (user && isGodRoute) {
     const ctx = await loadUserContext(user.id);
     if (!hasPlatformAdminAccess(ctx.systemRole)) {
       const orgRole = effectiveOrgRoleForRedirect(ctx.memberships);
-      return redirectForUserContext(ctx.systemRole, orgRole, request.url);
+      return redirectForUserContext(
+        ctx.systemRole,
+        orgRole,
+        ctx.defaultStartPath,
+        request.url
+      );
     }
   }
 
   // If no user and trying to access protected route, redirect to login
   if (!user && !isPublicPath && !isApiRoute) {
     const loginUrl = new URL("/auth/login", request.url);
-    loginUrl.searchParams.set("redirect", request.nextUrl.pathname);
+    const resumePath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+    loginUrl.searchParams.set("redirect", resumePath);
     return NextResponse.redirect(loginUrl);
   }
 
-  // If user is authenticated and on auth pages, redirect to dashboard
-  if (user && isAuthPage) {
+  // If user is authenticated and on auth pages, redirect to dashboard — unless resuming SAML to Talent
+  if (user && isAuthPage && !isResetPasswordPage) {
+    if (postLoginInterceptUrl) {
+      return NextResponse.redirect(postLoginInterceptUrl);
+    }
     const ctx = await loadUserContext(user.id);
     const orgRole = effectiveOrgRoleForRedirect(ctx.memberships);
-    return redirectForUserContext(ctx.systemRole, orgRole, request.url);
+    return redirectForUserContext(
+      ctx.systemRole,
+      orgRole,
+      ctx.defaultStartPath,
+      request.url
+    );
   }
 
   // If user is authenticated and on root path, redirect based on role + org memberships
   if (user && request.nextUrl.pathname === "/") {
     const ctx = await loadUserContext(user.id);
     const orgRole = effectiveOrgRoleForRedirect(ctx.memberships);
-    return redirectForUserContext(ctx.systemRole, orgRole, request.url);
+    return redirectForUserContext(
+      ctx.systemRole,
+      orgRole,
+      ctx.defaultStartPath,
+      request.url
+    );
   }
 
   return response;

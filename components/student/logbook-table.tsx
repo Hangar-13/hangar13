@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +14,10 @@ import { Search, Clock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatUiDate } from "@/lib/format-ui-date";
 import { AddEntryModal, type AtaChapterOption } from "./add-entry-modal";
+import {
+  DashboardSectionLabel,
+  DashboardTableShell,
+} from "@/components/dashboard/page-shell";
 
 export interface LogbookEntry {
   id: string;
@@ -150,87 +153,81 @@ export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEnt
         </Select>
       </div>
 
-      {/* Table */}
-      <Card className="bg-card">
-        <CardHeader>
-          <CardTitle>Logbook Entries</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 text-sm font-semibold">Date</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold">Task</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold">Hours</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold">ATA Chapter</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold">ACS</th>
-                  <th className="text-left py-3 px-4 text-sm font-semibold">Status</th>
+      <div className="space-y-3">
+        <DashboardSectionLabel>Logbook entries</DashboardSectionLabel>
+        <DashboardTableShell>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border/40 bg-muted/20">
+                <th className="px-4 py-2.5 text-left text-sm font-semibold">Date</th>
+                <th className="px-4 py-2.5 text-left text-sm font-semibold">Task</th>
+                <th className="px-4 py-2.5 text-left text-sm font-semibold">Hours</th>
+                <th className="px-4 py-2.5 text-left text-sm font-semibold">ATA Chapter</th>
+                <th className="px-4 py-2.5 text-left text-sm font-semibold">ACS</th>
+                <th className="px-4 py-2.5 text-left text-sm font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEntries.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                    No entries found.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredEntries.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
-                      No entries found.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredEntries.map((entry) => {
-                    const status = getStatusDisplay(entry.status);
-                    // Extract task description (remove [entryType] prefix if present)
-                    const taskDescription = entry.description.replace(/^\[.*?\]\s*/, "");
-                    
-                    return (
-                      <tr 
-                        key={entry.id} 
-                        className="border-b hover:bg-accent/50 transition-colors cursor-pointer"
-                        onClick={() => setSelectedEntry(entry)}
-                      >
-                        <td className="py-3 px-4 text-sm">{formatUiDate(entry.entry_date)}</td>
-                        <td className="py-3 px-4 text-sm font-medium">{taskDescription}</td>
-                        <td className="py-3 px-4 text-sm text-[#0098C7] font-semibold">
-                          {entry.hours_worked}h
-                        </td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">
-                          {extractATAChapters(entry).map((c) => formatATA(c)).join(", ") || "—"}
-                        </td>
-                        <td className="py-3 px-4 text-sm">
-                          {(() => {
-                            const acsCodes = acsCodesByEntry[entry.id] ?? [];
-                            const count = acsCodes.length;
-                            return count > 0 ? (
-                              <span
-                                className="cursor-default underline decoration-dotted decoration-muted-foreground"
-                                title={acsCodes.join("\n")}
-                              >
-                                {count}
-                              </span>
-                            ) : (
-                              "—"
-                            );
-                          })()}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full",
-                              status.color
-                            )}
-                          >
-                            <Clock className="h-3 w-3" />
-                            {status.label}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+              ) : (
+                filteredEntries.map((entry) => {
+                  const status = getStatusDisplay(entry.status);
+                  const taskDescription = entry.description.replace(/^\[.*?\]\s*/, "");
+
+                  return (
+                    <tr
+                      key={entry.id}
+                      className="cursor-pointer border-b border-border/25 transition-colors last:border-b-0 hover:bg-muted/20"
+                      onClick={() => setSelectedEntry(entry)}
+                    >
+                      <td className="px-4 py-3 text-sm">{formatUiDate(entry.entry_date)}</td>
+                      <td className="px-4 py-3 text-sm font-medium">{taskDescription}</td>
+                      <td className="px-4 py-3 text-sm font-semibold tabular-nums text-secondary">
+                        {entry.hours_worked}h
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {extractATAChapters(entry).map((c) => formatATA(c)).join(", ") || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {(() => {
+                          const acsCodes = acsCodesByEntry[entry.id] ?? [];
+                          const count = acsCodes.length;
+                          return count > 0 ? (
+                            <span
+                              className="cursor-default underline decoration-dotted decoration-muted-foreground"
+                              title={acsCodes.join("\n")}
+                            >
+                              {count}
+                            </span>
+                          ) : (
+                            "—"
+                          );
+                        })()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs",
+                            status.color
+                          )}
+                        >
+                          <Clock className="h-3 w-3" />
+                          {status.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </DashboardTableShell>
+      </div>
 
       {/* Bottom actions: Add Entry + Running Total */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">

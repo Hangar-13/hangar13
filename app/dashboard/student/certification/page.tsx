@@ -6,6 +6,8 @@ import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getCertificationAwardsForUser } from "@/app/actions/user-credentials";
 import { getAcsCertificationProgressStats } from "@/app/actions/acs-certification-progress";
 import { CertificationDashboardClient } from "@/components/student/certification-dashboard-client";
+import { DashboardPageShell } from "@/components/dashboard/page-shell";
+import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 
 export default async function StudentCertificationPage() {
   const supabase = await createServerSupabaseClient();
@@ -19,6 +21,8 @@ export default async function StudentCertificationPage() {
   }
 
   const ctx = await getCurrentUserTrainingContext(supabase, user.id);
+  const profile = await fetchSessionUserProfile(supabase);
+  const studentName = profile?.full_name?.trim() || "Student";
 
   const [progressData, ataChapters, certificationAwards, acsProgressStats] = await Promise.all([
     getProgressDataForUser(user.id),
@@ -32,15 +36,16 @@ export default async function StudentCertificationPage() {
   const defaultExistingOpen = !hasCurrentCert && hasCompletedCerts;
 
   return (
-    <div className="space-y-6">
+    <DashboardPageShell>
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Certification</h1>
-        <p className="text-muted-foreground text-base">
+        <p className="text-base text-muted-foreground">
           Completed certifications and ACS code progress toward your FAA goal
         </p>
       </div>
 
       <CertificationDashboardClient
+        studentName={studentName}
         currentCertification={ctx.currentCertification}
         certificationAwards={certificationAwards}
         progressData={progressData}
@@ -51,6 +56,6 @@ export default async function StudentCertificationPage() {
         defaultExistingOpen={defaultExistingOpen}
         acsProgressStats={acsProgressStats}
       />
-    </div>
+    </DashboardPageShell>
   );
 }

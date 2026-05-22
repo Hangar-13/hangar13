@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import { supabaseSsrAuthCookieSerializeOptions } from "@/lib/supabase-ssr-cookie-options";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest) {
   const cookieStore = await cookies();
 
   const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
+    cookieOptions: supabaseSsrAuthCookieSerializeOptions(),
     cookies: {
       getAll() {
         return cookieStore.getAll();
