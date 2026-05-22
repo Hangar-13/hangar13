@@ -43,6 +43,38 @@ Use Talent’s **Save and Check configuration** (or equivalent SAML trace) to co
 
 ---
 
+## Finding the fix without guessing (recommended)
+
+Talent’s **`idp_email_already_exists`** always comes down to a **triple match** Hangar asserts vs what Talent has:
+
+1. **Email** attribute / NameID ↔ learner’s email in Talent  
+2. **`samlUsername`** (SAML Username attribute) ↔ learner’s **Login** in Talent (character-for-character, after your `usernameMode` rule)  
+3. Talent’s SSO screen maps **Username** ↔ the OID/name Hangar actually sends (`TALENTLMS_SAML_ATTR_USERNAME`)
+
+### Step A — See exactly what Hangar sends (temporary)
+
+**The logs appear on whichever host receives the SAML redirect from Talent.** Talent’s admin “Identity provider URL” is usually your **production** origin. In that case **`npm run dev`** on your laptop never sees the request → **no terminal lines**. Use the flag on **Vercel** (or temporarily repoint Talent’s IdP URL at a tunnel → your local port—rarely worth it).
+
+Also, **`npm run dev:live`** only loads **`.env.live.local`** (see `scripts/dev-live.mjs`). Putting the flag only in `.env.local` won’t apply to `dev:live`.
+
+1. Set **`TALENTLMS_SAML_DIAGNOSTIC_LOGGING=true`** on the environment that Talent’s IdP URL points at, deploy, reproduce **one** “Review lesson” → SAML login.  
+2. Open **function / server logs** for that deployment and search for **`[TALENTLMS_SAML_DIAGNOSTIC]`**. The first line **`IdP route hit on this server`** proves the request reached that server; if you **never** see it, the browser is still hitting **another** URL (e.g. production).  
+3. The next log line (after you’re signed in) includes **`emailNormalized`** and **`samlUsername`**.  
+4. **Remove the env var** (`false` / unset) and redeploy as soon as you’re done — it logs **PII**.
+
+You can confirm in the browser **Network** panel: after “Login with SAML 2.0”, the navigation request’s URL should match the host where you’re looking at logs (**`localhost`** vs **`https://your-prod-domain`**`). The JSON log also includes `usernameMode` and `attrUsernameOid` / `attrEmailOid`.
+
+### Step B — Compare to Talent
+
+1. In Talent: learner with that **`emailNormalized`** → read **Login** → compare **exact string** to **`samlUsername`**. Fix whichever side is wrong (usually change Talent **Login** to match Hangar’s `samlUsername` if policy is full-email logins).
+2. In Talent SSO: **Save and check configuration** (or SAML trace). Confirm Talent’s inbound **Username** value equals **`samlUsername`** from step A and that the **OID mapping** matches `attrUsernameOid`.
+
+### Step C — bisect Hangar releases (only if A/B disagree with reality)
+
+Deploy a **Vercel preview** (or local prod build) pinned to Git commit **`22d0975`** (or another known-good SHA), **reuse the same production env vars**, and retry SSO. Same error → problem is env/Talent data, not only Hangar SAML code churn. Different behavior → correlate with commits after that SHA (often cookie / middleware).
+
+---
+
 ## “It worked in the browser, then broke in a webview”
 
 Hangar → Talent LMS SSO is **full browser redirects** (`*.talentlms.com` → your Hangar origin → Talent again) with cookies on the Hangar domain. **Embedded WebViews** (in-app browsers, shells, hybrid wrappers) often use a **separate cookie and storage partition** from the device’s Safari/Chrome profile, impose **stricter third‑party cookie** rules, or clear state between launches. Symptoms look like endless login loops, Hangar showing signed-out on the SAML hop, or Talent errors—even when the flow works in a normal desktop/mobile browser.

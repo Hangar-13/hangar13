@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 
 import { supabaseSsrAuthCookieSerializeOptions } from "@/lib/supabase-ssr-cookie-options";
 import { getTalentLmsSamlEnvironment } from "@/lib/talentlms/saml-config";
+import { isTalentLmsSamlDiagnosticLoggingEnabled } from "@/lib/talentlms/saml-diagnostic-logging-flag";
 import {
   extractRawUrlQueryWithoutLeadingQuestion,
   parseSamlRedirectBindingQuery,
@@ -29,6 +30,13 @@ export async function GET(request: NextRequest) {
           "Missing SAMLRequest parameter (Talent LMS must redirect here with SAML 2.0 HTTP-Redirect).",
       },
       { status: 400 }
+    );
+  }
+
+  if (isTalentLmsSamlDiagnosticLoggingEnabled()) {
+    console.warn(
+      "[TALENTLMS_SAML_DIAGNOSTIC] IdP route hit on this server:",
+      new URL(request.url).href.split("?")[0]
     );
   }
 
@@ -96,6 +104,21 @@ export async function GET(request: NextRequest) {
 
     const { first, last } = splitFullName(profile?.full_name);
     const talentUsername = resolveTalentLmsUsername(emailNorm, env);
+
+    if (isTalentLmsSamlDiagnosticLoggingEnabled()) {
+      console.warn(
+        "[TALENTLMS_SAML_DIAGNOSTIC] remove TALENTLMS_SAML_DIAGNOSTIC_LOGGING after debugging — asserts PII to logs:",
+        JSON.stringify({
+          userId: user.id,
+          emailSource: profile?.email ? "public.users.email" : "supabase_auth.jwt_email",
+          usernameMode: env.usernameMode,
+          attrUsernameOid: env.attrUsername,
+          attrEmailOid: env.attrEmail,
+          emailNormalized: emailNorm,
+          samlUsername: talentUsername,
+        })
+      );
+    }
 
     const exchanged = await executeTalentlmsSamlExchange({
       env,
