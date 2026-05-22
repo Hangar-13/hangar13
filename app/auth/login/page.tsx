@@ -75,6 +75,9 @@ function LoginForm() {
     setError(null);
     setIsLoading(true);
 
+    /** Capture before async work — avoids edge cases where the URL loses ?redirect=. */
+    const redirectAfterLogin = searchParams.get("redirect");
+
     try {
       const { error: signInError } = await supabaseClient.auth.signInWithPassword({
         email: data.email,
@@ -87,8 +90,14 @@ function LoginForm() {
         return;
       }
 
-      navigateAfterAuthenticated(router, searchParams.get("redirect"));
-    } catch (err) {
+      /**
+       * Ensure auth cookies/session are flushed before jumping to SAML (full-page navigation).
+       * Otherwise Hangar IdP sometimes still sees “no session” on the immediate next request.
+       */
+      await supabaseClient.auth.getSession();
+
+      navigateAfterAuthenticated(router, redirectAfterLogin);
+    } catch {
       setError("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
