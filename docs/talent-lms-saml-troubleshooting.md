@@ -57,12 +57,21 @@ Talent’s **`idp_email_already_exists`** always comes down to a **triple match*
 
 Also, **`npm run dev:live`** only loads **`.env.live.local`** (see `scripts/dev-live.mjs`). Putting the flag only in `.env.local` won’t apply to `dev:live`.
 
-1. Set **`TALENTLMS_SAML_DIAGNOSTIC_LOGGING=true`** on the environment that Talent’s IdP URL points at, deploy, reproduce **one** “Review lesson” → SAML login.  
-2. Open **function / server logs** for that deployment and search for **`[TALENTLMS_SAML_DIAGNOSTIC]`**. The first line **`IdP route hit on this server`** proves the request reached that server; if you **never** see it, the browser is still hitting **another** URL (e.g. production).  
-3. The next log line (after you’re signed in) includes **`emailNormalized`** and **`samlUsername`**.  
-4. **Remove the env var** (`false` / unset) and redeploy as soon as you’re done — it logs **PII**.
+1. Set **`TALENTLMS_SAML_DIAGNOSTIC_LOGGING=true`** for the Vercel target that matches Talent’s IdP URL (**Production** vs **Preview** envs are separate). Save the variable, then **redeploy**.
+2. **Nothing is written to Supabase.** Diagnostics are either Vercel **runtime logs** or **HTTP response headers** from Hangar (see step 4).
+3. In Vercel, open logs for the **same** deployment/environment your production hostname uses (**Runtime logs** / **Observability**). Search **`[TALENTLMS_SAML_DIAGNOSTIC]`**. Seeing **`IdP route hit on this server`** means this deployment handled the SAML GET.
+4. **Browser fallback (recommended):** DevTools → **Network** → reproduce SSO → select the **`/api/auth/saml/talentlms/login`** request → **Headers** → **Response headers**. With the flag on you should see **`X-Hangar-Talent-Saml-Debug: 1`** and **`X-Hangar-Talent-Saml-Payload`**. Decode the payload:
 
-You can confirm in the browser **Network** panel: after “Login with SAML 2.0”, the navigation request’s URL should match the host where you’re looking at logs (**`localhost`** vs **`https://your-prod-domain`**`). The JSON log also includes `usernameMode` and `attrUsernameOid` / `attrEmailOid`.
+   ```javascript
+   const b64 = "PASTE_PAYLOAD_HEADER_VALUE_HERE";
+   JSON.parse(atob(b64.replace(/-/g, "+").replace(/_/g, "/")));
+   ```
+
+   For a successful assertion you get **`emailNormalized`**, **`samlUsername`**, **`usernameMode`**, **`attrUsernameOid`**.  
+   If **`stage`** is **`redirect_to_hangar_login`**, Hangar had **no Supabase cookie** on the IdP request (different problem than Talent **`Login`** mismatch).
+5. **Remove the env var** and redeploy when finished — payloads are **PII**.
+
+Confirm in **Network** that the SAML IdP URL’s **host** matches the Vercel project/environment where you set the flag.
 
 ### Step B — Compare to Talent
 
@@ -82,6 +91,27 @@ Hangar → Talent LMS SSO is **full browser redirects** (`*.talentlms.com` → y
 **Expectation:** treat Talent SSO as requiring the **system browser** (Safari / Chrome): open Hangar training in Safari, or use **`target="_blank"`** so the LMS opens next to Hangar rather than trapping the SSO chain inside an embedded viewer. If you previously tested only in Safari and later opened the **same Hangar URLs inside a WebView**, that alone can explain regressions unrelated to SAML attribute tuning.
 
 ---
+
+---
+
+## SAML GET has no `Cookie` header (`sec-fetch-site: cross-site`)
+
+If DevTools shows **no `Cookie` request header** on `GET /api/auth/saml/talentlms/login` and a **307** to `/auth/login?redirect=…`, Hangar never saw a Supabase session on that hop. Talent’s **`idp_email_already_exists`** is a separate failure that only appears **after** a signed SAML assertion is issued.
+
+Typical pattern:
+
+- **Referer:** `https://hangar13.talentlms.com/` (or similar)
+- **`sec-fetch-site: cross-site`** — navigation from `*.talentlms.com` to `hangar13.io`
+- **No `Cookie` header** — browser did not attach Hangar auth cookies
+
+### Fix
+
+1. While logged into **`https://hangar13.io`**, open **Application → Cookies → `https://hangar13.io`**. Confirm `sb-*` cookies exist with **`SameSite: None`** and **`Secure`** (production). If they show **`Lax`** only, **sign out**, **sign in again** so new cookies pick up Hangar’s production cookie policy (`lib/supabase-ssr-cookie-options.ts`).
+2. Use the **same host** for login and SSO (**`hangar13.io` vs `www.hangar13.io`** must match where you sign in).
+3. **Review lesson** now goes through **`/api/auth/saml/talentlms/bridge?to=…`** first (same-origin on Hangar) so the session can refresh before Talent opens; you still need **`SameSite=None`** cookies for the later Talent → Hangar SAML click.
+
+After a fresh sign-in, repeat SSO and confirm the SAML GET includes a **`Cookie`** header (or returns **200** HTML auto-post instead of redirecting to login).
+
 
 ## Related
 

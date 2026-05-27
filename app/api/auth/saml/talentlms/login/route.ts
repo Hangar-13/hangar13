@@ -19,6 +19,18 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/** base64url(JSON) so non-ASCII emails are safe in HTTP response headers (browser Network tab). */
+function buildDiagnosticResponseHeaders(
+  payload: Readonly<Record<string, string | undefined>>
+): HeadersInit {
+  const json = JSON.stringify(payload);
+  const b64 = Buffer.from(json, "utf8").toString("base64url");
+  return {
+    "X-Hangar-Talent-Saml-Debug": "1",
+    "X-Hangar-Talent-Saml-Payload": b64,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const rawQuery = extractRawUrlQueryWithoutLeadingQuestion(request.url);
   const query = parseSamlRedirectBindingQuery(rawQuery);
@@ -81,7 +93,15 @@ export async function GET(request: NextRequest) {
           ? `${request.nextUrl.pathname}?${rawQuery}`
           : request.nextUrl.pathname;
       loginUrl.searchParams.set("redirect", redirectTarget);
-      return NextResponse.redirect(loginUrl);
+      return isTalentLmsSamlDiagnosticLoggingEnabled()
+        ? NextResponse.redirect(loginUrl, {
+            headers: buildDiagnosticResponseHeaders({
+              stage: "redirect_to_hangar_login",
+              reason: "no_supabase_user_on_idp",
+              idpUrlHost: new URL(request.url).host,
+            }),
+          })
+        : NextResponse.redirect(loginUrl);
     }
 
     const { data: profile } = await supabase
@@ -141,6 +161,16 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
+        ...(isTalentLmsSamlDiagnosticLoggingEnabled()
+          ? buildDiagnosticResponseHeaders({
+              stage: "saml_auto_post_html",
+              emailNormalized: emailNorm,
+              samlUsername: talentUsername,
+              usernameMode: env.usernameMode,
+              attrUsernameOid: env.attrUsername,
+              attrEmailOid: env.attrEmail,
+            })
+          : {}),
       },
     });
   } catch (e) {

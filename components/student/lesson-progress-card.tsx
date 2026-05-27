@@ -99,6 +99,10 @@ export function LessonProgressCard({
   };
 
   const talentHref = snapshot.talentUrl;
+  /** Same-origin bridge so session cookies are sent before Talent’s cross-site SAML hop. */
+  const talentLessonHref = talentHref
+    ? `/api/auth/saml/talentlms/bridge?to=${encodeURIComponent(talentHref)}`
+    : null;
 
   const percent =
     snapshot.kind === "ready" ? Math.min(100, Math.max(0, snapshot.percent)) : null;
@@ -126,13 +130,13 @@ export function LessonProgressCard({
         </div>
 
         <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:min-w-[200px]">
-          {talentHref ? (
+          {talentLessonHref ? (
             <Button
               asChild
               size="lg"
               className="w-full gap-2 bg-[#8B4513] hover:bg-[#6B3410] text-white"
             >
-              <a href={talentHref} target="_blank" rel="noopener noreferrer">
+              <a href={talentLessonHref} target="_blank" rel="noopener noreferrer">
                 <PlayCircle className="h-5 w-5 shrink-0" />
                 {snapshot.kind === "ready"
                   ? lessonActionLabel(snapshot.percent)
