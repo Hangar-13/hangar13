@@ -83,10 +83,39 @@ export function NotificationDropdown() {
     router.refresh();
   };
 
+  const discussionQuery = (n: Notification): string => {
+    const qp = new URLSearchParams();
+    if (n.program_week != null) qp.set("week", String(n.program_week));
+    if (n.question_index != null) qp.set("question", String(n.question_index));
+    return qp.toString() ? `?${qp.toString()}` : "";
+  };
+
   const handleNotificationClick = async (n: Notification) => {
     const isMentor =
       organizationRole != null &&
       hasOrganizationRolePermission(organizationRole, "mentor");
+
+    if (n.type === "discussion_message") {
+      const query = discussionQuery(n);
+      let url = "/dashboard/student/training" + query;
+      if (n.user_training_id) {
+        const { data: utRow } = await supabaseClient
+          .from("user_trainings")
+          .select("user_id")
+          .eq("id", n.user_training_id)
+          .maybeSingle();
+        const viewerIsStudent = utRow?.user_id === n.recipient_user_id;
+        url = viewerIsStudent
+          ? "/dashboard/student/training" + query
+          : `/dashboard/mentor/student/${n.user_training_id}` + query;
+      }
+      await deleteNotification(n.id);
+      setNotifications((prev) => prev.filter((x) => x.id !== n.id));
+      setIsOpen(false);
+      window.location.assign(url);
+      return;
+    }
+
     const logIds = n.log_entry_ids ?? [];
     const singleId = logIds.length === 1 ? logIds[0] : null;
 

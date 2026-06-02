@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { BookOpen, FileText, GripVertical, Layers, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DashboardTableShell } from "@/components/dashboard/page-shell";
 import { cn } from "@/lib/utils";
 
 export type TrainingPathMapItem = {
@@ -48,14 +49,8 @@ const scopeLabel: Record<TrainingPathMapItem["scope"], string> = {
   lesson: "Lesson",
 };
 
-const scopeStyle = {
-  course:
-    "border-sky-300/80 bg-sky-100 text-sky-950 dark:border-sky-700 dark:bg-sky-950/60 dark:text-sky-100",
-  module:
-    "border-violet-300/80 bg-violet-100 text-violet-950 dark:border-violet-700 dark:bg-violet-950/60 dark:text-violet-100",
-  lesson:
-    "border-teal-300/80 bg-teal-100 text-teal-950 dark:border-teal-700 dark:bg-teal-950/60 dark:text-teal-100",
-} as const;
+const scopeStyle =
+  "inline-flex shrink-0 items-center rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground";
 
 type Props = {
   items: TrainingPathMapItem[];
@@ -93,14 +88,15 @@ export function TrainingPathMap({ items, itemOrderEdit }: Props) {
   }
 
   return (
-    <ul className="space-y-2">
+    <DashboardTableShell>
+      <ul className="divide-y divide-border/25">
       {ordered.map((item) => {
         const Icon = scopeIcon[item.scope];
         const rowInner = (
           <div
             className={cn(
-              "flex items-center gap-3 rounded-md border bg-card px-3 py-2 text-sm",
-              editing && "cursor-grab active:cursor-grabbing select-none"
+              "flex items-center gap-3 px-3 py-2.5 text-sm transition-colors hover:bg-muted/25",
+              editing && "cursor-grab active:cursor-grabbing select-none hover:bg-muted/20"
             )}
             draggable={editing}
             onDragStart={
@@ -140,12 +136,7 @@ export function TrainingPathMap({ items, itemOrderEdit }: Props) {
                 />
               </span>
             ) : null}
-            <span
-              className={cn(
-                "inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                scopeStyle[item.scope]
-              )}
-            >
+            <span className={scopeStyle}>
               <Icon className="size-3.5 mr-1" aria-hidden />
               {scopeLabel[item.scope]}
             </span>
@@ -209,6 +200,7 @@ export function TrainingPathMap({ items, itemOrderEdit }: Props) {
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </DashboardTableShell>
   );
 }

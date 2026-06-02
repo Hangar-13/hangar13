@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DashboardTableShell } from "@/components/dashboard/page-shell";
 import { cn } from "@/lib/utils";
 
 export type LessonMapLesson = {
@@ -53,6 +54,13 @@ type LessonMapProps = {
   moduleLessonEditsByModuleId?: Record<string, ModuleLessonsOrderEdit>;
   lessonOrderEdit?: LessonOrderEdit;
 };
+
+const rowBase = "flex items-center gap-3 px-3 py-2.5 text-sm transition-colors";
+const rowLink = cn(rowBase, "hover:bg-muted/25");
+const rowEdit = cn(
+  rowBase,
+  "cursor-grab active:cursor-grabbing select-none hover:bg-muted/20"
+);
 
 function reorderIds(ids: string[], sourceId: string, targetId: string) {
   if (sourceId === targetId) return ids;
@@ -152,7 +160,8 @@ export function LessonMap({
     }
 
     return (
-      <ul className="space-y-2">
+      <DashboardTableShell>
+        <ul className="divide-y divide-border/25">
         {orderedLessons.map((lesson, idx) => {
           const displayNum = editingLessons ? idx + 1 : lesson.number;
 
@@ -177,10 +186,7 @@ export function LessonMap({
                       )
                     );
                   }}
-                  className={cn(
-                    "flex items-center gap-2 rounded-md border bg-card px-2 py-2 text-sm",
-                    "cursor-grab active:cursor-grabbing select-none"
-                  )}
+                  className={rowEdit}
                 >
                   <span className="inline-flex shrink-0 items-center justify-center p-0.5 text-base leading-none">
                     <GripVertical
@@ -220,10 +226,7 @@ export function LessonMap({
             <li key={lesson.id}>
               <Link
                 href={`/dashboard/manager/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}`}
-                className={cn(
-                  "flex items-center gap-3 rounded-md border bg-card px-3 py-2 text-sm",
-                  "hover:bg-accent/50 transition-colors"
-                )}
+                className={rowLink}
               >
                 <span className="tabular-nums text-muted-foreground w-8 shrink-0">
                   {displayNum}
@@ -233,7 +236,8 @@ export function LessonMap({
             </li>
           );
         })}
-      </ul>
+        </ul>
+      </DashboardTableShell>
     );
   }
 
@@ -383,22 +387,21 @@ export function LessonMap({
                 : undefined
             }
             className={cn(
-              "rounded-lg border bg-muted/20 overflow-hidden",
+              "overflow-hidden rounded-md ring-1 ring-black/[0.04]",
               editingModules &&
                 moduleOrderEdit &&
                 "cursor-grab active:cursor-grabbing select-none"
             )}
           >
-            <div className="flex items-stretch min-h-11">{moduleHeader}</div>
+            <div className="flex items-stretch min-h-11 border-b border-border/25 bg-muted/15">
+              {moduleHeader}
+            </div>
 
             {showNestedLessons && mEdit && (
-              <ul className="border-t border-border/60 bg-background/50 py-2 pr-2 pl-2 space-y-1.5">
+              <ul className="divide-y divide-border/25">
                 {sortedLessonRows.length ? (
                   sortedLessonRows.map((lesson, li) => (
-                    <li
-                      key={lesson.id}
-                      className="relative flex gap-0 pl-2 border-l-2 border-border ml-2"
-                    >
+                    <li key={lesson.id} className="list-none">
                       <div
                         draggable
                         onDragStart={(e) => {
@@ -417,10 +420,7 @@ export function LessonMap({
                             )
                           );
                         }}
-                        className={cn(
-                          "flex flex-1 items-center gap-1 rounded-md border bg-card pl-1 pr-0 py-1.5 text-sm ml-2",
-                          "cursor-grab active:cursor-grabbing select-none"
-                        )}
+                        className={cn(rowEdit, "pl-8")}
                       >
                         <span className="inline-flex shrink-0 p-0.5">
                           <GripVertical
@@ -464,18 +464,12 @@ export function LessonMap({
             )}
 
             {!showNestedLessons && !isCollapsed && sortedLessonRows.length > 0 ? (
-              <ul className="border-t border-border/60 bg-background/50 py-2 pr-2 pl-4 space-y-1.5">
+              <ul className="divide-y divide-border/25">
                 {sortedLessonRows.map((lesson) => (
-                  <li
-                    key={lesson.id}
-                    className="relative flex gap-0 pl-4 border-l-2 border-border ml-2"
-                  >
+                  <li key={lesson.id} className="list-none">
                     <Link
                       href={`/dashboard/manager/courses/${courseId}/modules/${mod.id}/lessons/${lesson.id}`}
-                      className={cn(
-                        "flex flex-1 items-center gap-3 rounded-md border bg-card px-3 py-1.5 text-sm ml-2",
-                        "hover:bg-accent/50 transition-colors"
-                      )}
+                      className={cn(rowLink, "pl-8")}
                     >
                       <span className="tabular-nums text-muted-foreground w-8 shrink-0">
                         {lesson.number}
@@ -488,7 +482,7 @@ export function LessonMap({
             ) : null}
 
             {!showNestedLessons && !isCollapsed && sortedLessonRows.length === 0 ? (
-              <p className="text-xs text-muted-foreground px-4 py-2 border-t border-border/60">
+              <p className="text-xs text-muted-foreground px-4 py-3">
                 No lessons in this module.
               </p>
             ) : null}

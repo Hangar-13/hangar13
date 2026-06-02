@@ -45,6 +45,11 @@ import {
 import { ManagerMarkdownTextarea } from "@/components/manager/manager-markdown-textarea";
 import { AcsInclusionSwitchRow } from "@/components/manager/manager-acs-inclusion-toggle-row";
 import { coerceTalentLmsCourseId } from "@/lib/talentlms/lesson-url";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+  DashboardSectionLabel,
+} from "@/components/dashboard/page-shell";
 
 type Props = {
   course: { id: string; name: string; talentLmsCourseId: string | null };
@@ -225,7 +230,7 @@ export function ManagerModuleDetailClient({
   }
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <ManagerContentLevelBar
         level="module"
         courseId={course.id}
@@ -301,9 +306,10 @@ export function ManagerModuleDetailClient({
         </Button>
       </div>
 
+      <DashboardContentFrame className="space-y-4">
       <section className="space-y-4">
         <div className="group flex flex-wrap items-center gap-1 min-w-0">
-          <h2 className="text-lg font-semibold tracking-tight">Lesson Map</h2>
+          <DashboardSectionLabel className="mb-0">Lesson map</DashboardSectionLabel>
           {!mapEditing ? (
             <Button
               type="button"
@@ -376,6 +382,7 @@ export function ManagerModuleDetailClient({
           Create New Lesson
         </Button>
       </section>
+      </DashboardContentFrame>
 
       <DestructiveContentDeleteDialog
         open={destructiveOpen}
@@ -658,6 +665,6 @@ export function ManagerModuleDetailClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardPageShell>
   );
 }

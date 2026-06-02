@@ -2,6 +2,10 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { ManagerContentClient } from "@/components/manager/manager-content-client";
 import { listOrganizationIdsWhereUserHasMinRole } from "@/lib/organization";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+} from "@/components/dashboard/page-shell";
 
 export default async function ManagerContentPage() {
   const supabase = await createServerSupabaseClient();
@@ -36,7 +40,7 @@ export default async function ManagerContentPage() {
   ]);
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">
           Organization training content
@@ -47,12 +51,14 @@ export default async function ManagerContentPage() {
         </p>
       </div>
 
-      <ManagerContentClient
-        lists={{
-          trainingPaths: trainingPaths ?? [],
-          courses: courses ?? [],
-        }}
-      />
-    </div>
+      <DashboardContentFrame>
+        <ManagerContentClient
+          lists={{
+            trainingPaths: trainingPaths ?? [],
+            courses: courses ?? [],
+          }}
+        />
+      </DashboardContentFrame>
+    </DashboardPageShell>
   );
 }

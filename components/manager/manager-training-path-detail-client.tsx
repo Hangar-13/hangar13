@@ -19,6 +19,11 @@ import { AddTrainingContentModal } from "@/components/manager/add-training-conte
 import { VisibilitySectionEditor } from "@/components/manager/visibility-section-editor";
 import type { TrainingContentCatalogCourse } from "@/lib/manager-training-catalog";
 import type { CatalogVisibility } from "@/lib/catalog-visibility";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+  DashboardSectionLabel,
+} from "@/components/dashboard/page-shell";
 
 type Props = {
   path: {
@@ -98,7 +103,7 @@ export function ManagerTrainingPathDetailClient({
   }
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <ManagerContentLevelBar
         level="trainingPath"
         pathName={path.name}
@@ -129,7 +134,7 @@ export function ManagerTrainingPathDetailClient({
             return r;
           }}
         />
-        <div className="border-t pt-4 space-y-1">
+        <div className="pt-2 space-y-1">
           <VisibilitySectionEditor
             entityKind="trainingPath"
             visibility={path.visibility}
@@ -141,9 +146,10 @@ export function ManagerTrainingPathDetailClient({
         </div>
       </header>
 
+      <DashboardContentFrame className="space-y-4">
       <section className="space-y-4">
         <div className="group flex flex-wrap items-center gap-1 min-w-0">
-          <h2 className="text-lg font-semibold tracking-tight">Lesson Map</h2>
+          <DashboardSectionLabel className="mb-0">Training path map</DashboardSectionLabel>
           {!mapEditing ? (
             <Button
               type="button"
@@ -209,6 +215,7 @@ export function ManagerTrainingPathDetailClient({
           Add Training Content
         </Button>
       </section>
+      </DashboardContentFrame>
 
       <AddTrainingContentModal
         open={addOpen}
@@ -218,6 +225,6 @@ export function ManagerTrainingPathDetailClient({
         existingKeys={new Set(existingKeys)}
         onAdded={() => router.refresh()}
       />
-    </div>
+    </DashboardPageShell>
   );
 }

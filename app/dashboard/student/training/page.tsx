@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/student/collapsible-section";
 import { LessonMarkdownBody } from "@/components/student/lesson-markdown-body";
+import { LessonDiscussion } from "@/components/discussion/lesson-discussion";
+import { getLessonDiscussion } from "@/app/actions/lesson-discussion";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { redirectIfNoUserTrainings } from "@/lib/student-user-trainings-guard";
 import {
@@ -139,6 +141,7 @@ async function getStudentTrainingData(userId: string, week?: number) {
 interface PageProps {
   searchParams: Promise<{
     week?: string;
+    question?: string;
   }>;
 }
 
@@ -243,6 +246,14 @@ export default async function TrainingPage({ searchParams }: PageProps) {
       });
     }
   }
+
+  const discussion = lessonId
+    ? await getLessonDiscussion(data.student.id, lessonId)
+    : null;
+  const openQuestionIndex =
+    params.question != null && /^\d+$/.test(params.question)
+      ? parseInt(params.question, 10)
+      : null;
 
   const prevWeek = data.currentWeek > 1 ? data.currentWeek - 1 : null;
   const nextWeek = data.currentWeek < data.totalWeeks ? data.currentWeek + 1 : null;
@@ -432,14 +443,15 @@ export default async function TrainingPage({ searchParams }: PageProps) {
             headerHoverHighlight={false}
             defaultOpen={true}
           >
-          {mentorQuestions.length > 0 ? (
-            <ol className="space-y-3 list-decimal list-inside">
-              {mentorQuestions.map((question: string, index: number) => (
-                <li key={index} className="text-sm text-muted-foreground">
-                  {question}
-                </li>
-              ))}
-            </ol>
+          {lessonId ? (
+            <LessonDiscussion
+              userTrainingId={data.student.id}
+              lessonId={lessonId}
+              questions={mentorQuestions}
+              programWeek={data.currentWeek}
+              initial={discussion}
+              openQuestionIndex={openQuestionIndex}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">No discussion questions defined for this week.</p>
           )}
@@ -483,8 +495,8 @@ export default async function TrainingPage({ searchParams }: PageProps) {
 
               {submission.talent_lms_unit_completed === true &&
                 submission.talent_lms_completion_checked_at && (
-                  <div className="flex items-start gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900 dark:border-green-900 dark:bg-green-950/40 dark:text-green-100">
-                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div className="flex items-start gap-2 rounded-md bg-muted/25 px-3 py-2 text-sm ring-1 ring-black/[0.04]">
+                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
                     <div>
                       <p className="font-medium">Talent LMS lesson verified</p>
                       <p className="text-xs opacity-90">
@@ -509,7 +521,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                       : null;
                   if (reason === "unit_not_in_link") {
                     return (
-                      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                      <p className="rounded-md bg-muted/25 px-3 py-2 text-xs text-muted-foreground ring-1 ring-black/[0.04]">
                         Talent completion was not checked because the lesson link does not
                         include a unit id (expected in URLs like{" "}
                         <span className="font-mono text-[11px]">
@@ -525,7 +537,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                   }
                   if (reason === "could_not_resolve_course_id") {
                     return (
-                      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                      <p className="rounded-md bg-muted/25 px-3 py-2 text-xs text-muted-foreground ring-1 ring-black/[0.04]">
                         Talent completion was not checked because neither the lesson URL nor
                         your training path specifies a Talent course id.
                       </p>

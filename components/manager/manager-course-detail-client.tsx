@@ -31,6 +31,11 @@ import {
 } from "@/components/manager/destructive-content-delete-dialog";
 import { VisibilitySectionEditor } from "@/components/manager/visibility-section-editor";
 import type { CatalogVisibility } from "@/lib/catalog-visibility";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+  DashboardSectionLabel,
+} from "@/components/dashboard/page-shell";
 
 type Props = {
   course: {
@@ -312,7 +317,7 @@ export function ManagerCourseDetailClient({
   }
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <ManagerContentLevelBar level="course" courseName={course.name} />
       <header className="flex flex-col gap-3">
         <div className="w-full min-w-0">
@@ -343,7 +348,7 @@ export function ManagerCourseDetailClient({
             }}
           />
         </div>
-        <div className="w-full min-w-0 max-w-2xl border-t pt-4">
+        <div className="w-full min-w-0 max-w-2xl pt-2">
           <VisibilitySectionEditor
             entityKind="course"
             visibility={course.visibility}
@@ -356,7 +361,7 @@ export function ManagerCourseDetailClient({
         <div
           ref={talentLmsSectionRef}
           id="talent-lms-course-id"
-          className="w-full min-w-0 max-w-2xl border-t pt-4 space-y-2 scroll-mt-24"
+          className="w-full min-w-0 max-w-2xl pt-2 space-y-2 scroll-mt-24"
         >
           <h3 className="text-base font-semibold tracking-tight">
             Talent LMS numeric course ID
@@ -387,9 +392,10 @@ export function ManagerCourseDetailClient({
         </div>
       </header>
 
+      <DashboardContentFrame className="space-y-8">
       <section className="space-y-4">
         <div className="group flex flex-wrap items-center gap-1 min-w-0">
-          <h2 className="text-lg font-semibold tracking-tight">Lesson Map</h2>
+          <DashboardSectionLabel className="mb-0">Lesson map</DashboardSectionLabel>
           {!mapEditing ? (
             <Button
               type="button"
@@ -459,6 +465,7 @@ export function ManagerCourseDetailClient({
       </section>
 
       {versionsPanel}
+      </DashboardContentFrame>
 
       <DestructiveContentDeleteDialog
         open={destructiveOpen}
@@ -541,6 +548,6 @@ export function ManagerCourseDetailClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </DashboardPageShell>
   );
 }

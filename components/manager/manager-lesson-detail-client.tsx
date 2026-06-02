@@ -13,6 +13,11 @@ import { ManagerLessonStringListSection } from "@/components/manager/manager-les
 import type { AcsCodePickerRow } from "@/components/manager/acs-codes-picker";
 import type { AtaChapterPickerRow } from "@/components/manager/ata-chapters-picker";
 import { coerceTalentLmsCourseId } from "@/lib/talentlms/lesson-url";
+import {
+  DashboardContentFrame,
+  DashboardPageShell,
+  DashboardSectionLabel,
+} from "@/components/dashboard/page-shell";
 
 export type LessonDetail = {
   id: string;
@@ -56,7 +61,7 @@ export function ManagerLessonDetailClient({
   const router = useRouter();
 
   return (
-    <div className="space-y-8">
+    <DashboardPageShell>
       <ManagerContentLevelBar
         level="lesson"
         courseId={courseId}
@@ -66,7 +71,8 @@ export function ManagerLessonDetailClient({
         lessonTitle={lessonTitleInBar}
       />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-6 min-w-0 flex-1">
+        <DashboardContentFrame className="min-w-0 flex-1 space-y-8">
+        <div className="space-y-6 min-w-0">
           <div className="flex flex-wrap items-start gap-x-2 gap-y-1">
             <span className="text-2xl font-bold tabular-nums text-muted-foreground shrink-0">
               {lesson.number} -
@@ -128,9 +134,7 @@ export function ManagerLessonDetailClient({
             />
 
             <div className="max-w-3xl space-y-2">
-              <h3 className="text-base font-semibold tracking-tight">
-                Talent LMS
-              </h3>
+              <DashboardSectionLabel>Talent LMS</DashboardSectionLabel>
               {coerceTalentLmsCourseId(courseTalentLmsCourseId) ? (
                 <EditableInline
                   label="Talent LMS unit"
@@ -147,7 +151,7 @@ export function ManagerLessonDetailClient({
                   }}
                 />
               ) : (
-                <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-md bg-muted/25 px-4 py-3 ring-1 ring-black/[0.04] sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-muted-foreground">
                     No Talent LMS course defined
                   </p>
@@ -216,6 +220,7 @@ export function ManagerLessonDetailClient({
             />
           </div>
         </div>
+        </DashboardContentFrame>
         <Button asChild variant="outline" className="shrink-0 self-start">
           <Link
             href={`/dashboard/manager/courses/${courseId}/modules/${moduleId}`}
@@ -224,6 +229,6 @@ export function ManagerLessonDetailClient({
           </Link>
         </Button>
       </div>
-    </div>
+    </DashboardPageShell>
   );
 }

@@ -18,6 +18,10 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DashboardSectionLabel,
+  DashboardTableShell,
+} from "@/components/dashboard/page-shell";
 import { formatUiDateTime } from "@/lib/format-ui-date";
 
 type Props = {
@@ -62,14 +66,14 @@ export function CourseVersionsPanel({ courseId, initialVersions }: Props) {
   }
 
   return (
-    <section className="rounded-lg border bg-card p-4 space-y-4">
+    <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Tag className="h-5 w-5 text-muted-foreground" />
-            Course versions
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Tag className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <DashboardSectionLabel className="mb-0">Course versions</DashboardSectionLabel>
+          </div>
+          <p className="text-sm text-muted-foreground">
             Publish a snapshot when learners should see updated content. Minor bumps
             for small changes; major bumps for structural overhauls.
           </p>
@@ -82,26 +86,31 @@ export function CourseVersionsPanel({ courseId, initialVersions }: Props) {
       {versions.length === 0 ? (
         <p className="text-sm text-muted-foreground">No published versions yet.</p>
       ) : (
-        <ul className="divide-y rounded-md border">
-          {versions.map((v) => (
-            <li key={v.id} className="flex flex-wrap items-start justify-between gap-2 p-3 text-sm">
-              <div>
-                <span className="font-medium tabular-nums">v{v.label}</span>
-                {v.isLatest ? (
-                  <span className="ml-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
-                    Latest
-                  </span>
-                ) : null}
-                {v.releaseNotes ? (
-                  <p className="text-muted-foreground mt-1">{v.releaseNotes}</p>
-                ) : null}
-              </div>
-              <time className="text-muted-foreground text-xs shrink-0">
-                {formatUiDateTime(v.publishedAt)}
-              </time>
-            </li>
-          ))}
-        </ul>
+        <DashboardTableShell>
+          <ul className="divide-y divide-border/25">
+            {versions.map((v) => (
+              <li
+                key={v.id}
+                className="flex flex-wrap items-start justify-between gap-2 p-3 text-sm"
+              >
+                <div>
+                  <span className="font-medium tabular-nums">v{v.label}</span>
+                  {v.isLatest ? (
+                    <span className="ml-2 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                      Latest
+                    </span>
+                  ) : null}
+                  {v.releaseNotes ? (
+                    <p className="text-muted-foreground mt-1">{v.releaseNotes}</p>
+                  ) : null}
+                </div>
+                <time className="text-muted-foreground text-xs shrink-0">
+                  {formatUiDateTime(v.publishedAt)}
+                </time>
+              </li>
+            ))}
+          </ul>
+        </DashboardTableShell>
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>

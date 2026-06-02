@@ -8,7 +8,8 @@ export type NotificationType =
   | "logs_rejected"
   | "lessons_awaiting"
   | "lessons_approved"
-  | "lessons_rejected";
+  | "lessons_rejected"
+  | "discussion_message";
 
 export interface Notification {
   id: string;
@@ -21,6 +22,11 @@ export interface Notification {
   read_at: string | null;
   created_at: string;
   updated_at: string;
+  /** Discussion deep-link fields (null for other types). */
+  user_training_id: string | null;
+  lesson_id: string | null;
+  question_index: number | null;
+  program_week: number | null;
 }
 
 /** Create or stack a notification via RPC. Uses SECURITY DEFINER to bypass RLS

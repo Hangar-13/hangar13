@@ -123,7 +123,7 @@ export function LessonProgressCard({
               ) : null}
             </>
           ) : (
-            <div className="w-full max-w-md rounded-md border border-border bg-muted/40 px-3 py-3 sm:max-w-sm">
+            <div className="w-full max-w-md rounded-md bg-muted/25 px-3 py-3 ring-1 ring-black/[0.04] sm:max-w-sm">
               <p className="text-sm text-muted-foreground">{snapshot.message}</p>
             </div>
           )}
@@ -134,7 +134,7 @@ export function LessonProgressCard({
             <Button
               asChild
               size="lg"
-              className="w-full gap-2 bg-[#8B4513] hover:bg-[#6B3410] text-white"
+              className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <a href={talentLessonHref} target="_blank" rel="noopener noreferrer">
                 <PlayCircle className="h-5 w-5 shrink-0" />

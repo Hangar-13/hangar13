@@ -15,12 +15,17 @@ import {
   DashboardStatCell,
   DashboardStatStrip,
 } from "@/components/dashboard/page-shell";
-import { User, Mail, Calendar, ArrowLeft, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
+import { User, Mail, Calendar, ArrowLeft, ArrowRight, CheckCircle, AlertCircle, TrendingUp, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
 import { formatUiDate } from "@/lib/format-ui-date";
 import { mentorHasAccessToTrainee } from "@/lib/mentor-enrollments";
+import { fetchLessonsForEnrollment } from "@/lib/training-lessons";
+import { buildVersionContextForUserTraining } from "@/lib/course-versions";
+import { computeProgramLessonWeek } from "@/lib/training-program-week";
+import { LessonDiscussion } from "@/components/discussion/lesson-discussion";
+import { getLessonDiscussion } from "@/app/actions/lesson-discussion";
 
 async function getStudentData(studentId: string, mentorId: string) {
   const supabase = await createServerSupabaseClient();
@@ -128,14 +133,87 @@ async function getStudentData(studentId: string, mentorId: string) {
   };
 }
 
+type StudentEnrollment = {
+  id: string;
+  user_id: string;
+  mentor_id: string | null;
+  start_date: string;
+  training_path_id: string;
+  enrollment_source?: string | null;
+};
+
+async function getStudentDiscussionData(
+  studentRow: StudentEnrollment,
+  weekParam?: number
+) {
+  const supabase = await createServerSupabaseClient();
+
+  const versionContext = await buildVersionContextForUserTraining(
+    supabase,
+    studentRow.user_id,
+    studentRow
+  );
+
+  const lessonsOrdered = await fetchLessonsForEnrollment(
+    supabase,
+    studentRow,
+    versionContext
+  );
+  const lessonCount = lessonsOrdered.length;
+
+  if (lessonCount === 0) {
+    return null;
+  }
+
+  const { currentWeek, totalWeeks } = computeProgramLessonWeek({
+    startDateIso: studentRow.start_date,
+    lessonCount,
+    explicitWeek:
+      typeof weekParam === "number" && Number.isFinite(weekParam) && weekParam >= 1
+        ? Math.floor(weekParam)
+        : undefined,
+  });
+
+  const lessonRow = lessonsOrdered[currentWeek - 1] as
+    | Record<string, unknown>
+    | undefined;
+  const lessonId =
+    lessonRow && typeof lessonRow.id === "string" ? lessonRow.id : null;
+  const questions = Array.isArray(lessonRow?.mentor_discussion_questions)
+    ? (lessonRow!.mentor_discussion_questions as unknown[]).filter(
+        (q): q is string => typeof q === "string"
+      )
+    : [];
+  const lessonTitle =
+    lessonRow && typeof lessonRow.title === "string" ? lessonRow.title : null;
+
+  const discussion = lessonId
+    ? await getLessonDiscussion(studentRow.id, lessonId)
+    : null;
+
+  return {
+    currentWeek,
+    totalWeeks,
+    lessonId,
+    questions,
+    lessonTitle,
+    discussion,
+  };
+}
+
 interface PageProps {
   params: Promise<{
     id: string;
   }>;
+  searchParams: Promise<{
+    week?: string;
+    question?: string;
+  }>;
 }
 
-export default async function StudentDetailPage({ params }: PageProps) {
+export default async function StudentDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const sp = await searchParams;
   const supabase = await createServerSupabaseClient();
 
   const {
@@ -166,6 +244,32 @@ export default async function StudentDetailPage({ params }: PageProps) {
     studentUserId ? getCertificationAwardsForUser(studentUserId) : Promise.resolve([]),
   ]);
   const profile = student.profile;
+
+  const weekParam = sp.week && /^\d+$/.test(sp.week) ? parseInt(sp.week, 10) : undefined;
+  const openQuestionIndex =
+    sp.question != null && /^\d+$/.test(sp.question)
+      ? parseInt(sp.question, 10)
+      : null;
+  const discussionData = await getStudentDiscussionData(
+    {
+      id: student.id,
+      user_id: student.user_id,
+      mentor_id: student.mentor_id,
+      start_date: student.start_date,
+      training_path_id: student.training_path_id,
+      enrollment_source: student.enrollment_source,
+    },
+    weekParam
+  );
+
+  const discPrevWeek =
+    discussionData && discussionData.currentWeek > 1
+      ? discussionData.currentWeek - 1
+      : null;
+  const discNextWeek =
+    discussionData && discussionData.currentWeek < discussionData.totalWeeks
+      ? discussionData.currentWeek + 1
+      : null;
 
   const getStatusBadge = (status?: "on_track" | "behind_pace" | "ahead") => {
     switch (status) {
@@ -330,6 +434,77 @@ export default async function StudentDetailPage({ params }: PageProps) {
             }))}
           />
         </section>
+
+        {discussionData ? (
+          <section className="space-y-4 border-t border-border/40 pt-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <DashboardSectionLabel>
+                <span className="inline-flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Questions for Mentor Discussion
+                </span>
+              </DashboardSectionLabel>
+              <div className="flex items-center gap-3 text-sm">
+                {discPrevWeek ? (
+                  <Link
+                    href={`/dashboard/mentor/student/${student.id}?week=${discPrevWeek}`}
+                    className="flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Prev</span>
+                  </Link>
+                ) : (
+                  <span className="flex items-center gap-1 text-muted-foreground/40">
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Prev</span>
+                  </span>
+                )}
+                <span className="font-semibold tabular-nums text-foreground">
+                  Week {discussionData.currentWeek}
+                  <span className="font-normal text-muted-foreground">
+                    {" "}
+                    of {discussionData.totalWeeks}
+                  </span>
+                </span>
+                {discNextWeek ? (
+                  <Link
+                    href={`/dashboard/mentor/student/${student.id}?week=${discNextWeek}`}
+                    className="flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                ) : (
+                  <span className="flex items-center gap-1 text-muted-foreground/40">
+                    <span className="hidden sm:inline">Next</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {discussionData.lessonTitle ? (
+              <p className="text-sm text-muted-foreground">
+                {discussionData.lessonTitle}
+              </p>
+            ) : null}
+
+            {discussionData.lessonId ? (
+              <LessonDiscussion
+                userTrainingId={student.id}
+                lessonId={discussionData.lessonId}
+                questions={discussionData.questions}
+                programWeek={discussionData.currentWeek}
+                initial={discussionData.discussion}
+                openQuestionIndex={openQuestionIndex}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No lesson content available for this week.
+              </p>
+            )}
+          </section>
+        ) : null}
       </DashboardContentFrame>
     </DashboardPageShell>
   );

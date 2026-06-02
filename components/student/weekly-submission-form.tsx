@@ -265,9 +265,8 @@ export function WeeklySubmissionForm({
         <div className="space-y-4">
           <div
             className={cn(
-              "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
-              "hover:border-primary/50 hover:bg-primary/5",
-              "border-muted-foreground/25"
+              "cursor-pointer rounded-md p-8 text-center ring-1 ring-black/[0.06] transition-colors",
+              "hover:bg-primary/5 hover:ring-primary/20"
             )}
             onClick={() => fileInputRef.current?.click()}
           >
@@ -293,7 +292,7 @@ export function WeeklySubmissionForm({
               {existingFiles.map((file) => (
                 <div
                   key={file.id}
-                  className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
+                  className="flex items-center gap-3 rounded-md bg-muted/25 p-3 ring-1 ring-black/[0.04]"
                 >
                   {file.type?.startsWith("image/") ? (
                     <img
@@ -333,7 +332,7 @@ export function WeeklySubmissionForm({
               {newFiles.map((file, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
+                  className="flex items-center gap-3 rounded-md bg-muted/25 p-3 ring-1 ring-black/[0.04]"
                 >
                   {file.preview ? (
                     <img
@@ -374,9 +373,9 @@ export function WeeklySubmissionForm({
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-          <p className="text-sm">{error}</p>
-        </div>
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
       )}
 
       {/* Submit Button */}
@@ -384,7 +383,7 @@ export function WeeklySubmissionForm({
         <Button
           type="submit"
           disabled={isSubmitting || !reflectionText.trim()}
-          className="w-full bg-[#8B4513] hover:bg-[#6B3410] text-white"
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
           size="lg"
         >
           <Send className="mr-2 h-4 w-4" />
