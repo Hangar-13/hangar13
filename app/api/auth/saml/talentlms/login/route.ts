@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 import { supabaseSsrAuthCookieSerializeOptions } from "@/lib/supabase-ssr-cookie-options";
+import {
+  ensureTalentLmsUserAndEnrollInCourse,
+  getTalentLmsApiEnrollmentConfig,
+} from "@/lib/talentlms/api-enroll";
+import { parseTalentLmsCourseAndUnitFromUrl } from "@/lib/talentlms/lesson-url";
 import { getTalentLmsSamlEnvironment } from "@/lib/talentlms/saml-config";
 import { isTalentLmsSamlDiagnosticLoggingEnabled } from "@/lib/talentlms/saml-diagnostic-logging-flag";
 import {
@@ -18,6 +23,27 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/**
+ * Talent course id from the SP-initiated `RelayState` (the lesson deep link Talent
+ * wants to return to). Accepts absolute URLs or tenant-relative paths.
+ */
+function talentCourseIdFromRelayState(
+  relayState: string | null | undefined,
+  subdomain: string
+): string | null {
+  const rs = relayState?.trim();
+  if (!rs) return null;
+  const candidates = [
+    rs,
+    `https://${subdomain}.talentlms.com${rs.startsWith("/") ? "" : "/"}${rs}`,
+  ];
+  for (const candidate of candidates) {
+    const { courseId } = parseTalentLmsCourseAndUnitFromUrl(candidate);
+    if (courseId) return courseId;
+  }
+  return null;
+}
 
 /** base64url(JSON) so non-ASCII emails are safe in HTTP response headers (browser Network tab). */
 function buildDiagnosticResponseHeaders(
@@ -138,6 +164,35 @@ export async function GET(request: NextRequest) {
           samlUsername: talentUsername,
         })
       );
+    }
+
+    // Self-healing enrollment: ensure the learner is enrolled in the Talent course
+    // they are opening before we issue the assertion. The Talent account is JIT-created
+    // here when needed (same login as the SAML `Username` we assert, so Talent matches
+    // this exact account), which covers a failed/raced path-time REST enrollment or a
+    // brand-new learner whose Talent profile is being provisioned on first SSO.
+    const apiConfig = getTalentLmsApiEnrollmentConfig();
+    if (apiConfig) {
+      const courseId = talentCourseIdFromRelayState(
+        relayState,
+        apiConfig.subdomain
+      );
+      if (courseId) {
+        const tl = await ensureTalentLmsUserAndEnrollInCourse({
+          config: apiConfig,
+          userEmail: emailNorm,
+          fullName: profile?.full_name,
+          courseId,
+        });
+        if (!tl.ok) {
+          console.error(
+            "[TalentLMS] SSO-time enroll failed:",
+            courseId,
+            tl.status,
+            tl.message
+          );
+        }
+      }
     }
 
     const exchanged = await executeTalentlmsSamlExchange({

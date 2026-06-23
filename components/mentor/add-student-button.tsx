@@ -8,15 +8,21 @@ import { Plus } from "lucide-react";
 
 interface AddStudentButtonProps {
   mentorId: string;
-  /** When set, only learners in this org’s programs (and org student role) are listed. */
+  /** Students are scoped to this organization's membership. */
   organizationId?: string | null;
+  /** When true (supervisor/lead), the viewer may reassign already-mentored students. */
+  canReassign?: boolean;
+  /** Open the modal on mount (e.g. arriving from a deep link with ?add=1). */
+  initialOpen?: boolean;
 }
 
 export function AddStudentButton({
   mentorId,
   organizationId = null,
+  canReassign = false,
+  initialOpen = false,
 }: AddStudentButtonProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const router = useRouter();
 
   const handleSuccess = () => {
@@ -35,6 +41,7 @@ export function AddStudentButton({
         onOpenChange={setOpen}
         currentMentorId={mentorId}
         organizationId={organizationId}
+        canReassign={canReassign}
         onSuccess={handleSuccess}
       />
     </>

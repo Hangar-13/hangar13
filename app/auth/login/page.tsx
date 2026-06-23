@@ -46,10 +46,13 @@ function navigateAfterAuthenticated(router: ReturnType<typeof useRouter>, redire
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const reason = searchParams.get("reason");
   const sessionNotice =
-    searchParams.get("reason") === "session"
+    reason === "session"
       ? "Your session was cleared because it was out of date. Please sign in again."
-      : null;
+      : reason === "confirm"
+        ? "That confirmation link is invalid or has expired. Sign in to request a new one."
+        : null;
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 

@@ -150,6 +150,9 @@ async function buildStudentCards(
 
       return {
         ...student,
+        id: student.id,
+        userId: student.user_id,
+        enrollmentId: student.id,
         users: profile,
         progress: {
           overall: trainingProgressPercent,
@@ -199,7 +202,11 @@ export default async function MentorDashboard() {
         <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
           <section className="space-y-4">
             <DashboardSectionLabel>Assigned students</DashboardSectionLabel>
-            <AssignedStudentsList students={data.students} compact />
+            <AssignedStudentsList
+              students={data.students}
+              compact
+              addStudentsHref="/dashboard/mentor/mentees?add=1"
+            />
           </section>
           <section className="space-y-4">
             <DashboardSectionLabel>Logbook entries</DashboardSectionLabel>

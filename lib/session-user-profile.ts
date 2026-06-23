@@ -11,6 +11,8 @@ export type SessionUserProfileRow = {
   current_user_training_id: string | null;
   current_certification: string | null;
   default_start_path: string | null;
+  talent_lms_provision_status: string | null;
+  talent_lms_provision_attempts: number | null;
 };
 
 /**

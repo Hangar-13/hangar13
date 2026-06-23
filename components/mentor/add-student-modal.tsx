@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,25 +10,25 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase-browser";
-import { User, Mail, Clock, Plus } from "lucide-react";
-import { assignEnrollmentMentorAction } from "@/app/actions/assign-enrollment-mentor";
+import { User, Mail, Plus, Check } from "lucide-react";
+import { assignStudentMentorAction } from "@/app/actions/assign-student-mentor";
 
-interface Student {
-  id: string;
+interface Candidate {
   user_id: string;
-  profile_mentor_id: string | null;
-  full_name: string;
-  email: string;
-  total_hours: number;
-  is_assigned: boolean;
+  full_name: string | null;
+  email: string | null;
+  mentor_id: string | null;
+  mentor_name: string | null;
 }
 
 interface AddStudentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentMentorId: string;
-  /** Scope candidates to an org (program ownership + org student role). */
+  /** Students are scoped to this organization's membership. */
   organizationId?: string | null;
+  /** When true (supervisor/lead), the viewer may reassign students who already have a mentor. */
+  canReassign?: boolean;
   onSuccess?: () => void;
 }
 
@@ -37,178 +37,69 @@ export function AddStudentModal({
   onOpenChange,
   currentMentorId,
   organizationId = null,
+  canReassign = false,
   onSuccess,
 }: AddStudentModalProps) {
-  const [students, setStudents] = useState<Student[]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open) {
-      void fetchStudents();
-    }
-  }, [open, currentMentorId, organizationId]);
-
-  async function fetchStudents() {
+  const fetchCandidates = useCallback(async () => {
     setLoading(true);
     setError(null);
+
+    if (!organizationId) {
+      setCandidates([]);
+      setLoading(false);
+      setError(
+        "Select an organization (top of the app) to see its students."
+      );
+      return;
+    }
+
     try {
       const supabase = createClient();
+      const { data, error: rpcError } = await supabase.rpc(
+        "list_org_student_candidates",
+        { p_organization_id: organizationId }
+      );
 
-      let query = supabase
-        .from("user_trainings")
-        .select("id, user_id, mentor_id, status, training_paths(organization_id)")
-        .eq("status", "active");
-
-      const { data: rawRows, error: studentsError } = await query;
-
-      const allStudents =
-        organizationId && rawRows
-          ? rawRows.filter((r) => {
-              const tp = r.training_paths;
-              const org =
-                Array.isArray(tp) && tp[0]
-                  ? (tp[0] as { organization_id: string }).organization_id
-                  : tp &&
-                      typeof tp === "object" &&
-                      "organization_id" in tp
-                    ? (tp as { organization_id: string }).organization_id
-                    : null;
-              return org === organizationId;
-            })
-          : rawRows;
-
-      if (studentsError) {
-        console.error("Error fetching students:", studentsError);
-        setError(
-          `Failed to load students: ${studentsError.message}. Make sure the RLS policy allows mentors to view enrollments.`
-        );
+      if (rpcError) {
+        console.error("Error fetching student candidates:", rpcError);
+        setError(`Failed to load students: ${rpcError.message}`);
         setLoading(false);
         return;
       }
 
-      const enrollmentRows = allStudents ?? [];
-      const enrollmentUserIds = [
-        ...new Set(enrollmentRows.map((r) => r.user_id as string)),
-      ];
-
-      let orgStudentIds = new Set<string>(enrollmentUserIds);
-      let userIdsWithStudentRole = new Set<string>();
-
-      if (organizationId && enrollmentUserIds.length > 0) {
-        const { data: memRows, error: memErr } = await supabase
-          .from("user_organizations")
-          .select("user_id, role")
-          .in("user_id", enrollmentUserIds)
-          .eq("organization_id", organizationId);
-
-        if (memErr) {
-          console.error("Error fetching memberships:", memErr);
-          setError(`Failed to load organization memberships: ${memErr.message}`);
-          setLoading(false);
-          return;
-        }
-
-        orgStudentIds = new Set(
-          (memRows ?? [])
-            .filter((m) => m.role === "student")
-            .map((m) => m.user_id as string)
-        );
-        userIdsWithStudentRole = orgStudentIds;
-      } else if (enrollmentUserIds.length > 0) {
-        const { data: sm, error: smErr } = await supabase
-          .from("user_organizations")
-          .select("user_id")
-          .in("user_id", enrollmentUserIds)
-          .eq("role", "student");
-
-        if (smErr) {
-          console.error("Error fetching student memberships:", smErr);
-          setError(`Failed to load student roles: ${smErr.message}`);
-          setLoading(false);
-          return;
-        }
-        userIdsWithStudentRole = new Set((sm ?? []).map((m) => m.user_id as string));
-      }
-
-      const studentsWithDetails = await Promise.all(
-        enrollmentRows.map(async (student) => {
-          if (student.user_id === currentMentorId) {
-            return null;
-          }
-
-          if (!organizationId && !userIdsWithStudentRole.has(student.user_id as string)) {
-            return null;
-          }
-
-          if (organizationId && !orgStudentIds.has(student.user_id as string)) {
-            return null;
-          }
-
-          const { data: profile, error: profileError } = await supabase
-            .from("users")
-            .select("id, email, full_name, role, mentor_id")
-            .eq("id", student.user_id)
-            .single();
-
-          if (profileError) {
-            console.error(`Error fetching profile for student ${student.id}:`, profileError);
-            return null;
-          }
-
-          if (profile?.role === "admin" || profile?.role === "god") {
-            return null;
-          }
-
-          const { data: entries, error: entriesError } = await supabase
-            .from("logbook_entries")
-            .select("hours_worked")
-            .eq("user_id", student.user_id as string);
-
-          if (entriesError) {
-            console.error(`Error fetching entries for student ${student.id}:`, entriesError);
-          }
-
-          const totalHours =
-            entries?.reduce(
-              (sum, entry) =>
-                sum + (parseFloat(entry.hours_worked?.toString() || "0") || 0),
-              0
-            ) || 0;
-
-          const profileMentorId = (profile?.mentor_id as string | null) ?? null;
-          const isAssigned = profileMentorId === currentMentorId;
-
-          return {
-            id: student.id as string,
-            user_id: student.user_id as string,
-            profile_mentor_id: profileMentorId,
-            full_name: profile.full_name || "Unknown",
-            email: profile.email || "",
-            total_hours: totalHours,
-            is_assigned: isAssigned,
-          };
-        })
+      const rows = (data ?? []) as Candidate[];
+      // Exclude self and students this mentor already mentors — there's nothing
+      // to add for those.
+      const filtered = rows.filter(
+        (r) => r.user_id !== currentMentorId && r.mentor_id !== currentMentorId
       );
-
-      const validStudents = studentsWithDetails.filter((a): a is Student => a !== null);
-      setStudents(validStudents);
+      setCandidates(filtered);
     } catch (err) {
-      console.error("Error fetching students:", err);
+      console.error("Error fetching student candidates:", err);
       setError("Failed to load students. Please try again.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [organizationId, currentMentorId]);
 
-  async function assignStudent(enrollmentId: string) {
-    setAssigning(enrollmentId);
+  useEffect(() => {
+    if (open) {
+      void fetchCandidates();
+    }
+  }, [open, fetchCandidates]);
+
+  async function assignStudent(studentUserId: string) {
+    setAssigning(studentUserId);
     setError(null);
 
     try {
-      const res = await assignEnrollmentMentorAction({
-        userTrainingId: enrollmentId,
+      const res = await assignStudentMentorAction({
+        studentUserId,
         mentorUserId: currentMentorId,
       });
 
@@ -217,18 +108,8 @@ export function AddStudentModal({
         return;
       }
 
-      setStudents((prev) =>
-        prev.map((a) =>
-          a.id === enrollmentId
-            ? {
-                ...a,
-                profile_mentor_id: currentMentorId,
-                is_assigned: true,
-              }
-            : a
-        )
-      );
-
+      // Remove the now-assigned student from the candidate list.
+      setCandidates((prev) => prev.filter((c) => c.user_id !== studentUserId));
       onSuccess?.();
     } catch (err) {
       console.error("Error assigning student:", err);
@@ -238,17 +119,15 @@ export function AddStudentModal({
     }
   }
 
-  const unassignedStudents = students.filter((a) => !a.is_assigned);
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Add Student</DialogTitle>
           <DialogDescription>
-            Assign yourself as this learner’s mentor. They can only have one mentor; that mentor
-            receives logbook and lesson submission notifications and is the only role that can
-            sign off their work (aside from platform administrators).
+            Become this student&apos;s mentor across all of their training. Each student
+            has a single mentor, who receives logbook and lesson submission notifications
+            and signs off their work (aside from platform administrators).
           </DialogDescription>
         </DialogHeader>
 
@@ -263,63 +142,74 @@ export function AddStudentModal({
             <div className="flex items-center justify-center py-8">
               <p className="text-sm text-muted-foreground">Loading students...</p>
             </div>
-          ) : students.length === 0 ? (
+          ) : candidates.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-sm text-muted-foreground">
-                {organizationId
-                  ? "No eligible learners found for this organization."
-                  : "No students found in the system."}
-              </p>
-            </div>
-          ) : unassignedStudents.length === 0 ? (
-            <div className="flex items-center justify-center py-8">
-              <p className="text-sm text-muted-foreground">
-                Everyone shown here already has you as their mentor. If someone is missing, change
-                the active organization (top of the app) or ask an administrator to confirm their
-                enrollment and org role.
+                No students available to add. Everyone in this organization either
+                already has you as their mentor or there are no students yet.
               </p>
             </div>
           ) : (
             <div className="space-y-2">
-              {unassignedStudents.map((student) => (
-                <div
-                  key={student.id}
-                  className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <User className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{student.full_name}</p>
-                      <div className="flex items-center gap-4 mt-1">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Mail className="h-3.5 w-3.5" />
-                          <span className="truncate">{student.email}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span>{student.total_hours.toFixed(1)} hours</span>
+              {candidates.map((candidate) => {
+                const hasOtherMentor =
+                  candidate.mentor_id != null &&
+                  candidate.mentor_id !== currentMentorId;
+                return (
+                  <div
+                    key={candidate.user_id}
+                    className="flex items-center justify-between rounded-lg border p-4 hover:bg-accent/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <User className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {candidate.full_name || "Unnamed Student"}
+                        </p>
+                        <div className="flex items-center gap-4 mt-1">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Mail className="h-3.5 w-3.5" />
+                            <span className="truncate">{candidate.email}</span>
+                          </div>
+                          {hasOtherMentor && (
+                            <span className="text-xs text-amber-600">
+                              Currently mentored by {candidate.mentor_name || "another mentor"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => assignStudent(student.id)}
-                    disabled={assigning === student.id || student.is_assigned}
-                  >
-                    {assigning === student.id ? (
-                      "Assigning..."
+                    {hasOtherMentor && !canReassign ? (
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        Has a mentor
+                      </span>
                     ) : (
-                      <>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add
-                      </>
+                      <Button
+                        size="sm"
+                        variant={hasOtherMentor ? "outline" : "default"}
+                        onClick={() => assignStudent(candidate.user_id)}
+                        disabled={assigning === candidate.user_id}
+                      >
+                        {assigning === candidate.user_id ? (
+                          "Assigning..."
+                        ) : hasOtherMentor ? (
+                          <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Reassign to me
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add
+                          </>
+                        )}
+                      </Button>
                     )}
-                  </Button>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

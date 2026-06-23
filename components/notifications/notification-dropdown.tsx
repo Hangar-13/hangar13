@@ -126,22 +126,14 @@ export function NotificationDropdown() {
 
     let url: string;
     if (isLessonType) {
-      if (singleId) {
-        const { data: sub } = await supabaseClient
-          .from("lesson_submissions")
-          .select("user_training_id")
-          .eq("id", singleId)
-          .maybeSingle();
-        const ut = sub?.user_training_id;
-        if (ut) {
-          url = isMentor
-            ? `/dashboard/mentor/student/${ut}?openSubmission=${singleId}`
-            : `/dashboard/student/training?openSubmission=${singleId}`;
-        } else {
-          url = isMentor ? "/dashboard/mentor/review-logs" : "/dashboard/student/training";
-        }
+      if (isMentor) {
+        url = singleId
+          ? `/dashboard/mentor/review-submissions?openSubmission=${singleId}`
+          : "/dashboard/mentor/review-submissions";
       } else {
-        url = isMentor ? "/dashboard/mentor/review-logs" : "/dashboard/student/training";
+        url = singleId
+          ? `/dashboard/student/training?openSubmission=${singleId}`
+          : "/dashboard/student/training";
       }
     } else if (isMentor) {
       url = singleId

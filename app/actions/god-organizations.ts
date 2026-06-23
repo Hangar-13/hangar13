@@ -10,6 +10,7 @@ import type { OrganizationRole } from "@/lib/auth-shared";
 import { normalizeOrganizationRole } from "@/lib/auth-shared";
 import { GOD_UI_ORG_ROLES } from "@/lib/god-user-constants";
 import { inviteOrLinkUserToOrganization } from "@/lib/org-invite-member";
+import { provisionTalentLmsAccountForInvitedUser } from "@/lib/talentlms/provision-account";
 import type { DirectoryInviteSearchHit } from "@/app/actions/org-dashboard";
 
 const ORG_MEMBER_SORT_RANK: Record<string, number> = {
@@ -222,6 +223,16 @@ export async function godCreateOrganizationWithUsers(input: {
     }
     if (!invited.user?.id) {
       return { ok: false, error: "Invite did not return a user id." };
+    }
+    // Provision the invited learner's TalentLMS account up front (best-effort).
+    try {
+      await provisionTalentLmsAccountForInvitedUser({
+        userId: invited.user.id,
+        email: row.email.trim(),
+        fullName,
+      });
+    } catch {
+      // Never block the invite on TalentLMS provisioning.
     }
     userIds.push(invited.user.id);
   }

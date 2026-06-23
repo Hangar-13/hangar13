@@ -244,6 +244,8 @@ export async function submitWeeklyReflection(formData: {
         reflection_text: formData.reflectionText,
         status: "submitted",
         submitted_at: new Date().toISOString(),
+        reject_reason: null,
+        mentor_notes: null,
         course_version_id: courseVersion?.id ?? null,
         talent_lms_unit_completed: talentSnap.talent_lms_unit_completed,
         talent_lms_completion_checked_at: talentSnap.talent_lms_completion_checked_at,

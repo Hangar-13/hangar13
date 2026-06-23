@@ -27,6 +27,7 @@ import {
   DashboardContentFrame,
   DashboardPageShell,
 } from "@/components/dashboard/page-shell";
+import { TalentAccountSetupBanner } from "@/components/student/talent-account-setup-banner";
 
 function ataChaptersTouchedFromLogbook(
   entries: { skills_practiced?: unknown }[]
@@ -64,7 +65,11 @@ async function getUserProfile(userId: string) {
     return null;
   }
 
-  return { full_name: profile.full_name };
+  return {
+    full_name: profile.full_name,
+    talentProvisionStatus: profile.talent_lms_provision_status,
+    talentProvisionAttempts: profile.talent_lms_provision_attempts ?? 0,
+  };
 }
 
 function mapLogbookRowsForRecentActivity(
@@ -299,6 +304,9 @@ export default async function StudentDashboard() {
 
   return (
     <DashboardPageShell>
+      {profile.talentProvisionStatus === "failed" ? (
+        <TalentAccountSetupBanner attempts={profile.talentProvisionAttempts} />
+      ) : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">

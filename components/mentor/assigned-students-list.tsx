@@ -1,13 +1,21 @@
 "use client";
 
-import { User, Mail, Calendar, Clock, Target, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { User, Mail, Calendar, Clock, Target, CheckCircle, AlertCircle, TrendingUp, UserMinus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { unassignStudentMentorAction } from "@/app/actions/assign-student-mentor";
 
 export interface AssignedStudent {
+  /** Stable list key: representative enrollment id when enrolled, else the user id. */
   id: string;
   user_id: string;
+  /** The student's user id (always set). */
+  userId: string;
+  /** Representative active enrollment id, or null when the student isn't enrolled yet. */
+  enrollmentId: string | null;
   start_date: string;
   status: string;
   users: {
@@ -37,16 +45,51 @@ interface AssignedStudentsListProps {
   students: AssignedStudent[];
   /** Compact layout for dashboard overview */
   compact?: boolean;
+  /** Show a "Remove me as mentor" action on each student (My Students page). */
+  enableUnassign?: boolean;
+  /** When the list is empty, show an "Add students" button linking here. */
+  addStudentsHref?: string;
 }
 
 export function AssignedStudentsList({
   students,
   compact = false,
+  enableUnassign = false,
+  addStudentsHref,
 }: AssignedStudentsListProps) {
   const router = useRouter();
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
-  const handleCardClick = (studentId: string) => {
-    router.push(`/dashboard/mentor/student/${studentId}`);
+  const handleCardClick = (enrollmentId: string | null) => {
+    if (!enrollmentId) return;
+    router.push(`/dashboard/mentor/student/${enrollmentId}`);
+  };
+
+  const handleUnassign = async (
+    e: React.MouseEvent,
+    userId: string,
+    name: string
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (
+      !window.confirm(
+        `Remove yourself as ${name}'s mentor? They'll have no mentor until someone is assigned.`
+      )
+    ) {
+      return;
+    }
+    setRemovingUserId(userId);
+    try {
+      const res = await unassignStudentMentorAction({ studentUserId: userId });
+      if (res.error) {
+        window.alert(res.error);
+        return;
+      }
+      router.refresh();
+    } finally {
+      setRemovingUserId(null);
+    }
   };
 
   const handlePendingEntriesClick = (e: React.MouseEvent, studentName?: string | null, studentEmail?: string) => {
@@ -88,9 +131,17 @@ export function AssignedStudentsList({
 
   if (students.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground text-center py-8">
-        No assigned students yet.
-      </p>
+      <div className="flex flex-col items-center gap-3 py-8 text-center">
+        <p className="text-sm text-muted-foreground">No assigned students yet.</p>
+        {addStudentsHref && (
+          <Link href={addStudentsHref}>
+            <Button size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Add students
+            </Button>
+          </Link>
+        )}
+      </div>
     );
   }
 
@@ -107,8 +158,13 @@ export function AssignedStudentsList({
         {students.map((student) => (
           <div
             key={student.id}
-            className="cursor-pointer px-3 py-2.5 transition-colors hover:bg-muted/40"
-            onClick={() => handleCardClick(student.id)}
+            className={cn(
+              "px-3 py-2.5 transition-colors",
+              student.enrollmentId
+                ? "cursor-pointer hover:bg-muted/40"
+                : "cursor-default"
+            )}
+            onClick={() => handleCardClick(student.enrollmentId)}
           >
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
@@ -128,7 +184,13 @@ export function AssignedStudentsList({
                 <h4 className="truncate text-sm font-medium">
                   {student.users?.full_name || "Unnamed Student"}
                 </h4>
-                {getStatusBadge(student.progressStatus, true)}
+                {student.enrollmentId
+                  ? getStatusBadge(student.progressStatus, true)
+                  : (
+                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      Not enrolled
+                    </span>
+                  )}
               </div>
               <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
                 {student.progress && (
@@ -167,7 +229,11 @@ export function AssignedStudentsList({
   return (
     <div className="divide-y divide-border/60">
       {students.map((student) => (
-        <div key={student.id} className={rowBase} onClick={() => handleCardClick(student.id)}>
+        <div
+          key={student.id}
+          className={cn(rowBase, !student.enrollmentId && "cursor-default hover:bg-transparent")}
+          onClick={() => handleCardClick(student.enrollmentId)}
+        >
           <div className="space-y-4">
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0">
@@ -192,9 +258,33 @@ export function AssignedStudentsList({
                   <span className="truncate">{student.users?.email}</span>
                 </div>
               </div>
+              {enableUnassign && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  disabled={removingUserId === student.userId}
+                  onClick={(e) =>
+                    handleUnassign(
+                      e,
+                      student.userId,
+                      student.users?.full_name || "this student"
+                    )
+                  }
+                >
+                  <UserMinus className="mr-2 h-4 w-4" />
+                  {removingUserId === student.userId ? "Removing..." : "Remove me"}
+                </Button>
+              )}
             </div>
 
-            {getStatusBadge(student.progressStatus)}
+            {student.enrollmentId ? (
+              getStatusBadge(student.progressStatus)
+            ) : (
+              <span className="inline-block rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                Not enrolled in any training yet
+              </span>
+            )}
 
             <div className="space-y-3 border-t border-border/40 pt-3">
               {student.progress && (

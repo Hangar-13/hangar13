@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,9 +31,9 @@ const signupSchema = z
 type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
 
   const {
     register,
@@ -49,14 +48,21 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
+      const emailRedirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/confirm`
+          : undefined;
+
       const { error: signUpError } = await supabaseClient.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
+          // Role is intentionally NOT sent here — new accounts are always created
+          // as standard users. Platform roles are assigned by admins after signup.
           data: {
-            role: "standard",
             full_name: `${data.firstName} ${data.lastName}`,
           },
+          emailRedirectTo,
         },
       });
 
@@ -66,11 +72,12 @@ export default function SignupPage() {
         return;
       }
 
-      // Redirect to home page after successful signup
-      router.push("/");
-      router.refresh();
-    } catch (err) {
+      // Email confirmation is required, so there is no session yet. Show the
+      // "check your inbox" state instead of routing into the app.
+      setConfirmEmail(data.email);
+    } catch {
       setError("An unexpected error occurred. Please try again.");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -93,6 +100,32 @@ export default function SignupPage() {
           className="h-24 md:h-32 w-auto object-contain drop-shadow-lg"
         />
       </div>
+      {confirmEmail ? (
+        <div className="relative w-full max-w-md space-y-6 rounded-xl border border-border/50 bg-white p-8 shadow-2xl text-center">
+          <div className="flex justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Confirm your email</h1>
+          <p className="text-muted-foreground text-sm">
+            We sent a confirmation link to{" "}
+            <span className="font-medium text-foreground">{confirmEmail}</span>. Click
+            the link in that email to activate your account and sign in.
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Don&apos;t see it? Check your spam folder. The link expires after a while,
+            so confirm soon.
+          </p>
+          <div className="text-sm">
+            <Link href="/auth/login" className="text-primary hover:underline">
+              Back to sign in
+            </Link>
+          </div>
+        </div>
+      ) : (
       <div className="relative w-full max-w-md space-y-8 rounded-xl border border-border/50 bg-white p-8 shadow-2xl">
         <div className="space-y-2 text-center">
           <div className="flex justify-center mb-4">
@@ -203,6 +236,7 @@ export default function SignupPage() {
           </Link>
         </div>
       </div>
+      )}
     </div>
   );
 }

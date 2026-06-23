@@ -142,6 +142,7 @@ interface PageProps {
   searchParams: Promise<{
     week?: string;
     question?: string;
+    openSubmission?: string;
   }>;
 }
 
@@ -159,7 +160,20 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   await redirectIfNoUserTrainings(user.id);
 
   const params = await searchParams;
-  const week = params.week ? parseInt(params.week) : undefined;
+  let week = params.week ? parseInt(params.week) : undefined;
+
+  // Deep link from a submission notification: jump to the submitted week.
+  if (week == null && params.openSubmission) {
+    const { data: deepLinkRow } = await supabase
+      .from("lesson_submissions")
+      .select("week_number")
+      .eq("id", params.openSubmission)
+      .maybeSingle();
+    if (deepLinkRow?.week_number != null) {
+      week = Number(deepLinkRow.week_number);
+    }
+  }
+
   const data = await getStudentTrainingData(user.id, week);
   const updatesResult = await getCourseVersionUpdatesForCurrentEnrollment();
   const versionUpdates = updatesResult.ok ? updatesResult.updates : [];
@@ -478,6 +492,68 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           >
           {submission ? (
             <div className="space-y-6">
+              {(() => {
+                const statusMap: Record<
+                  string,
+                  { label: string; className: string }
+                > = {
+                  submitted: {
+                    label: "Awaiting mentor review",
+                    className:
+                      "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+                  },
+                  approved: {
+                    label: "Approved",
+                    className:
+                      "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+                  },
+                  rejected: {
+                    label: "Changes requested",
+                    className:
+                      "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+                  },
+                  draft: {
+                    label: "Draft",
+                    className: "bg-muted text-muted-foreground",
+                  },
+                };
+                const display =
+                  statusMap[submission.status as string] ?? statusMap.draft;
+                return (
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${display.className}`}
+                  >
+                    {display.label}
+                  </span>
+                );
+              })()}
+
+              {submission.status === "rejected" && submission.reject_reason && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-destructive">
+                    Mentor feedback
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm">
+                    {submission.reject_reason}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Edit your submission below to address this feedback and
+                    resubmit.
+                  </p>
+                </div>
+              )}
+
+              {submission.status === "approved" && submission.mentor_notes && (
+                <div className="rounded-md border border-green-500/25 bg-green-500/10 px-3 py-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-300">
+                    Mentor notes
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm">
+                    {submission.mentor_notes}
+                  </p>
+                </div>
+              )}
+
               <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[minmax(0,9rem)_1fr]">
                 <dt className="text-sm font-medium text-muted-foreground">Reflection</dt>
                 <dd className="text-sm text-foreground whitespace-pre-wrap">

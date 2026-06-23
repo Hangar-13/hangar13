@@ -8,6 +8,7 @@ import {
   Search,
   Award,
   ClipboardCheck,
+  FileCheck,
   Library,
   Building2,
   LayoutDashboard,
@@ -126,6 +127,7 @@ export function getNavigationSections(
 
   const mentorMentoringNavigation: NavEntry[] = [
     { name: "Dashboard", href: "/dashboard/mentor", icon: LayoutDashboard },
+    { name: "Review Submissions", href: "/dashboard/mentor/review-submissions", icon: FileCheck },
     { name: "Review Logs", href: "/dashboard/mentor/review-logs", icon: ClipboardList },
     { name: "My Students", href: "/dashboard/mentor/mentees", icon: Users },
     {

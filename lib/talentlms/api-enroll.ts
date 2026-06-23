@@ -35,17 +35,48 @@ function basicAuthHeader(apiKey: string): string {
   return `Basic ${token}`;
 }
 
-async function readTalentApiErrorMessage(res: Response): Promise<string> {
-  let message = `HTTP ${res.status}`;
+/** Pulls a human message from Talent's various error shapes ({message}, {error:{message}}, {error}). */
+function extractTalentApiMessage(parsed: unknown): string | null {
+  if (!parsed || typeof parsed !== "object") return null;
+  const obj = parsed as Record<string, unknown>;
+  if (typeof obj.message === "string" && obj.message.trim()) {
+    return obj.message.trim();
+  }
+  const err = obj.error;
+  if (err && typeof err === "object") {
+    const em = (err as Record<string, unknown>).message;
+    if (typeof em === "string" && em.trim()) return em.trim();
+  }
+  if (typeof obj.error === "string" && obj.error.trim()) {
+    return obj.error.trim();
+  }
+  return null;
+}
+
+/** Reads a Talent API error response body once, returning a friendly message + the raw body for diagnostics. */
+async function readTalentApiError(
+  res: Response
+): Promise<{ message: string; rawBody: string }> {
+  let rawBody = "";
   try {
-    const raw = (await res.json()) as unknown;
-    if (raw && typeof raw === "object" && "message" in raw) {
-      const m = (raw as { message?: unknown }).message;
-      if (typeof m === "string" && m.trim()) message = m.trim();
-    }
+    rawBody = await res.text();
   } catch {
     // ignore
   }
+  let message = `HTTP ${res.status}`;
+  const trimmed = rawBody.trim();
+  if (trimmed) {
+    try {
+      message = extractTalentApiMessage(JSON.parse(trimmed)) ?? message;
+    } catch {
+      message = trimmed.slice(0, 300);
+    }
+  }
+  return { message, rawBody };
+}
+
+async function readTalentApiErrorMessage(res: Response): Promise<string> {
+  const { message } = await readTalentApiError(res);
   return message;
 }
 
@@ -154,11 +185,18 @@ export async function talentLmsGetUserIdByEmail(
     return { ok: false, status: 404, message: "Talent LMS user not found for this email." };
   }
   if (!res.ok) {
-    return {
-      ok: false,
-      status: res.status,
-      message: await readTalentApiErrorMessage(res),
-    };
+    const { message, rawBody } = await readTalentApiError(res);
+    console.error(
+      "[TalentLMS] user lookup by email failed:",
+      JSON.stringify({
+        url,
+        status: res.status,
+        statusText: res.statusText,
+        message,
+        responseBody: rawBody.slice(0, 2000),
+      })
+    );
+    return { ok: false, status: res.status, message };
   }
 
   let body: unknown;
@@ -556,7 +594,9 @@ async function talentLmsApiSignupUser(options: Readonly<{
   firstName: string;
   lastName: string;
 }>): Promise<TalentLmsEnrollResult> {
-  const password = randomBytes(24).toString("base64url");
+  // Talent caps passwords at 30 chars; base64url of 18 bytes = 24 chars (well under,
+  // still high-entropy). The password is unused — learners authenticate via SSO only.
+  const password = randomBytes(18).toString("base64url");
 
   const url = `${baseUrl(options.config)}/usersignup`;
   const body = new URLSearchParams({
@@ -588,7 +628,26 @@ async function talentLmsApiSignupUser(options: Readonly<{
     return { ok: true };
   }
 
-  const message = await readTalentApiErrorMessage(res);
+  const { message, rawBody } = await readTalentApiError(res);
+
+  console.error(
+    "[TalentLMS] usersignup failed:",
+    JSON.stringify({
+      url,
+      status: res.status,
+      statusText: res.statusText,
+      request: {
+        first_name: body.get("first_name"),
+        last_name: body.get("last_name"),
+        email: body.get("email"),
+        login: body.get("login"),
+        password: "<redacted>",
+      },
+      message,
+      responseBody: rawBody.slice(0, 2000),
+    })
+  );
+
   const lower = message.toLowerCase();
   if (
     lower.includes("already") ||
@@ -601,6 +660,42 @@ async function talentLmsApiSignupUser(options: Readonly<{
   }
 
   return { ok: false, status: res.status, message };
+}
+
+/**
+ * Ensure the email has a Talent user (JIT signup). Idempotent — returns ok when
+ * the learner already exists. `login` matches SAML username rules so the first
+ * SSO resolves to this same account.
+ */
+export async function ensureTalentLmsUserExists(options: Readonly<{
+  config: TalentLmsApiConfig;
+  userEmail: string;
+  /** From Hangar `users.full_name` — used only when creating the Talent user. */
+  fullName: string | null | undefined;
+}>): Promise<TalentLmsEnrollResult> {
+  const email = options.userEmail.trim().toLowerCase();
+  if (!email) {
+    return { ok: false, status: 400, message: "Missing user email." };
+  }
+
+  const exists = await talentLmsUserExistsByEmail(options.config, email);
+  if (!exists.ok) {
+    return { ok: false, status: exists.status, message: exists.message };
+  }
+  if (exists.exists) {
+    return { ok: true };
+  }
+
+  const policy = getTalentLmsUsernamePolicyFromEnv();
+  const login = resolveTalentLmsUsername(email, policy);
+  const { first, last } = splitFullName(options.fullName);
+  return talentLmsApiSignupUser({
+    config: options.config,
+    email,
+    login,
+    firstName: first,
+    lastName: last,
+  });
 }
 
 /**
@@ -619,25 +714,13 @@ export async function ensureTalentLmsUserAndEnrollInCourse(options: Readonly<{
     return { ok: false, status: 400, message: "Missing user email." };
   }
 
-  const exists = await talentLmsUserExistsByEmail(options.config, email);
-  if (!exists.ok) {
-    return { ok: false, status: exists.status, message: exists.message };
-  }
-
-  if (!exists.exists) {
-    const policy = getTalentLmsUsernamePolicyFromEnv();
-    const login = resolveTalentLmsUsername(email, policy);
-    const { first, last } = splitFullName(options.fullName);
-    const sign = await talentLmsApiSignupUser({
-      config: options.config,
-      email,
-      login,
-      firstName: first,
-      lastName: last,
-    });
-    if (!sign.ok) {
-      return sign;
-    }
+  const ensured = await ensureTalentLmsUserExists({
+    config: options.config,
+    userEmail: email,
+    fullName: options.fullName,
+  });
+  if (!ensured.ok) {
+    return ensured;
   }
 
   return talentLmsApiAddUserToCourse({

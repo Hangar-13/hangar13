@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeOrganizationRole, type OrganizationRole } from "@/lib/auth-shared";
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
+import { provisionTalentLmsAccountForInvitedUser } from "@/lib/talentlms/provision-account";
 
 /**
  * Add an existing user by id link, or invite a new auth user and link them to the organization.
@@ -171,6 +172,17 @@ export async function inviteOrLinkUserToOrganization(params: {
   const newId = invited.user?.id;
   if (!newId) {
     return { ok: false, error: "Invite did not return a user id." };
+  }
+
+  // Provision the invited learner's TalentLMS account up front (best-effort).
+  try {
+    await provisionTalentLmsAccountForInvitedUser({
+      userId: newId,
+      email: rawEmail.trim(),
+      fullName,
+    });
+  } catch {
+    // Never block the invite on TalentLMS provisioning.
   }
 
   if (roleNorm === "lead") {

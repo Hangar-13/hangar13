@@ -12,6 +12,7 @@ import {
 } from "@/lib/auth-shared";
 import { GOD_UI_ORG_ROLES, GOD_UI_SYSTEM_ROLES } from "@/lib/god-user-constants";
 import { updateUserRole } from "@/lib/role-management";
+import { provisionTalentLmsAccountForInvitedUser } from "@/lib/talentlms/provision-account";
 
 function assertPlatformAdmin() {
   return getActiveUser().then((u) => {
@@ -199,6 +200,18 @@ export async function godCreateUser(input: {
   const newId = invited.user?.id;
   if (!newId) {
     return { ok: false, error: "Invite did not return a user id." };
+  }
+
+  // Provision the learner's TalentLMS account up front (best-effort; failures are
+  // recorded on the user row and surfaced via the dashboard banner).
+  try {
+    await provisionTalentLmsAccountForInvitedUser({
+      userId: newId,
+      email: parsed.data.email.trim(),
+      fullName,
+    });
+  } catch {
+    // Never block the invite on TalentLMS provisioning.
   }
 
   if (parsed.data.organizations.length) {
