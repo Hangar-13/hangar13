@@ -14,7 +14,8 @@ import { DashboardContentFrame } from "@/components/dashboard/page-shell";
 import { CertificationExportModal } from "./certification-export-modal";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileDown } from "lucide-react";
+import { FileDown, Plus } from "lucide-react";
+import Link from "next/link";
 
 const titleClass =
   "text-[0.8125rem] font-semibold uppercase tracking-wide text-muted-foreground";
@@ -54,6 +55,16 @@ export function CertificationDashboardClient({
         defaultOpen={defaultExistingOpen}
         titleClassName={titleClass}
         headerHoverHighlight={false}
+        actions={
+          mentorMode ? undefined : (
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link href="/dashboard/student/external-certifications">
+                <Plus className="mr-2 h-4 w-4" />
+                Add external certification
+              </Link>
+            </Button>
+          )
+        }
       >
         {certificationAwards.length === 0 ? (
           <p className="text-sm text-muted-foreground">No completed certifications on file yet.</p>
@@ -133,7 +144,12 @@ export function CertificationDashboardClient({
           }
         />
       )}
-      <div className="border-t border-border/25 pt-6">
+      <div className="border-t border-border/25 pt-6 flex flex-wrap gap-2">
+        <Button type="button" variant="outline" asChild>
+          <Link href="/dashboard/student/skills">
+            View skills profile
+          </Link>
+        </Button>
         <Button type="button" variant="outline" onClick={() => setExportOpen(true)}>
           <FileDown className="mr-2 h-4 w-4" />
           Print Report / Export Data

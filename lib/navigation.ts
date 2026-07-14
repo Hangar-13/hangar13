@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   CreditCard,
   Landmark,
+  IdCard,
 } from "lucide-react";
 import {
   hasOrganizationRolePermission,
@@ -142,6 +143,7 @@ export function getNavigationSections(
     { name: "Dashboard", href: "/dashboard/student", icon: Home },
     trainingGroup,
     { name: "Logbook", href: "/dashboard/student/logbook", icon: ClipboardList },
+    { name: "Skills profile", href: "/dashboard/student/skills", icon: IdCard },
     { name: "Certification", href: "/dashboard/student/certification", icon: ClipboardCheck },
   ];
 

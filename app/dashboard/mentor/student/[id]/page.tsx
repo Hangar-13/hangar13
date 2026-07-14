@@ -353,11 +353,20 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
       <DashboardContentFrame>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <DashboardSectionLabel>Progress overview</DashboardSectionLabel>
-          <Link href={`/dashboard/mentor/mentees/progress?student=${student.id}`}>
-            <Button variant="outline" size="sm">
-              Student Progress
-            </Button>
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            {studentUserId ? (
+              <Link href={`/dashboard/skills/${studentUserId}`}>
+                <Button variant="outline" size="sm">
+                  Skills profile
+                </Button>
+              </Link>
+            ) : null}
+            <Link href={`/dashboard/mentor/mentees/progress?student=${student.id}`}>
+              <Button variant="outline" size="sm">
+                Student Progress
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <DashboardStatStrip>

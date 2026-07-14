@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth-shared";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { passwordResetRedirectUrl } from "@/lib/password-reset-redirect-url";
 
 export type UserSettingsPayload = {
   fullName: string | null;
@@ -134,13 +135,7 @@ export async function sendPasswordResetEmail(): Promise<{ error?: string }> {
     return { error: "No email address on file." };
   }
 
-  const headerStore = await headers();
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
-  const protocol = headerStore.get("x-forwarded-proto") ?? "https";
-  const origin = host ? `${protocol}://${host}` : undefined;
-  const redirectTo = origin
-    ? `${origin}/auth/reset-password`
-    : "/auth/reset-password";
+  const redirectTo = await passwordResetRedirectUrl();
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo,
