@@ -13,6 +13,7 @@ export type SessionUserProfileRow = {
   default_start_path: string | null;
   talent_lms_provision_status: string | null;
   talent_lms_provision_attempts: number | null;
+  prior_ojt_skipped_at: string | null;
 };
 
 /**

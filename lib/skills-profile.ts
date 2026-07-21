@@ -3,6 +3,7 @@ import type { CertificationAward } from "@/app/actions/user-credentials";
 import type { ExternalCertificationDocument } from "@/lib/external-certification";
 import type { ExternalCertificationType } from "@/lib/external-certification";
 import type { UserTrainingEnrollmentRow } from "@/lib/my-trainings-display";
+import { parseLogbookAdditionalInformation } from "@/lib/logbook-additional-information";
 import {
   extractAtaChapterNumbers,
   type LogbookExportEntry,
@@ -60,11 +61,15 @@ export type SkillsProfileData = {
   trainingCompletions: SkillsProfileTrainingCompletion[];
   platformTrainings: UserTrainingEnrollmentRow[];
   aircraftExperience: SkillsProfileExperienceRow[];
+  engineExperience: SkillsProfileExperienceRow[];
+  propellerExperience: SkillsProfileExperienceRow[];
   ataExperience: SkillsProfileExperienceRow[];
   logbookEntries: SkillsProfileLogbookEntry[];
 };
 
 const UNSPECIFIED_AIRCRAFT = "(unspecified aircraft)";
+
+export type SkillsProfileEquipmentKind = "aircraft" | "engine" | "propeller" | "ata";
 
 function padChapter(ch: string): string {
   return ch.length === 1 && /^\d$/.test(ch) ? `0${ch}` : ch;
@@ -78,6 +83,22 @@ function entryMatchesAircraft(
   return label === aircraftKey;
 }
 
+function entryEquipmentValue(
+  entry: SkillsProfileLogbookEntry,
+  kind: "engine" | "propeller"
+): string {
+  const info = parseLogbookAdditionalInformation(entry.additional_information);
+  return (kind === "engine" ? info.engine : info.propeller)?.trim() ?? "";
+}
+
+function entryMatchesEquipment(
+  entry: SkillsProfileLogbookEntry,
+  kind: "engine" | "propeller",
+  equipmentKey: string
+): boolean {
+  return entryEquipmentValue(entry, kind) === equipmentKey;
+}
+
 function entryMatchesAtaChapter(
   entry: SkillsProfileLogbookEntry,
   chapterKey: string
@@ -87,6 +108,23 @@ function entryMatchesAtaChapter(
     return chapters.length === 0;
   }
   return chapters.includes(chapterKey);
+}
+
+function rowsFromBuckets(
+  byKey: Map<
+    string,
+    { totalHours: number; entryCount: number; entries: SkillsProfileLogbookEntry[] }
+  >
+): SkillsProfileExperienceRow[] {
+  return [...byKey.entries()]
+    .map(([key, value]) => ({
+      key,
+      label: key,
+      totalHours: value.totalHours,
+      entryCount: value.entryCount,
+      entries: value.entries.sort((a, b) => b.entry_date.localeCompare(a.entry_date)),
+    }))
+    .sort((a, b) => b.totalHours - a.totalHours || a.label.localeCompare(b.label));
 }
 
 export function aggregateAircraftExperience(
@@ -111,15 +149,46 @@ export function aggregateAircraftExperience(
     byKey.set(key, bucket);
   }
 
-  return [...byKey.entries()]
-    .map(([key, value]) => ({
-      key,
-      label: key,
-      totalHours: value.totalHours,
-      entryCount: value.entryCount,
-      entries: value.entries.sort((a, b) => b.entry_date.localeCompare(a.entry_date)),
-    }))
-    .sort((a, b) => b.totalHours - a.totalHours || a.label.localeCompare(b.label));
+  return rowsFromBuckets(byKey);
+}
+
+function aggregateEquipmentExperience(
+  entries: SkillsProfileLogbookEntry[],
+  kind: "engine" | "propeller"
+): SkillsProfileExperienceRow[] {
+  const byKey = new Map<
+    string,
+    { totalHours: number; entryCount: number; entries: SkillsProfileLogbookEntry[] }
+  >();
+
+  for (const entry of entries) {
+    const key = entryEquipmentValue(entry, kind);
+    if (!key) continue;
+    const hours = Number(entry.hours_worked) || 0;
+    const bucket = byKey.get(key) ?? {
+      totalHours: 0,
+      entryCount: 0,
+      entries: [],
+    };
+    bucket.totalHours += hours;
+    bucket.entryCount += 1;
+    bucket.entries.push(entry);
+    byKey.set(key, bucket);
+  }
+
+  return rowsFromBuckets(byKey);
+}
+
+export function aggregateEngineExperience(
+  entries: SkillsProfileLogbookEntry[]
+): SkillsProfileExperienceRow[] {
+  return aggregateEquipmentExperience(entries, "engine");
+}
+
+export function aggregatePropellerExperience(
+  entries: SkillsProfileLogbookEntry[]
+): SkillsProfileExperienceRow[] {
+  return aggregateEquipmentExperience(entries, "propeller");
 }
 
 export function aggregateAtaExperience(
@@ -183,10 +252,13 @@ export function aggregateAtaExperience(
 
 export function filterExperienceEntries(
   row: SkillsProfileExperienceRow,
-  kind: "aircraft" | "ata"
+  kind: SkillsProfileEquipmentKind
 ): SkillsProfileLogbookEntry[] {
   if (kind === "aircraft") {
     return row.entries.filter((entry) => entryMatchesAircraft(entry, row.key));
+  }
+  if (kind === "engine" || kind === "propeller") {
+    return row.entries.filter((entry) => entryMatchesEquipment(entry, kind, row.key));
   }
   return row.entries.filter((entry) => entryMatchesAtaChapter(entry, row.key));
 }

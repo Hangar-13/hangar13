@@ -8,6 +8,8 @@ import { getAtaChapters } from "@/app/actions/ata-chapters";
 import {
   aggregateAircraftExperience,
   aggregateAtaExperience,
+  aggregateEngineExperience,
+  aggregatePropellerExperience,
   type SkillsProfileData,
   type SkillsProfileLogbookEntry,
 } from "@/lib/skills-profile";
@@ -139,6 +141,8 @@ export async function getSkillsProfileForUser(
       trainingCompletions,
       platformTrainings,
       aircraftExperience: aggregateAircraftExperience(logbookEntries),
+      engineExperience: aggregateEngineExperience(logbookEntries),
+      propellerExperience: aggregatePropellerExperience(logbookEntries),
       ataExperience: aggregateAtaExperience(logbookEntries, ataChapterItems),
       logbookEntries,
     },

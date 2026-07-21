@@ -158,6 +158,37 @@ export function downloadSkillsProfilePdf(data: SkillsProfileData) {
     y = tableEndY();
   }
 
+  if (data.engineExperience.length > 0 || data.propellerExperience.length > 0) {
+    addSectionTitle("Engine / propeller experience");
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [["Equipment", "Logs", "Hours"]],
+      body: [
+        ...data.engineExperience.map((row) => [
+          `Engine: ${row.label}`,
+          String(row.entryCount),
+          `${formatSkillsHours(row.totalHours)}h`,
+        ]),
+        ...data.propellerExperience.map((row) => [
+          `Propeller: ${row.label}`,
+          String(row.entryCount),
+          `${formatSkillsHours(row.totalHours)}h`,
+        ]),
+      ],
+      theme: "grid",
+      headStyles: {
+        fillColor: [30, 30, 56],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 9,
+      },
+      bodyStyles: { fontSize: 9, textColor: [30, 30, 56] },
+      alternateRowStyles: { fillColor: [248, 249, 250] },
+    });
+    y = tableEndY();
+  }
+
   if (data.ataExperience.length > 0) {
     addSectionTitle("ATA chapter OJT experience");
     autoTable(doc, {

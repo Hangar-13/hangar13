@@ -28,6 +28,9 @@ import {
   DashboardPageShell,
 } from "@/components/dashboard/page-shell";
 import { TalentAccountSetupBanner } from "@/components/student/talent-account-setup-banner";
+import { getPriorOjtDashboardProgress } from "@/app/actions/prior-ojt";
+import { PriorOjtDashboardSection } from "@/components/student/prior-ojt-dashboard-section";
+import { FindTrainingDashboardSection } from "@/components/student/find-training-dashboard-section";
 
 function ataChaptersTouchedFromLogbook(
   entries: { skills_practiced?: unknown }[]
@@ -296,11 +299,17 @@ export default async function StudentDashboard() {
 
   const firstName = profile.full_name?.split(" ")[0] || "there";
 
-  const [data, trainings, certifications] = await Promise.all([
+  const [data, trainings, certifications, priorOjt] = await Promise.all([
     getStudentData(user.id),
     getTrainingCompletionsForUser(user.id),
     getCertificationAwardsForUser(user.id),
+    getPriorOjtDashboardProgress(),
   ]);
+
+  const priorOjtProgress = "error" in priorOjt ? null : priorOjt;
+  const showPriorOjtSection = Boolean(priorOjtProgress?.showSection);
+  const showFindTrainingSection = !data.hasActiveCurriculum;
+  const showFullDashboard = !showPriorOjtSection;
 
   return (
     <DashboardPageShell>
@@ -310,83 +319,99 @@ export default async function StudentDashboard() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">
-            Welcome back, {firstName}
+            {showFullDashboard ? `Welcome back, ${firstName}` : `Welcome, ${firstName}`}
           </h1>
-          <p className="text-base text-muted-foreground">
-            {data.hasActiveCurriculum ? (
-              "Keep up the great work on your aviation journey"
-            ) : (
-              <>
-                Log OJT hours anytime; when enrolled, set a current program in{" "}
-                <Link
-                  href="/dashboard/student/credentials"
-                  className="text-primary underline underline-offset-4"
-                >
-                  My Training Programs
-                </Link>
-                .
-              </>
-            )}
-          </p>
+          {showFullDashboard ? (
+            <p className="text-base text-muted-foreground">
+              {data.hasActiveCurriculum ? (
+                "Keep up the great work on your aviation journey"
+              ) : (
+                <>
+                  Log OJT hours anytime; when enrolled, set a current program in{" "}
+                  <Link
+                    href="/dashboard/student/credentials"
+                    className="text-primary underline underline-offset-4"
+                  >
+                    My Training Programs
+                  </Link>
+                  .
+                </>
+              )}
+            </p>
+          ) : (
+            <p className="text-base text-muted-foreground">
+              Let&apos;s get your Hangar13 account set up.
+            </p>
+          )}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
-          <Button asChild>
-            <Link href="/dashboard/student/logbook?add=true">+ Log Entry</Link>
-          </Button>
-          {data.hasActiveCurriculum && data.weeks.total > 0 && data.weeks.current > 0 ? (
-            <Button asChild variant="outline">
-              <Link href={`/dashboard/student/training/submit?week=${data.weeks.current}`}>
-                <FileText className="mr-2 h-4 w-4" />
-                Submit Week
-              </Link>
+        {showFullDashboard ? (
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+            <Button asChild>
+              <Link href="/dashboard/student/logbook?add=true">+ Log Entry</Link>
             </Button>
-          ) : null}
-        </div>
+            {data.hasActiveCurriculum && data.weeks.total > 0 && data.weeks.current > 0 ? (
+              <Button asChild variant="outline">
+                <Link href={`/dashboard/student/training/submit?week=${data.weeks.current}`}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Submit Week
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      <DashboardContentFrame className="space-y-6 sm:space-y-7">
-        <div className="grid gap-7 lg:grid-cols-2 lg:gap-10">
-          <ProgressBar
-            percent={data.progress.trainingPercent}
-            summary={
-              data.progress.hoursRequired > 0
-                ? `${data.progress.hoursCompleted.toFixed(1)} / ${data.progress.hoursRequired.toFixed(1)} training hours`
-                : null
-            }
-            trainingProgramName={data.trainingPlanName}
-          />
-          <HoursProgressCard
-            completedHours={data.hours.total}
-            targetHours={data.hours.target}
-            status={data.hours.thisWeek === 0 ? "behind" : "on_pace"}
-          />
-        </div>
+      {showPriorOjtSection && priorOjtProgress ? (
+        <PriorOjtDashboardSection progress={priorOjtProgress} />
+      ) : null}
 
-        <MetricCards
-          thisWeekHours={data.hours.thisWeek}
-          currentWeek={data.weeks.current}
-          totalWeeks={data.weeks.total}
-          lessonsCompleted={data.progress.lessonsCompleted}
-          lessonsTotal={data.progress.lessonsTotal}
-          ataChaptersCompleted={data.ataChapters.completed}
-          totalAtaChapters={data.ataChapters.total}
-        />
+      {showFullDashboard ? (
+        <DashboardContentFrame className="space-y-6 sm:space-y-7">
+          <div className="grid gap-7 lg:grid-cols-2 lg:gap-10">
+            <ProgressBar
+              percent={data.progress.trainingPercent}
+              summary={
+                data.progress.hoursRequired > 0
+                  ? `${data.progress.hoursCompleted.toFixed(1)} / ${data.progress.hoursRequired.toFixed(1)} training hours`
+                  : null
+              }
+              trainingProgramName={data.trainingPlanName}
+            />
+            <HoursProgressCard
+              completedHours={data.hours.total}
+              targetHours={data.hours.target}
+              status={data.hours.thisWeek === 0 ? "behind" : "on_pace"}
+            />
+          </div>
 
-        <CurrentTrainingCard
-          currentWeek={data.weeks.current}
-          totalWeeks={data.weeks.total}
-          topic={data.currentTraining.topic}
-          dueDate={data.currentTraining.dueDate}
-        />
-
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-          <CredentialsSummaryCard
-            trainingCount={trainings.length}
-            certificationCount={certifications.length}
+          <MetricCards
+            thisWeekHours={data.hours.thisWeek}
+            currentWeek={data.weeks.current}
+            totalWeeks={data.weeks.total}
+            lessonsCompleted={data.progress.lessonsCompleted}
+            lessonsTotal={data.progress.lessonsTotal}
+            ataChaptersCompleted={data.ataChapters.completed}
+            totalAtaChapters={data.ataChapters.total}
           />
-          <RecentActivityCard entries={data.logbookEntries} />
-        </div>
-      </DashboardContentFrame>
+
+          <CurrentTrainingCard
+            currentWeek={data.weeks.current}
+            totalWeeks={data.weeks.total}
+            topic={data.currentTraining.topic}
+            dueDate={data.currentTraining.dueDate}
+          />
+
+          <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+            <CredentialsSummaryCard
+              trainingCount={trainings.length}
+              certificationCount={certifications.length}
+            />
+            <RecentActivityCard entries={data.logbookEntries} />
+          </div>
+        </DashboardContentFrame>
+      ) : null}
+
+      {showFindTrainingSection ? <FindTrainingDashboardSection /> : null}
     </DashboardPageShell>
   );
 }

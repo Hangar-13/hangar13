@@ -25,6 +25,7 @@ import {
   Award,
   BookOpen,
   ChevronRight,
+  Cog,
   FileDown,
   Plane,
   Plus,
@@ -41,6 +42,8 @@ type DetailPanel =
   | { kind: "certifications" }
   | { kind: "trainings" }
   | { kind: "aircraft"; row: SkillsProfileExperienceRow }
+  | { kind: "engine"; row: SkillsProfileExperienceRow }
+  | { kind: "propeller"; row: SkillsProfileExperienceRow }
   | { kind: "ata"; row: SkillsProfileExperienceRow }
   | { kind: "external-cert"; certId: string }
   | null;
@@ -195,6 +198,16 @@ function DetailSheet({
     return filterExperienceEntries(panel.row, "aircraft");
   }, [panel]);
 
+  const engineEntries = useMemo(() => {
+    if (panel?.kind !== "engine") return [];
+    return filterExperienceEntries(panel.row, "engine");
+  }, [panel]);
+
+  const propellerEntries = useMemo(() => {
+    if (panel?.kind !== "propeller") return [];
+    return filterExperienceEntries(panel.row, "propeller");
+  }, [panel]);
+
   const ataEntries = useMemo(() => {
     if (panel?.kind !== "ata") return [];
     return filterExperienceEntries(panel.row, "ata");
@@ -209,11 +222,18 @@ function DetailSheet({
   } else if (panel?.kind === "trainings") {
     title = "Completed training";
     description = "Programs and courses completed on or off platform.";
-  } else if (panel?.kind === "aircraft") {
-    title = panel.row.label;
-    description = `${formatSkillsHours(panel.row.totalHours)} hours across ${panel.row.entryCount} log entries`;
-  } else if (panel?.kind === "ata") {
-    title = panel.row.label;
+  } else if (
+    panel?.kind === "aircraft" ||
+    panel?.kind === "engine" ||
+    panel?.kind === "propeller" ||
+    panel?.kind === "ata"
+  ) {
+    title =
+      panel.kind === "engine"
+        ? `Engine: ${panel.row.label}`
+        : panel.kind === "propeller"
+          ? `Propeller: ${panel.row.label}`
+          : panel.row.label;
     description = `${formatSkillsHours(panel.row.totalHours)} hours across ${panel.row.entryCount} log entries`;
   } else if (panel?.kind === "external-cert" && externalCert) {
     title = externalCert.name;
@@ -348,6 +368,14 @@ function DetailSheet({
                 <LogEntryList entries={aircraftEntries} />
               ) : null}
 
+              {panel.kind === "engine" ? (
+                <LogEntryList entries={engineEntries} showAircraft />
+              ) : null}
+
+              {panel.kind === "propeller" ? (
+                <LogEntryList entries={propellerEntries} showAircraft />
+              ) : null}
+
               {panel.kind === "ata" ? (
                 <LogEntryList entries={ataEntries} showAircraft />
               ) : null}
@@ -408,6 +436,8 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
     profile.certificationAwards.length + profile.externalCertifications.length;
   const trainingCount = profile.trainingCompletions.length;
   const aircraftCount = profile.aircraftExperience.length;
+  const engineCount = profile.engineExperience.length;
+  const propellerCount = profile.propellerExperience.length;
   const ataCount = profile.ataExperience.length;
 
   const credentialStatus = buildSkillsProfileCredentialStatus({
@@ -427,18 +457,27 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
         </p>
       ) : null}
 
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Skills profile</h1>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="shrink-0"
-          onClick={() => downloadSkillsProfilePdf(profile)}
-        >
-          <FileDown className="mr-2 h-4 w-4" />
-          Export PDF
-        </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {profile.viewerIsOwner ? (
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link href="/dashboard/student/prior-ojt">
+                <Wrench className="mr-2 h-4 w-4" />
+                Prior OJT Experience
+              </Link>
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => downloadSkillsProfilePdf(profile)}
+          >
+            <FileDown className="mr-2 h-4 w-4" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-8">
@@ -587,6 +626,16 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
               defaultOpen
               titleClassName={titleClass}
               icon={<Wrench className="h-4 w-4" />}
+              actions={
+                profile.viewerIsOwner ? (
+                  <Button type="button" variant="outline" size="sm" asChild>
+                    <Link href="/dashboard/student/prior-ojt">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add prior OJT
+                    </Link>
+                  </Button>
+                ) : undefined
+              }
             >
               {profile.totalOjtHours === 0 && ataCount === 0 ? (
                 <p className="text-sm text-muted-foreground">
@@ -612,32 +661,93 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
               )}
             </CollapsibleSection>
 
-            <CollapsibleSection
-              title="Airframe experience"
-              defaultOpen
-              titleClassName={titleClass}
-              icon={<Plane className="h-4 w-4" />}
-            >
-              {aircraftCount === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No airframe-specific OJT logged yet. Add aircraft on logbook entries to build
-                  this summary.
-                </p>
-              ) : (
-                <ul className="divide-y divide-border/25">
-                  {profile.aircraftExperience.map((row) => (
-                    <li key={row.key}>
-                      <ExperienceRowButton
-                        label={row.label}
-                        hours={row.totalHours}
-                        entryCount={row.entryCount}
-                        onClick={() => setDetailPanel({ kind: "aircraft", row })}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CollapsibleSection>
+            <div className="space-y-8">
+              <CollapsibleSection
+                title="Airframe experience"
+                defaultOpen
+                titleClassName={titleClass}
+                icon={<Plane className="h-4 w-4" />}
+              >
+                {aircraftCount === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No airframe-specific OJT logged yet. Add aircraft on logbook entries to build
+                    this summary.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-border/25">
+                    {profile.aircraftExperience.map((row) => (
+                      <li key={row.key}>
+                        <ExperienceRowButton
+                          label={row.label}
+                          hours={row.totalHours}
+                          entryCount={row.entryCount}
+                          onClick={() => setDetailPanel({ kind: "aircraft", row })}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                title="Engine / Propeller Experience"
+                defaultOpen
+                titleClassName={titleClass}
+                icon={<Cog className="h-4 w-4" />}
+              >
+                {engineCount === 0 && propellerCount === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No engine or propeller OJT logged yet. Add engine and propeller on logbook
+                    entries to build this summary.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {engineCount > 0 ? (
+                      <div>
+                        {propellerCount > 0 ? (
+                          <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">
+                            Engines
+                          </p>
+                        ) : null}
+                        <ul className="divide-y divide-border/25">
+                          {profile.engineExperience.map((row) => (
+                            <li key={`engine-${row.key}`}>
+                              <ExperienceRowButton
+                                label={row.label}
+                                hours={row.totalHours}
+                                entryCount={row.entryCount}
+                                onClick={() => setDetailPanel({ kind: "engine", row })}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {propellerCount > 0 ? (
+                      <div>
+                        {engineCount > 0 ? (
+                          <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">
+                            Propellers
+                          </p>
+                        ) : null}
+                        <ul className="divide-y divide-border/25">
+                          {profile.propellerExperience.map((row) => (
+                            <li key={`propeller-${row.key}`}>
+                              <ExperienceRowButton
+                                label={row.label}
+                                hours={row.totalHours}
+                                entryCount={row.entryCount}
+                                onClick={() => setDetailPanel({ kind: "propeller", row })}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </CollapsibleSection>
+            </div>
           </div>
         </DashboardContentFrame>
       </div>
