@@ -5,12 +5,14 @@ import { AppNavigationProvider } from "@/components/app-navigation-provider";
 import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
 import { Sidebar } from "@/components/sidebar";
 import { TopNav } from "@/components/top-nav";
+import { isMarketingPath } from "@/lib/marketing/is-marketing-path";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAuthPage = pathname?.startsWith("/auth");
+  const isPublicMarketing = isMarketingPath(pathname);
 
-  if (isAuthPage) {
+  if (isAuthPage || isPublicMarketing) {
     return <>{children}</>;
   }
 

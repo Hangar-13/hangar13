@@ -17,7 +17,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Hangar 13",
-  description: "Next.js app with sidebar and top navigation",
+  description:
+    "The training command center built for aviation maintenance. Track OJT, issue FAA-aligned coursework, and prove proficiency.",
   icons: {
     icon: "/images/hangar13Logo.png",
     apple: "/images/hangar13Logo.png",

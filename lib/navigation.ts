@@ -15,6 +15,7 @@ import {
   CreditCard,
   Landmark,
   IdCard,
+  Megaphone,
 } from "lucide-react";
 import {
   hasOrganizationRolePermission,
@@ -160,6 +161,7 @@ export function getNavigationSections(
     { name: "Dashboard", href: "/dashboard/god", icon: LayoutDashboard },
     { name: "Users", href: "/dashboard/god/users", icon: Users },
     { name: "Organizations", href: "/dashboard/god/organizations", icon: Building2 },
+    { name: "Landing page", href: "/dashboard/god/landing", icon: Megaphone },
   ];
 
   const organizationSupervisorNavigation: NavItem[] = [

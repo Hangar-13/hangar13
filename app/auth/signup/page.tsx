@@ -94,11 +94,13 @@ export default function SignupPage() {
       </div>
       <div className="absolute inset-0 bg-background/50 backdrop-blur-sm -z-10" />
       <div className="relative w-full max-w-md space-y-8 mb-8 flex justify-center">
-        <img
-          src="/images/hangar13Logo.png"
-          alt="Hangar 13"
-          className="h-24 md:h-32 w-auto object-contain drop-shadow-lg"
-        />
+        <Link href="/" className="inline-flex" aria-label="Hangar 13 home">
+          <img
+            src="/images/hangar13Logo.png"
+            alt="Hangar 13"
+            className="h-24 md:h-32 w-auto object-contain drop-shadow-lg"
+          />
+        </Link>
       </div>
       {confirmEmail ? (
         <div className="relative w-full max-w-md space-y-6 rounded-xl border border-border/50 bg-white p-8 shadow-2xl text-center">
