@@ -177,17 +177,8 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // If user is authenticated and on root path, redirect based on role + org memberships
-  if (user && request.nextUrl.pathname === "/") {
-    const ctx = await loadUserContext(user.id);
-    const orgRole = effectiveOrgRoleForRedirect(ctx.memberships);
-    return redirectForUserContext(
-      ctx.systemRole,
-      orgRole,
-      ctx.defaultStartPath,
-      request.url
-    );
-  }
+  // Public marketing home stays public even when signed in, so visitors (and Back
+  // from Sign in) can return to `/` instead of being bounced to the dashboard.
 
   return response;
 }

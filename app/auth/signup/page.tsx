@@ -9,6 +9,14 @@ import { supabaseClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AuthFooterLink,
+  AuthShell,
+  authButtonClassName,
+  authInputClassName,
+} from "@/components/auth/auth-shell";
+import { cn } from "@/lib/utils";
+
 const signupSchema = z
   .object({
     firstName: z.string().min(1, "First name is required"),
@@ -83,163 +91,141 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center p-4 overflow-hidden" data-auth-page>
-      <div className="fixed inset-0 -z-10">
-        <img
-          src="/images/helicopterMaintenanceSunset.jpeg"
-          alt="Helicopter maintenance at sunset"
-          className="w-full h-full object-cover"
-          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
-        />
-      </div>
-      <div className="absolute inset-0 bg-background/50 backdrop-blur-sm -z-10" />
-      <div className="relative w-full max-w-md space-y-8 mb-8 flex justify-center">
-        <Link href="/" className="inline-flex" aria-label="Hangar 13 home">
-          <img
-            src="/images/hangar13Logo.png"
-            alt="Hangar 13"
-            className="h-24 md:h-32 w-auto object-contain drop-shadow-lg"
-          />
-        </Link>
-      </div>
+    <AuthShell>
       {confirmEmail ? (
-        <div className="relative w-full max-w-md space-y-6 rounded-xl border border-border/50 bg-white p-8 shadow-2xl text-center">
-          <div className="flex justify-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">Confirm your email</h1>
-          <p className="text-muted-foreground text-sm">
+        <div className="space-y-6">
+          <p className="font-mono text-xs font-bold uppercase tracking-[.22em] text-[#0055FF]">
+            Account
+          </p>
+          <h1 className="text-[2.15rem] font-black uppercase leading-[.9] tracking-[-.06em]">
+            Confirm your email
+          </h1>
+          <p className="text-sm leading-6 text-[#515860]">
             We sent a confirmation link to{" "}
-            <span className="font-medium text-foreground">{confirmEmail}</span>. Click
+            <span className="font-semibold text-[#121417]">{confirmEmail}</span>. Click
             the link in that email to activate your account and sign in.
           </p>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs leading-5 text-[#515860]">
             Don&apos;t see it? Check your spam folder. The link expires after a while,
             so confirm soon.
           </p>
-          <div className="text-sm">
-            <Link href="/auth/login" className="text-primary hover:underline">
-              Back to sign in
-            </Link>
-          </div>
+          <Link
+            href="/auth/login"
+            className="inline-flex text-sm font-semibold text-[#0055FF] underline-offset-4 hover:underline"
+          >
+            Back to sign in
+          </Link>
         </div>
       ) : (
-      <div className="relative w-full max-w-md space-y-8 rounded-xl border border-border/50 bg-white p-8 shadow-2xl">
-        <div className="space-y-2 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-              </svg>
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">Create an account</h1>
-          <p className="text-muted-foreground text-sm">
-            Enter your information to get started
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {error && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                type="text"
-                placeholder="John"
-                {...register("firstName")}
-                aria-invalid={errors.firstName ? "true" : "false"}
-              />
-              {errors.firstName && (
-                <p className="text-sm text-destructive">{errors.firstName.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input
-                id="lastName"
-                type="text"
-                placeholder="Doe"
-                {...register("lastName")}
-                aria-invalid={errors.lastName ? "true" : "false"}
-              />
-              {errors.lastName && (
-                <p className="text-sm text-destructive">{errors.lastName.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              {...register("email")}
-              aria-invalid={errors.email ? "true" : "false"}
-            />
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              {...register("password")}
-              aria-invalid={errors.password ? "true" : "false"}
-            />
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Must be at least 6 characters with uppercase and lowercase letters
+        <div className="space-y-8">
+          <div className="space-y-3">
+            <p className="font-mono text-xs font-bold uppercase tracking-[.22em] text-[#0055FF]">
+              Account
+            </p>
+            <h1 className="text-[2.15rem] font-black uppercase leading-[.9] tracking-[-.06em]">
+              Create an account
+            </h1>
+            <p className="text-sm leading-6 text-[#515860]">
+              Start a portable OJT record — then add coursework when you need it.
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="••••••••"
-              {...register("confirmPassword")}
-              aria-invalid={errors.confirmPassword ? "true" : "false"}
-            />
-            {errors.confirmPassword && (
-              <p className="text-sm text-destructive">
-                {errors.confirmPassword.message}
-              </p>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {error && (
+              <div className="border border-red-700/30 bg-red-50 p-3 text-sm text-red-800">
+                {error}
+              </div>
             )}
-          </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Creating account..." : "Create account"}
-          </Button>
-        </form>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  placeholder="John"
+                  className={authInputClassName}
+                  {...register("firstName")}
+                  aria-invalid={errors.firstName ? "true" : "false"}
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-red-700">{errors.firstName.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Doe"
+                  className={authInputClassName}
+                  {...register("lastName")}
+                  aria-invalid={errors.lastName ? "true" : "false"}
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-red-700">{errors.lastName.message}</p>
+                )}
+              </div>
+            </div>
 
-        <div className="text-center text-sm">
-          <span className="text-muted-foreground">Already have an account? </span>
-          <Link href="/auth/login" className="text-primary hover:underline">
-            Sign in
-          </Link>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                className={authInputClassName}
+                {...register("email")}
+                aria-invalid={errors.email ? "true" : "false"}
+              />
+              {errors.email && (
+                <p className="text-sm text-red-700">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                className={authInputClassName}
+                {...register("password")}
+                aria-invalid={errors.password ? "true" : "false"}
+              />
+              {errors.password && (
+                <p className="text-sm text-red-700">{errors.password.message}</p>
+              )}
+              <p className="text-xs text-[#515860]">
+                Must be at least 6 characters with uppercase and lowercase letters
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                className={authInputClassName}
+                {...register("confirmPassword")}
+                aria-invalid={errors.confirmPassword ? "true" : "false"}
+              />
+              {errors.confirmPassword && (
+                <p className="text-sm text-red-700">
+                  {errors.confirmPassword.message}
+                </p>
+              )}
+            </div>
+
+            <Button type="submit" className={cn("w-full", authButtonClassName)} disabled={isLoading}>
+              {isLoading ? "Creating account..." : "Create account"}
+            </Button>
+          </form>
+
+          <AuthFooterLink prompt="Already have an account?" href="/auth/login" label="Sign in" />
         </div>
-      </div>
       )}
-    </div>
+    </AuthShell>
   );
 }
-

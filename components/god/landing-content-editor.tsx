@@ -204,9 +204,25 @@ function PlanEditor({
             />
             <Field
               label="Plan name"
+              hint="Aviation nickname, e.g. Ground Crew"
               value={plan.name}
               onChange={(name) =>
                 onChange(plans.map((row, i) => (i === index ? { ...row, name } : row)))
+              }
+            />
+            <Field
+              label="Plain-English name"
+              hint="e.g. Free logbook"
+              value={plan.plainName}
+              onChange={(plainName) =>
+                onChange(plans.map((row, i) => (i === index ? { ...row, plainName } : row)))
+              }
+            />
+            <Field
+              label="Who it's for"
+              value={plan.audienceLine}
+              onChange={(audienceLine) =>
+                onChange(plans.map((row, i) => (i === index ? { ...row, audienceLine } : row)))
               }
             />
             <Field
@@ -308,6 +324,8 @@ function PlanEditor({
             {
               code: "",
               name: "New plan",
+              plainName: "New plan",
+              audienceLine: "",
               recommended: false,
               recommendedLabel: "Recommended",
               tagline: "",
@@ -392,6 +410,7 @@ export function LandingContentEditor({
       <Tabs defaultValue="nav">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="nav">Nav & hero</TabsTrigger>
+          <TabsTrigger value="path">Path & proof</TabsTrigger>
           <TabsTrigger value="solutions">Solutions</TabsTrigger>
           <TabsTrigger value="coursework">Coursework</TabsTrigger>
           <TabsTrigger value="mentorship">Mentorship</TabsTrigger>
@@ -448,9 +467,14 @@ export function LandingContentEditor({
               onChange={(fieldNotesLabel) => patch("nav", { fieldNotesLabel })}
             />
             <Field
-              label="Top-right button"
+              label="Mechanic nav button"
               value={content.nav.ctaLabel}
               onChange={(ctaLabel) => patch("nav", { ctaLabel })}
+            />
+            <Field
+              label="Operator nav button"
+              value={content.nav.operatorCtaLabel}
+              onChange={(operatorCtaLabel) => patch("nav", { operatorCtaLabel })}
             />
           </div>
           <div className="grid gap-4">
@@ -472,7 +496,7 @@ export function LandingContentEditor({
               />
               <Field
                 label="Headline accent"
-                hint="Shown in the brand yellow"
+                hint="Large stacked word; keep short"
                 value={content.hero.headlineAccent}
                 onChange={(headlineAccent) => patch("hero", { headlineAccent })}
               />
@@ -485,37 +509,139 @@ export function LandingContentEditor({
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field
-                label="Primary button"
-                value={content.hero.primaryCta}
-                onChange={(primaryCta) => patch("hero", { primaryCta })}
+                label="Choice headline"
+                value={content.hero.choiceHeadline}
+                onChange={(choiceHeadline) => patch("hero", { choiceHeadline })}
               />
               <Field
-                label="Secondary button"
-                value={content.hero.secondaryCta}
-                onChange={(secondaryCta) => patch("hero", { secondaryCta })}
+                label="Choice hint"
+                value={content.hero.choiceHint}
+                onChange={(choiceHint) => patch("hero", { choiceHint })}
+                multiline
+                rows={2}
               />
               <Field
-                label="Sample card label"
-                value={content.hero.mockKicker}
-                onChange={(mockKicker) => patch("hero", { mockKicker })}
+                label="Mechanic choice"
+                value={content.hero.mechanicChoiceLabel}
+                onChange={(mechanicChoiceLabel) => patch("hero", { mechanicChoiceLabel })}
               />
               <Field
-                label="Sample card status"
-                value={content.hero.mockStatus}
-                onChange={(mockStatus) => patch("hero", { mockStatus })}
+                label="Operator choice"
+                value={content.hero.operatorChoiceLabel}
+                onChange={(operatorChoiceLabel) => patch("hero", { operatorChoiceLabel })}
               />
               <Field
-                label="Sample card title"
-                value={content.hero.mockTitle}
-                onChange={(mockTitle) => patch("hero", { mockTitle })}
+                label="Mechanic follow-up"
+                value={content.hero.mechanicLead}
+                onChange={(mechanicLead) => patch("hero", { mechanicLead })}
+                multiline
+                rows={2}
               />
               <Field
-                label="Sample card signed line"
-                value={content.hero.mockSigned}
-                onChange={(mockSigned) => patch("hero", { mockSigned })}
+                label="Operator follow-up"
+                value={content.hero.operatorLead}
+                onChange={(operatorLead) => patch("hero", { operatorLead })}
+                multiline
+                rows={2}
+              />
+              <Field
+                label="Mechanic button"
+                value={content.hero.mechanicCta}
+                onChange={(mechanicCta) => patch("hero", { mechanicCta })}
+              />
+              <Field
+                label="Mechanic button link"
+                value={content.hero.mechanicCtaHref}
+                onChange={(mechanicCtaHref) => patch("hero", { mechanicCtaHref })}
+              />
+              <Field
+                label="Operator button"
+                value={content.hero.operatorCta}
+                onChange={(operatorCta) => patch("hero", { operatorCta })}
+              />
+              <Field
+                label="Operator button link"
+                value={content.hero.operatorCtaHref}
+                onChange={(operatorCtaHref) => patch("hero", { operatorCtaHref })}
               />
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="path" className="space-y-8 pt-4">
+          <h3 className="font-semibold">Product screenshot captions</h3>
+          <Field
+            label="Section label"
+            value={content.proof.kicker}
+            onChange={(kicker) => patch("proof", { kicker })}
+          />
+          <Field
+            label="Headline"
+            value={content.proof.headline}
+            onChange={(headline) => patch("proof", { headline })}
+          />
+          <Field
+            label="Mechanic caption"
+            value={content.proof.mechanicCaption}
+            onChange={(mechanicCaption) => patch("proof", { mechanicCaption })}
+            multiline
+          />
+          <Field
+            label="Operator caption"
+            value={content.proof.operatorCaption}
+            onChange={(operatorCaption) => patch("proof", { operatorCaption })}
+            multiline
+          />
+          <h3 className="font-semibold">What you get</h3>
+          <Field
+            label="Section label"
+            value={content.value.kicker}
+            onChange={(kicker) => patch("value", { kicker })}
+          />
+          <Field
+            label="Mechanic headline"
+            value={content.value.mechanicHeadline}
+            onChange={(mechanicHeadline) => patch("value", { mechanicHeadline })}
+          />
+          <BulletEditor
+            items={content.value.mechanicItems}
+            onChange={(mechanicItems) => patch("value", { mechanicItems })}
+          />
+          <Field
+            label="Operator headline"
+            value={content.value.operatorHeadline}
+            onChange={(operatorHeadline) => patch("value", { operatorHeadline })}
+          />
+          <BulletEditor
+            items={content.value.operatorItems}
+            onChange={(operatorItems) => patch("value", { operatorItems })}
+          />
+          <h3 className="font-semibold">Proof points</h3>
+          <Field
+            label="Section label"
+            value={content.proofPoints.kicker}
+            onChange={(kicker) => patch("proofPoints", { kicker })}
+          />
+          <Field
+            label="Headline"
+            value={content.proofPoints.headline}
+            onChange={(headline) => patch("proofPoints", { headline })}
+          />
+          <BulletEditor
+            items={content.proofPoints.points}
+            onChange={(points) => patch("proofPoints", { points })}
+          />
+          <h3 className="font-semibold">More (accordion labels)</h3>
+          <Field
+            label="Compare accordion"
+            value={content.details.compareLabel}
+            onChange={(compareLabel) => patch("details", { compareLabel })}
+          />
+          <Field
+            label="Quotes accordion"
+            value={content.details.quotesLabel}
+            onChange={(quotesLabel) => patch("details", { quotesLabel })}
+          />
         </TabsContent>
 
         <TabsContent value="solutions" className="space-y-8 pt-4">

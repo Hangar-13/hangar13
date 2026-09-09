@@ -11,7 +11,7 @@ export function DashboardPageShell({
   return (
     <div
       className={cn(
-        "-mx-4 space-y-6 rounded-lg bg-[#F8F9FA] px-4 py-6 sm:-mx-6 sm:px-6",
+        "-mx-4 space-y-6 rounded-lg bg-muted/40 px-4 py-6 sm:-mx-6 sm:px-6",
         className
       )}
     >

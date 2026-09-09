@@ -1,15 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { navigateAfterLogin } from "@/lib/auth-post-login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AuthContinuing,
+  AuthShell,
+  authButtonClassName,
+  authInputClassName,
+} from "@/components/auth/auth-shell";
+import { cn } from "@/lib/utils";
 
 const resetSchema = z
   .object({
@@ -24,10 +31,8 @@ const resetSchema = z
 type ResetFormData = z.infer<typeof resetSchema>;
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState<"idle" | "saving" | "opening">("idle");
 
   const {
     register,
@@ -39,8 +44,7 @@ export default function ResetPasswordPage() {
 
   const onSubmit = async (data: ResetFormData) => {
     setError(null);
-    setMessage(null);
-    setIsLoading(true);
+    setStatus("saving");
 
     try {
       const { error: updateError } = await supabaseClient.auth.updateUser({
@@ -49,25 +53,45 @@ export default function ResetPasswordPage() {
 
       if (updateError) {
         setError(updateError.message);
+        setStatus("idle");
         return;
       }
 
-      setMessage("Password updated. Redirecting to your dashboard…");
-      setTimeout(() => {
-        router.push("/");
-        router.refresh();
-      }, 1200);
-    } finally {
-      setIsLoading(false);
+      await supabaseClient.auth.getSession();
+      setStatus("opening");
+      navigateAfterLogin(null);
+    } catch {
+      setError("An unexpected error occurred. Please try again.");
+      setStatus("idle");
     }
   };
 
+  if (status !== "idle") {
+    return (
+      <AuthShell>
+        <AuthContinuing
+          title="Set a new password"
+          message={
+            status === "opening"
+              ? "Opening your workspace…"
+              : "Updating your password…"
+          }
+        />
+      </AuthShell>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-6 rounded-lg border bg-card p-6 shadow-sm">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold">Set a new password</h1>
-          <p className="text-sm text-muted-foreground">
+    <AuthShell>
+      <div className="space-y-8">
+        <div className="space-y-3">
+          <p className="font-mono text-xs font-bold uppercase tracking-[.22em] text-[#0055FF]">
+            Account
+          </p>
+          <h1 className="text-[2.15rem] font-black uppercase leading-[.9] tracking-[-.06em]">
+            Set a new password
+          </h1>
+          <p className="text-sm leading-6 text-[#515860]">
             Choose a new password for your account.
           </p>
         </div>
@@ -79,10 +103,11 @@ export default function ResetPasswordPage() {
               id="password"
               type="password"
               autoComplete="new-password"
+              className={authInputClassName}
               {...register("password")}
             />
             {errors.password ? (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
+              <p className="text-sm text-red-700">{errors.password.message}</p>
             ) : null}
           </div>
 
@@ -92,29 +117,29 @@ export default function ResetPasswordPage() {
               id="confirmPassword"
               type="password"
               autoComplete="new-password"
+              className={authInputClassName}
               {...register("confirmPassword")}
             />
             {errors.confirmPassword ? (
-              <p className="text-sm text-destructive">
+              <p className="text-sm text-red-700">
                 {errors.confirmPassword.message}
               </p>
             ) : null}
           </div>
 
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+          {error ? <p className="text-sm text-red-700">{error}</p> : null}
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Updating…" : "Update password"}
+          <Button type="submit" className={cn("w-full", authButtonClassName)}>
+            Update password
           </Button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground">
-          <Link href="/auth/login" className="underline underline-offset-4">
+        <p className="text-center text-sm">
+          <Link href="/auth/login" className="font-semibold text-[#0055FF] underline-offset-4 hover:underline">
             Back to sign in
           </Link>
         </p>
       </div>
-    </div>
+    </AuthShell>
   );
 }

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppLayout } from "@/components/app-layout";
 import { AuthRefreshRecovery } from "@/components/auth-refresh-recovery";
 import { ThemeProvider } from "@/components/theme-provider";
+import { PaletteProvider } from "@/components/palette-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,8 +21,8 @@ export const metadata: Metadata = {
   description:
     "The training command center built for aviation maintenance. Track OJT, issue FAA-aligned coursework, and prove proficiency.",
   icons: {
-    icon: "/images/hangar13Logo.png",
-    apple: "/images/hangar13Logo.png",
+    icon: "/favicon.svg",
+    apple: "/favicon.svg",
   },
 };
 
@@ -32,6 +33,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(localStorage.getItem("hangar-palette")==="classic"){document.documentElement.setAttribute("data-palette","classic")}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -41,8 +49,10 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <AuthRefreshRecovery />
-          <AppLayout>{children}</AppLayout>
+          <PaletteProvider>
+            <AuthRefreshRecovery />
+            <AppLayout>{children}</AppLayout>
+          </PaletteProvider>
         </ThemeProvider>
       </body>
     </html>

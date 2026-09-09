@@ -12,6 +12,8 @@ export type CodeCard = {
 export type PricingPlan = {
   code: string;
   name: string;
+  plainName: string;
+  audienceLine: string;
   recommended: boolean;
   recommendedLabel: string;
   tagline: string;
@@ -49,6 +51,7 @@ export type LandingContent = {
     pricingLabel: string;
     fieldNotesLabel: string;
     ctaLabel: string;
+    operatorCtaLabel: string;
   };
   hero: {
     eyebrow: string;
@@ -56,12 +59,46 @@ export type LandingContent = {
     headlineLine2: string;
     headlineAccent: string;
     body: string;
+    mechanicChoiceLabel: string;
+    operatorChoiceLabel: string;
+    choiceHeadline: string;
+    choiceHint: string;
+    mechanicLead: string;
+    operatorLead: string;
+    mechanicCta: string;
+    mechanicCtaHref: string;
+    operatorCta: string;
+    operatorCtaHref: string;
     primaryCta: string;
     secondaryCta: string;
     mockKicker: string;
     mockStatus: string;
     mockTitle: string;
     mockSigned: string;
+  };
+  proof: {
+    kicker: string;
+    headline: string;
+    mechanicCaption: string;
+    operatorCaption: string;
+  };
+  value: {
+    kicker: string;
+    mechanicHeadline: string;
+    operatorHeadline: string;
+    mechanicItems: TextBullet[];
+    operatorItems: TextBullet[];
+  };
+  proofPoints: {
+    kicker: string;
+    headline: string;
+    points: TextBullet[];
+  };
+  details: {
+    courseworkLabel: string;
+    mentorshipLabel: string;
+    compareLabel: string;
+    quotesLabel: string;
   };
   solutions: {
     kicker: string;
@@ -146,7 +183,8 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     mentorshipLabel: "Mentorship",
     pricingLabel: "Pricing",
     fieldNotesLabel: "Field notes",
-    ctaLabel: "Start logging",
+    ctaLabel: "Start your logbook — free",
+    operatorCtaLabel: "See operator plans",
   },
   hero: {
     eyebrow: "Aviation training, built right",
@@ -154,15 +192,92 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     headlineLine2: "Learn.",
     headlineAccent: "Certify.",
     body: "The training command center built for aviation maintenance. Track on-the-job training, issue FAA-aligned coursework, and prove proficiency — without chasing paper.",
-    primaryCta: "Explore solutions",
-    secondaryCta: "See coursework",
+    mechanicChoiceLabel: "For mechanics",
+    operatorChoiceLabel: "For operators",
+    choiceHeadline: "Choose your path.",
+    choiceHint: "Nothing is selected yet. Pick one and the page will show the product, plans, and next step for you.",
+    mechanicLead:
+      "A portable OJT record that travels with you. Start free, then add coursework when you need it.",
+    operatorLead:
+      "Bring mentors, training managers, and apprentices into one record — assign work, review it, and stay audit-ready.",
+    mechanicCta: "Start your logbook — free",
+    mechanicCtaHref: "/auth/signup",
+    operatorCta: "See operator plans",
+    operatorCtaHref: "#pricing",
+    primaryCta: "I'm a mechanic",
+    secondaryCta: "I run a shop",
     mockKicker: "OJT entry",
     mockStatus: "Validated",
     mockTitle: "Turbine blade inspection",
     mockSigned: "Supervisor signed",
   },
+  proof: {
+    kicker: "The product",
+    headline: "Your record, signed and searchable.",
+    mechanicCaption:
+      "This is the logbook in Hangar13 — hours, ATA chapters, ACS codes, and a supervisor signature on the same row.",
+    operatorCaption:
+      "The same logbook your apprentices keep. Mentors approve or reject from this record; nothing lives in a side spreadsheet.",
+  },
+  value: {
+    kicker: "What you get",
+    mechanicHeadline: "A record that follows you.",
+    operatorHeadline: "Oversight in one place.",
+    mechanicItems: [
+      {
+        title: "Portable OJT logbook",
+        body: "Log work, attach evidence, and collect supervisor sign-offs — then take the record with you.",
+      },
+      {
+        title: "FAA-aligned coursework",
+        body: "Add A&P, IA, or recurrent training when you need it. No annual lock-in.",
+      },
+      {
+        title: "Mentored OJT",
+        body: "If you join a shop program, weekly deliverables and reviews happen in the same system.",
+      },
+    ],
+    operatorItems: [
+      {
+        title: "Roles that fit the floor",
+        body: "Mentors, training managers, and admins each see the right work and the right controls.",
+      },
+      {
+        title: "Assign and track coursework",
+        body: "Public courses or proprietary shop training — assigned to people, visible in one org record.",
+      },
+      {
+        title: "Mentorship without the binder",
+        body: "Monday deliverables go out automatically. Mentors approve or reject; the record updates itself.",
+      },
+    ],
+  },
+  proofPoints: {
+    kicker: "Why it holds up",
+    headline: "Built for the audit, not the binder.",
+    points: [
+      {
+        title: "Supervisor digital sign-off",
+        body: "See who performed the task, who verified it, and when — without chasing paper.",
+      },
+      {
+        title: "Mapped to FAA ACS codes",
+        body: "Entries and coursework tie back to AMT standards, so remaining work is obvious.",
+      },
+      {
+        title: "Export your history",
+        body: "Take a training history with you across stations and employers.",
+      },
+    ],
+  },
+  details: {
+    courseworkLabel: "See the 130-week coursework breakdown",
+    mentorshipLabel: "Mentorship and Attain, LLC",
+    compareLabel: "Compare plans",
+    quotesLabel: "From the floor",
+  },
   solutions: {
-    kicker: "01 // Solutions",
+    kicker: "Solutions",
     headline: "Two tracks.\nOne system.",
     body: "Whether you're earning your first license or running a maintenance organization, Hangar13 meets you where you are — a personal logbook that travels with you, and an operator workspace that brings oversight and mentorship together.",
     mechanicAudience: "For the mechanic",
@@ -207,7 +322,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     ],
   },
   coursework: {
-    kicker: "02 // Coursework",
+    kicker: "Coursework",
     headline: "From instruction\nto authorization.",
     body: "Coursework built on FAA standards — structured, trackable, and available to individuals and organizations alike.",
     featuredKicker: "A&P school // 130 weeks",
@@ -255,7 +370,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     ],
   },
   mentorship: {
-    kicker: "03 // Mentorship",
+    kicker: "Mentorship",
     headline: "In partnership\nwith Attain, LLC.",
     body: "Attain ensures all SOPs and documents are in place for regulatory purposes — FAA and beyond. Hangar13 powers the mentorship program itself, so the paperwork stays handled and the mentorship stays hands-on.",
     cta: "Talk to us about mentorship",
@@ -280,7 +395,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     ],
   },
   pricing: {
-    kicker: "03 // Command center",
+    kicker: "Pricing",
     headline: "Select your\nflight plan.",
     individualLabel: "Individual",
     operatorLabel: "Operator",
@@ -290,6 +405,8 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       {
         code: "IND-01",
         name: "Ground Crew",
+        plainName: "Free logbook",
+        audienceLine: "For mechanics starting a portable OJT record",
         recommended: false,
         recommendedLabel: "Recommended",
         tagline: "Start a clean, portable OJT record.",
@@ -301,12 +418,14 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           "Supervisor sign-offs",
           "Training history export",
         ],
-        cta: "Start free",
+        cta: "Start your logbook — free",
         ctaHref: "/auth/signup",
       },
       {
         code: "IND-02",
         name: "Flight Engineer",
+        plainName: "Pro — coursework",
+        audienceLine: "For mechanics adding A&P and IA training",
         recommended: true,
         recommendedLabel: "Recommended",
         tagline: "Advance qualifications and stay current.",
@@ -318,12 +437,14 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           "Assessments and certificates",
           "Renewal reminders",
         ],
-        cta: "Choose Pro",
+        cta: "Continue with Pro",
         ctaHref: "/auth/signup",
       },
       {
         code: "IND-03",
         name: "Fleet Commander",
+        plainName: "Team",
+        audienceLine: "For instructors and independent trainers",
         recommended: false,
         recommendedLabel: "Recommended",
         tagline: "For instructors and independent trainers.",
@@ -335,7 +456,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           "Custom training paths",
           "Progress reporting",
         ],
-        cta: "Lead a team",
+        cta: "Talk to us about a team",
         ctaHref: "/auth/signup",
       },
     ],
@@ -343,6 +464,8 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
       {
         code: "OPS-01",
         name: "Ground Crew",
+        plainName: "Shop",
+        audienceLine: "For a small maintenance team",
         recommended: false,
         recommendedLabel: "Recommended",
         tagline: "A focused system for a small maintenance team.",
@@ -354,12 +477,14 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           "Digital approvals",
           "Core compliance reports",
         ],
-        cta: "Deploy team",
+        cta: "Talk to us",
         ctaHref: "mailto:sales@hangar13.app",
       },
       {
         code: "OPS-02",
         name: "Flight Engineer",
+        plainName: "Operations",
+        audienceLine: "For growing maintenance operations",
         recommended: true,
         recommendedLabel: "Recommended",
         tagline: "Full training command for growing operations.",
@@ -371,12 +496,14 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           "Custom roles and pathways",
           "Advanced reporting",
         ],
-        cta: "Choose operations",
+        cta: "Talk to us",
         ctaHref: "mailto:sales@hangar13.app",
       },
       {
         code: "OPS-03",
         name: "Fleet Commander",
+        plainName: "Enterprise",
+        audienceLine: "Across stations and fleets",
         recommended: false,
         recommendedLabel: "Recommended",
         tagline: "Enterprise control across stations and fleets.",
@@ -388,7 +515,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
           "Implementation support",
           "Custom reporting",
         ],
-        cta: "Contact command",
+        cta: "Talk to us",
         ctaHref: "mailto:sales@hangar13.app",
       },
     ],
@@ -407,7 +534,7 @@ export const DEFAULT_LANDING_CONTENT: LandingContent = {
     ],
   },
   fieldNotes: {
-    kicker: "04 // Field notes",
+    kicker: "Field notes",
     headline: "Signed by\nthe floor.",
     notes: [
       {
@@ -478,7 +605,13 @@ function deepMerge<T>(base: T, override: unknown): T {
 }
 
 export function parseLandingContent(raw: unknown): LandingContent {
-  return deepMerge(DEFAULT_LANDING_CONTENT, raw);
+  const content = deepMerge(DEFAULT_LANDING_CONTENT, raw);
+  content.solutions.kicker = content.solutions.kicker.replace(/^\d{2}\s*\/\/\s*/, "").trim();
+  content.coursework.kicker = content.coursework.kicker.replace(/^\d{2}\s*\/\/\s*/, "").trim();
+  content.mentorship.kicker = content.mentorship.kicker.replace(/^\d{2}\s*\/\/\s*/, "").trim();
+  content.pricing.kicker = content.pricing.kicker.replace(/^\d{2}\s*\/\/\s*/, "").trim();
+  content.fieldNotes.kicker = content.fieldNotes.kicker.replace(/^\d{2}\s*\/\/\s*/, "").trim();
+  return content;
 }
 
 export function cloneLandingContent(content: LandingContent): LandingContent {

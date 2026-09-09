@@ -1,15 +1,24 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { navigateAfterLogin } from "@/lib/auth-post-login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AuthContinuing,
+  AuthFooterLink,
+  AuthShell,
+  authButtonClassName,
+  authInputClassName,
+} from "@/components/auth/auth-shell";
+import { cn } from "@/lib/utils";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -18,33 +27,7 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-/** Full-page navigation for long `/api/*` SSO URLs (`router.push` is unreliable here). */
-function navigateAfterAuthenticated(router: ReturnType<typeof useRouter>, redirectRaw: string | null) {
-  const fallback = "/";
-  const target = redirectRaw?.trim() ? redirectRaw.trim() : fallback;
-
-  if (!target.startsWith("/") || target.startsWith("//")) {
-    router.push(fallback);
-    router.refresh();
-    return;
-  }
-
-  const needsFullPageNavigation =
-    target.startsWith("/api/auth/saml/") ||
-    target.includes("SAMLRequest=") ||
-    target.length > 2048;
-
-  if (needsFullPageNavigation) {
-    window.location.assign(target);
-    return;
-  }
-
-  router.push(target);
-  router.refresh();
-}
-
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const reason = searchParams.get("reason");
   const sessionNotice =
@@ -54,17 +37,17 @@ function LoginForm() {
         ? "That confirmation link is invalid or has expired. Sign in to request a new one."
         : null;
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState<"idle" | "signing-in" | "opening">("idle");
 
-  // If already signed in (e.g. opened login in another tab), honor ?redirect= including SAML resume
   useEffect(() => {
     const redirect = searchParams.get("redirect");
     supabaseClient.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        navigateAfterAuthenticated(router, redirect);
+        setStatus("opening");
+        navigateAfterLogin(redirect);
       }
     });
-  }, [router, searchParams]);
+  }, [searchParams]);
 
   const {
     register,
@@ -76,7 +59,7 @@ function LoginForm() {
 
   const onSubmit = async (data: LoginFormData) => {
     setError(null);
-    setIsLoading(true);
+    setStatus("signing-in");
 
     /** Capture before async work — avoids edge cases where the URL loses ?redirect=. */
     const redirectAfterLogin = searchParams.get("redirect");
@@ -89,7 +72,7 @@ function LoginForm() {
 
       if (signInError) {
         setError(signInError.message);
-        setIsLoading(false);
+        setStatus("idle");
         return;
       }
 
@@ -99,37 +82,46 @@ function LoginForm() {
        */
       await supabaseClient.auth.getSession();
 
-      navigateAfterAuthenticated(router, redirectAfterLogin);
+      setStatus("opening");
+      navigateAfterLogin(redirectAfterLogin);
     } catch {
       setError("An unexpected error occurred. Please try again.");
-      setIsLoading(false);
+      setStatus("idle");
     }
   };
 
+  if (status !== "idle") {
+    return (
+      <AuthContinuing
+        message={
+          status === "opening" ? "Opening your workspace…" : "Signing you in…"
+        }
+      />
+    );
+  }
+
   return (
-    <div className="relative w-full max-w-md space-y-8 rounded-xl border border-border/50 bg-white p-8 shadow-2xl">
-      <div className="space-y-2 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight">Sign in</h1>
-        <p className="text-muted-foreground text-sm">
-          Enter your credentials to access your account
+    <div className="space-y-8">
+      <div className="space-y-3">
+        <p className="font-mono text-xs font-bold uppercase tracking-[.22em] text-[#0055FF]">
+          Account
+        </p>
+        <h1 className="text-[2.15rem] font-black uppercase leading-[.9] tracking-[-.06em]">
+          Sign in
+        </h1>
+        <p className="text-sm leading-6 text-[#515860]">
+          Open your logbook, coursework, and training record.
         </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {sessionNotice ? (
-          <div className="rounded-md border border-border bg-muted/50 p-3 text-sm text-foreground">
+          <div className="border border-[#121417]/15 bg-white p-3 text-sm text-[#121417]">
             {sessionNotice}
           </div>
         ) : null}
         {error && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="border border-red-700/30 bg-red-50 p-3 text-sm text-red-800">
             {error}
           </div>
         )}
@@ -140,11 +132,12 @@ function LoginForm() {
             id="email"
             type="email"
             placeholder="you@example.com"
+            className={authInputClassName}
             {...register("email")}
             aria-invalid={errors.email ? "true" : "false"}
           />
           {errors.email && (
-            <p className="text-sm text-destructive">{errors.email.message}</p>
+            <p className="text-sm text-red-700">{errors.email.message}</p>
           )}
         </div>
 
@@ -153,7 +146,7 @@ function LoginForm() {
             <Label htmlFor="password">Password</Label>
             <Link
               href="/auth/forgot-password"
-              className="text-sm text-primary hover:underline"
+              className="text-sm font-semibold text-[#0055FF] underline-offset-4 hover:underline"
             >
               Forgot password?
             </Link>
@@ -162,60 +155,33 @@ function LoginForm() {
             id="password"
             type="password"
             placeholder="••••••••"
+            className={authInputClassName}
             {...register("password")}
             aria-invalid={errors.password ? "true" : "false"}
           />
           {errors.password && (
-            <p className="text-sm text-destructive">{errors.password.message}</p>
+            <p className="text-sm text-red-700">{errors.password.message}</p>
           )}
         </div>
 
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Signing in..." : "Sign in"}
+        <Button type="submit" className={cn("w-full", authButtonClassName)}>
+          Sign in
         </Button>
       </form>
 
-      <div className="text-center text-sm">
-        <span className="text-muted-foreground">Don&apos;t have an account? </span>
-        <Link href="/auth/signup" className="text-primary hover:underline">
-          Sign up
-        </Link>
-      </div>
+      <AuthFooterLink prompt="Don't have an account?" href="/auth/signup" label="Sign up" />
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center p-4 overflow-hidden" data-auth-page>
-      <div className="fixed inset-0 -z-10">
-        <img
-          src="/images/helicopterMaintenanceSunset.jpeg"
-          alt="Helicopter maintenance at sunset"
-          className="w-full h-full object-cover"
-          style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%' }}
-        />
-      </div>
-      <div className="absolute inset-0 bg-background/50 backdrop-blur-sm -z-10" />
-      <div className="relative w-full max-w-md space-y-8 mb-8 flex justify-center">
-        <Link href="/" className="inline-flex" aria-label="Hangar 13 home">
-          <img
-            src="/images/hangar13Logo.png"
-            alt="Hangar 13"
-            className="h-24 md:h-32 w-auto object-contain drop-shadow-lg"
-          />
-        </Link>
-      </div>
-      <Suspense fallback={
-        <div className="relative w-full max-w-md space-y-8 rounded-xl border border-border/50 bg-white p-8 shadow-2xl">
-          <div className="space-y-2 text-center">
-            <p className="text-muted-foreground">Loading...</p>
-          </div>
-        </div>
-      }>
+    <AuthShell>
+      <Suspense
+        fallback={<AuthContinuing message="Loading…" />}
+      >
         <LoginForm />
       </Suspense>
-    </div>
+    </AuthShell>
   );
 }
-

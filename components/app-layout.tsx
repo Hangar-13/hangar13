@@ -18,7 +18,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <AppNavigationProvider>
-      <div className="relative flex h-screen overflow-hidden">
+      <div className="relative flex h-screen overflow-hidden bg-background">
         <Sidebar />
         <MobileNavDrawer />
         <div className="flex flex-1 flex-col overflow-hidden min-w-0">
