@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { Hangar13Mark } from "@/components/brand/hangar13-mark";
 import type { LandingContent, PricingPlan } from "@/lib/marketing/landing-content";
 import { LogbookProductPreview } from "@/components/marketing/logbook-product-preview";
+import { MailingListModal } from "@/components/marketing/mailing-list-modal";
 
 export type LandingAudience = "mechanic" | "operator";
 
@@ -268,12 +269,18 @@ export function LandingPage({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [audience, setAudience] = useState<LandingAudience | null>(null);
+  const [mailingListOpen, setMailingListOpen] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
     if (hash === "#operator") setAudience("operator");
     if (hash === "#mechanic") setAudience("mechanic");
   }, []);
+
+  function openMailingList() {
+    setMobileOpen(false);
+    setMailingListOpen(true);
+  }
 
   function selectAudience(next: LandingAudience) {
     setAudience(next);
@@ -332,6 +339,13 @@ export function LandingPage({
             <SectionNavLink href="#more" className="hover:text-[#0055FF]">
               More
             </SectionNavLink>
+            <button
+              type="button"
+              className="hover:text-[#0055FF]"
+              onClick={openMailingList}
+            >
+              Mailing list
+            </button>
             <a href="/auth/login" className="hover:text-[#0055FF]">
               Sign in
             </a>
@@ -376,6 +390,9 @@ export function LandingPage({
               <SectionNavLink href="#more" onClick={() => setMobileOpen(false)}>
                 More
               </SectionNavLink>
+              <button type="button" className="text-left" onClick={openMailingList}>
+                Mailing list
+              </button>
               <a href="/auth/login" onClick={() => setMobileOpen(false)}>
                 Sign in
               </a>
@@ -405,6 +422,13 @@ export function LandingPage({
                 <p className="mt-8 font-mono text-[11px] font-bold uppercase tracking-[.2em] text-[#121417]/45">
                   Choose a path →
                 </p>
+                <button
+                  type="button"
+                  onClick={openMailingList}
+                  className="mt-5 text-left text-sm font-semibold text-[#0055FF] underline-offset-4 hover:underline"
+                >
+                  Or join our mailing list
+                </button>
               </div>
               <div
                 id="choose"
@@ -712,6 +736,9 @@ export function LandingPage({
             <span>{content.footer.copyright}</span>
             <span>{content.footer.systemStatus}</span>
             <div className="flex gap-5">
+              <button type="button" onClick={openMailingList}>
+                Mailing list
+              </button>
               <MarketingLink href={content.footer.privacyHref}>{content.footer.privacyLabel}</MarketingLink>
               <MarketingLink href={content.footer.termsHref}>{content.footer.termsLabel}</MarketingLink>
               <a
@@ -727,6 +754,12 @@ export function LandingPage({
           </div>
         </div>
       </footer>
+
+      <MailingListModal
+        open={mailingListOpen}
+        onOpenChange={setMailingListOpen}
+        defaultAudience={audience}
+      />
     </div>
   );
 }

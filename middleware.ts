@@ -84,6 +84,7 @@ export async function middleware(request: NextRequest) {
   /** SAML endpoints handle anonymous entry (login handler redirects signed-out users). */
   const isPublicPath =
     request.nextUrl.pathname === "/" ||
+    request.nextUrl.pathname === "/join" ||
     isAuthPage ||
     isTalentLmsSamlApi;
 
