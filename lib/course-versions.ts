@@ -366,7 +366,9 @@ export async function fetchVersionLessonsForCourse(
       ordered.push({
         ...r,
         id: String(r.source_lesson_id),
-        module_id: String(mod.source_module_id),
+        module_id: mod.source_module_id
+          ? String(mod.source_module_id)
+          : "",
         course_version_id: courseVersion.id,
       });
     }
@@ -406,7 +408,7 @@ export async function fetchVersionLessonBySourceId(
   return {
     ...r,
     id: String(r.source_lesson_id),
-    module_id: mod ? String(mod.source_module_id) : "",
+    module_id: mod?.source_module_id ? String(mod.source_module_id) : "",
     course_version_id: courseVersionId,
   };
 }

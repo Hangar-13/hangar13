@@ -190,11 +190,20 @@ export async function addTrainingPathItems(
 
   const pathOrgId = path.organization_id as string;
 
-  const { data: ownedCourses } = await supabase
+  let { data: ownedCourses } = await supabase
     .from("courses")
     .select("id")
     .eq("organization_id", pathOrgId)
+    .eq("is_deleted_lessons_archive", false)
     .in("visibility", ["proprietary", "public"] as const);
+  if (!ownedCourses) {
+    const fallback = await supabase
+      .from("courses")
+      .select("id")
+      .eq("organization_id", pathOrgId)
+      .in("visibility", ["proprietary", "public"] as const);
+    ownedCourses = fallback.data;
+  }
   const allowedCourseIds = new Set(
     (ownedCourses ?? []).map((c) => c.id)
   );

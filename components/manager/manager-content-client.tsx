@@ -29,6 +29,7 @@ export type ManagerContentLists = {
     name: string;
     description: string | null;
     visibility: string;
+    is_deleted_lessons_archive?: boolean;
   }>;
 };
 
@@ -169,6 +170,11 @@ export function ManagerContentClient({ lists }: { lists: ManagerContentLists }) 
                   />
                   <span className="text-sm font-medium text-foreground">
                     {c.name}
+                    {c.is_deleted_lessons_archive ? (
+                      <span className="ml-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Archive
+                      </span>
+                    ) : null}
                   </span>
                   {c.description ? (
                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">

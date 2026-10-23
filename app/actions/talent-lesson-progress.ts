@@ -7,11 +7,13 @@ import { noActiveTrainingServerError } from "@/lib/training-enrollment-messages"
 import {
   fetchTalentLessonProgressSnapshot,
   type TalentLessonProgressSnapshot,
+  type TalentLessonUnitKind,
 } from "@/lib/talentlms/fetch-lesson-progress";
 import { coerceTalentLmsUnitId } from "@/lib/talentlms/lesson-url";
 
 export async function refreshTalentLessonProgress(
-  weekNumber: number
+  weekNumber: number,
+  unitKind: TalentLessonUnitKind = "lesson"
 ): Promise<TalentLessonProgressSnapshot | { error: string }> {
   const supabase = await createServerSupabaseClient();
 
@@ -44,18 +46,25 @@ export async function refreshTalentLessonProgress(
 
   const { data: lessonTalentRow } = await supabase
     .from("lessons")
-    .select("talent_lms_unit_id")
+    .select("talent_lms_unit_id, talent_lms_test_unit_id")
     .eq("id", lessonId)
     .maybeSingle();
 
-  if (
-    !coerceTalentLmsUnitId(
-      typeof lessonTalentRow?.talent_lms_unit_id === "string"
-        ? lessonTalentRow.talent_lms_unit_id
-        : null
-    )
-  ) {
-    return { error: "No TalentLMS unit is configured for this lesson." };
+  const rawUnit =
+    unitKind === "test"
+      ? lessonTalentRow?.talent_lms_test_unit_id
+      : lessonTalentRow?.talent_lms_unit_id;
+  const configuredUnit = coerceTalentLmsUnitId(
+    typeof rawUnit === "string" ? rawUnit : null
+  );
+
+  if (!configuredUnit) {
+    return {
+      error:
+        unitKind === "test"
+          ? "No TalentLMS test is configured for this lesson."
+          : "No TalentLMS unit is configured for this lesson.",
+    };
   }
 
   const { data: profileRow } = await supabase
@@ -70,5 +79,6 @@ export async function refreshTalentLessonProgress(
       typeof profileRow?.email === "string" ? profileRow.email : undefined,
     ],
     lessonId,
+    unitKind,
   });
 }

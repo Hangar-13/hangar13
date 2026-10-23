@@ -90,8 +90,11 @@ function unitPercentFromCoursePayload(
   };
 }
 
+export type TalentLessonUnitKind = "lesson" | "test";
+
 /**
- * Progress for the learner’s weekly lesson — unit id from `lessons.talent_lms_unit_id`;
+ * Progress for the learner’s weekly lesson — unit id from `lessons.talent_lms_unit_id`
+ * (or `talent_lms_test_unit_id` when `unitKind` is `"test"`);
  * Talent LMS course id from the Hangar **`courses`** row for that lesson (via module).
  *
  * Play URL: `https://{TALENTLMS_SUBDOMAIN}.talentlms.com/plus/my/training/{course}/units/{unit}`.
@@ -103,10 +106,16 @@ export async function fetchTalentLessonProgressSnapshot(
     /** Extra emails to try (e.g. `public.users.email` when it differs from Auth). */
     additionalEmails?: readonly (string | null | undefined)[];
     lessonId: string;
+    unitKind?: TalentLessonUnitKind;
   }>
 ): Promise<TalentLessonProgressSnapshot> {
-  const { courseId: effectiveCourseId, unitId } =
-    await resolveTalentLmsCourseAndUnitForLesson(supabase, options.lessonId);
+  const resolved = await resolveTalentLmsCourseAndUnitForLesson(
+    supabase,
+    options.lessonId
+  );
+  const unitKind = options.unitKind ?? "lesson";
+  const effectiveCourseId = resolved.courseId;
+  const unitId = unitKind === "test" ? resolved.testUnitId : resolved.unitId;
 
   const subdomain = process.env.TALENTLMS_SUBDOMAIN?.trim() ?? "";
 
@@ -126,7 +135,10 @@ export async function fetchTalentLessonProgressSnapshot(
     return {
       kind: "unavailable",
       talentUrl,
-      message: "No TalentLMS lesson specified.",
+      message:
+        unitKind === "test"
+          ? "No TalentLMS test specified."
+          : "No TalentLMS lesson specified.",
     };
   }
 

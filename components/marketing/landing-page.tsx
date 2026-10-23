@@ -22,6 +22,7 @@ import { Hangar13Mark } from "@/components/brand/hangar13-mark";
 import type { LandingContent, PricingPlan } from "@/lib/marketing/landing-content";
 import { LogbookProductPreview } from "@/components/marketing/logbook-product-preview";
 import { MailingListModal } from "@/components/marketing/mailing-list-modal";
+import { ProductCapturePlayer } from "@/components/marketing/product-captures";
 
 export type LandingAudience = "mechanic" | "operator";
 
@@ -270,6 +271,9 @@ export function LandingPage({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [audience, setAudience] = useState<LandingAudience | null>(null);
   const [mailingListOpen, setMailingListOpen] = useState(false);
+  const [captureIndex, setCaptureIndex] = useState(0);
+  // Cycle through captures until the visitor clicks a feature; then hold on that clip.
+  const [capturePinned, setCapturePinned] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -284,6 +288,8 @@ export function LandingPage({
 
   function selectAudience(next: LandingAudience) {
     setAudience(next);
+    setCaptureIndex(0);
+    setCapturePinned(false);
   }
 
   const hasPath = audience !== null;
@@ -458,27 +464,15 @@ export function LandingPage({
           {hasPath ? (
           <div
             id="choose"
-            className="grid scroll-mt-16 bg-white md:grid-cols-2"
+            className="grid scroll-mt-16 bg-white lg:grid-cols-2"
             role="group"
-            aria-label="Choose your path"
+            aria-label="What you get"
           >
-            {audience !== "operator" ? (
-              <PathCard
-                label="For mechanics"
-                imageSrc="/marketing/maintenance-workbench.webp"
-                imageAlt="Mechanic at a hangar workbench"
-                selected
-                expanded
-                switchLabel="Switch to Operator"
-                onSelect={() => selectAudience("mechanic")}
-                onSwitch={() => selectAudience("operator")}
-              />
-            ) : null}
             <div
               id="what-you-get"
               className={cn(
                 "flex flex-col justify-center bg-white px-5 py-12 md:px-8 md:py-16 lg:px-12 xl:px-16",
-                audience === "operator" && "max-md:order-last"
+                audience === "operator" && "lg:order-last"
               )}
             >
               <p className="section-label">{sectionKicker(content.value.kicker)}</p>
@@ -487,34 +481,60 @@ export function LandingPage({
                   text={isMechanic ? content.value.mechanicHeadline : content.value.operatorHeadline}
                 />
               </h2>
-              <div className="mt-8 space-y-4">
+              <p className="mt-4 text-sm text-[#515860]">
+                {isMechanic ? "Mechanic path" : "Operator path"}
+                <span className="text-[#121417]/40"> · </span>
+                <button
+                  type="button"
+                  className="text-[#0055FF] underline-offset-4 hover:underline"
+                  onClick={() => selectAudience(isMechanic ? "operator" : "mechanic")}
+                >
+                  Switch to {isMechanic ? "operator" : "mechanic"}
+                </button>
+              </p>
+              <div className="mt-8 space-y-3">
                 {valueItems.map((item, index) => {
                   const Icon = VALUE_ICONS[index] ?? ShieldCheck;
+                  const active = captureIndex === index;
                   return (
-                    <article
+                    <button
                       key={item.title}
-                      className="border border-[#121417]/10 bg-[#F4F7F9] p-5"
+                      type="button"
+                      onClick={() => {
+                        setCaptureIndex(index);
+                        setCapturePinned(true);
+                      }}
+                      className={cn(
+                        "w-full border p-5 text-left transition",
+                        active
+                          ? "border-[#121417] bg-[#F4F7F9]"
+                          : "border-[#121417]/10 bg-white hover:border-[#121417]/25"
+                      )}
+                      aria-pressed={active}
                     >
                       <Icon className="h-5 w-5 text-[#0055FF]" aria-hidden />
                       <h3 className="mt-3 text-lg font-bold">{item.title}</h3>
                       <p className="mt-2 text-sm leading-6 text-[#515860]">{item.body}</p>
-                    </article>
+                    </button>
                   );
                 })}
               </div>
             </div>
-            {audience !== "mechanic" ? (
-              <PathCard
-                label="For operators"
-                imageSrc="/marketing/turbine-assembly.webp"
-                imageAlt="Turbine assembly in a hangar"
-                selected
-                expanded
-                switchLabel="Switch to Mechanic"
-                onSelect={() => selectAudience("operator")}
-                onSwitch={() => selectAudience("mechanic")}
+            <div className="flex flex-col justify-center bg-[#F4F7F9] px-5 py-10 md:px-8 lg:px-10">
+              <p className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[.2em] text-[#121417]/45">
+                {isMechanic ? "Mechanic" : "Operator"} walkthrough
+              </p>
+              <ProductCapturePlayer
+                audience={isMechanic ? "mechanic" : "operator"}
+                activeIndex={captureIndex}
+                pinned={capturePinned}
+                onActiveIndexChange={setCaptureIndex}
+                onContinue={() => {
+                  setCaptureIndex((captureIndex + 1) % 3);
+                  setCapturePinned(false);
+                }}
               />
-            ) : null}
+            </div>
           </div>
           ) : null}
         </section>

@@ -108,6 +108,11 @@ export default async function ManagerLessonDetailPage({ params }: PageProps) {
           "string"
             ? (lesson as { talent_lms_unit_id: string }).talent_lms_unit_id
             : null,
+        talent_lms_test_unit_id:
+          typeof (lesson as { talent_lms_test_unit_id?: unknown })
+            .talent_lms_test_unit_id === "string"
+            ? (lesson as { talent_lms_test_unit_id: string }).talent_lms_test_unit_id
+            : null,
         study_materials: lesson.study_materials,
         practical_application: lesson.practical_application,
         mentor_discussion_questions: lesson.mentor_discussion_questions ?? [],

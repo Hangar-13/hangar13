@@ -32,11 +32,20 @@ export default async function ManagerCourseDetailPage({
     notFound();
   }
 
-  const { data: modules } = await supabase
+  const modulesFull = await supabase
     .from("modules")
-    .select("id, title, number, is_hidden_from_users")
+    .select("id, title, number, is_hidden_from_users, needs_setup")
     .eq("course_id", id)
     .order("number", { ascending: true });
+  const modules =
+    modulesFull.data ??
+    (
+      await supabase
+        .from("modules")
+        .select("id, title, number, is_hidden_from_users")
+        .eq("course_id", id)
+        .order("number", { ascending: true })
+    ).data;
 
   const moduleIds = modules?.map((m) => m.id) ?? [];
   const { data: lessons } =
@@ -52,6 +61,8 @@ export default async function ManagerCourseDetailPage({
     id: m.id,
     title: m.title,
     number: m.number,
+    isHiddenFromUsers: m.is_hidden_from_users === true,
+    needsSetup: (m as { needs_setup?: boolean }).needs_setup === true,
     lessons: (lessons ?? []).filter((l) => l.module_id === m.id),
   }));
 

@@ -12,22 +12,35 @@ export type LessonTalentContext = {
   unitId: string | null;
 };
 
+export type LessonTalentUnits = {
+  courseId: string | null;
+  unitId: string | null;
+  testUnitId: string | null;
+};
+
 /**
- * Resolves Talent LMS course id (from the Hangar catalog course) and unit id (lesson field).
+ * Resolves Talent LMS course id (from the Hangar catalog course) and unit ids
+ * (lesson field + optional test field).
  */
 export async function resolveTalentLmsCourseAndUnitForLesson(
   supabase: SupabaseClient,
   lessonId: string
-): Promise<{ courseId: string | null; unitId: string | null }> {
+): Promise<LessonTalentUnits> {
   const { data: lessonRow } = await supabase
     .from("lessons")
-    .select("talent_lms_unit_id, module_id")
+    .select("talent_lms_unit_id, talent_lms_test_unit_id, module_id")
     .eq("id", lessonId)
     .maybeSingle();
 
   const unitId = coerceTalentLmsUnitId(
     typeof lessonRow?.talent_lms_unit_id === "string"
       ? lessonRow.talent_lms_unit_id
+      : null
+  );
+
+  const testUnitId = coerceTalentLmsUnitId(
+    typeof lessonRow?.talent_lms_test_unit_id === "string"
+      ? lessonRow.talent_lms_test_unit_id
       : null
   );
 
@@ -51,7 +64,7 @@ export async function resolveTalentLmsCourseAndUnitForLesson(
       : null
   );
 
-  return { courseId, unitId };
+  return { courseId, unitId, testUnitId };
 }
 
 export async function getLessonTalentContext(

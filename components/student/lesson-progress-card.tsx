@@ -4,11 +4,19 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PlayCircle, RefreshCw } from "lucide-react";
 import { refreshTalentLessonProgress } from "@/app/actions/talent-lesson-progress";
-import type { TalentLessonProgressSnapshot } from "@/lib/talentlms/fetch-lesson-progress";
+import type {
+  TalentLessonProgressSnapshot,
+  TalentLessonUnitKind,
+} from "@/lib/talentlms/fetch-lesson-progress";
 import { formatUiDate } from "@/lib/format-ui-date";
 
-function lessonActionLabel(percent: number): string {
+function lessonActionLabel(percent: number, kind: TalentLessonUnitKind): string {
   const rounded = Math.round(percent);
+  if (kind === "test") {
+    if (rounded >= 100) return "Review Test";
+    if (rounded <= 0) return "Start Test";
+    return "Continue Test";
+  }
   if (rounded >= 100) {
     return "Review Lesson";
   }
@@ -19,7 +27,13 @@ function lessonActionLabel(percent: number): string {
 }
 
 /** Semicircular arc gauge (speedometer-style); `pathLength={100}` maps stroke dash to percent. */
-function LessonSemicircleGauge({ percent }: { percent: number }) {
+function LessonSemicircleGauge({
+  percent,
+  label,
+}: {
+  percent: number;
+  label: string;
+}) {
   const p = Math.min(100, Math.max(0, percent));
   const arcPath = "M 10 54 A 40 40 0 0 1 90 54";
 
@@ -31,7 +45,7 @@ function LessonSemicircleGauge({ percent }: { percent: number }) {
       aria-valuemax={100}
       role="meter"
       aria-valuetext={`${Math.round(p)} percent`}
-      aria-label="Lesson progress"
+      aria-label={label}
     >
       <svg viewBox="0 0 100 58" className="w-[152px] h-[88px] overflow-visible">
         <path
@@ -69,11 +83,13 @@ function LessonSemicircleGauge({ percent }: { percent: number }) {
 interface LessonProgressCardProps {
   weekNumber: number;
   initialSnapshot: TalentLessonProgressSnapshot;
+  unitKind?: TalentLessonUnitKind;
 }
 
 export function LessonProgressCard({
   weekNumber,
   initialSnapshot,
+  unitKind = "lesson",
 }: LessonProgressCardProps) {
   const [snapshot, setSnapshot] = useState<TalentLessonProgressSnapshot>(initialSnapshot);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -83,7 +99,7 @@ export function LessonProgressCard({
     setActionError(null);
     setIsUpdating(true);
     try {
-      const result = await refreshTalentLessonProgress(weekNumber);
+      const result = await refreshTalentLessonProgress(weekNumber, unitKind);
       if ("error" in result) {
         setActionError(result.error);
       } else {
@@ -115,7 +131,14 @@ export function LessonProgressCard({
         <div className="flex shrink-0 flex-col items-center gap-2 sm:items-start">
           {snapshot.kind === "ready" ? (
             <>
-              <LessonSemicircleGauge percent={percent!} />
+              <LessonSemicircleGauge
+                percent={percent!}
+                label={
+                  unitKind === "test"
+                    ? "Lesson test progress"
+                    : "Lesson progress"
+                }
+              />
               {isComplete ? (
                 <p className="text-sm text-muted-foreground">
                   Completed on {formatUiDate(snapshot.checkedAt)}
@@ -139,14 +162,16 @@ export function LessonProgressCard({
               <a href={talentLessonHref} target="_blank" rel="noopener noreferrer">
                 <PlayCircle className="h-5 w-5 shrink-0" />
                 {snapshot.kind === "ready"
-                  ? lessonActionLabel(snapshot.percent)
-                  : "Open Talent lesson"}
+                  ? lessonActionLabel(snapshot.percent, unitKind)
+                  : unitKind === "test"
+                    ? "Open Talent test"
+                    : "Open Talent lesson"}
               </a>
             </Button>
           ) : (
             <Button size="lg" className="w-full" disabled variant="secondary">
               <PlayCircle className="h-5 w-5 shrink-0 mr-2" />
-              No Talent lesson link
+              {unitKind === "test" ? "No Talent test link" : "No Talent lesson link"}
             </Button>
           )}
 

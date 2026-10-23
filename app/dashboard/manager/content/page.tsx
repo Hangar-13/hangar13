@@ -26,7 +26,7 @@ export default async function ManagerContentPage() {
     redirect("/dashboard/mentor");
   }
 
-  const [{ data: trainingPaths }, { data: courses }] = await Promise.all([
+  const [{ data: trainingPaths }, coursesResult] = await Promise.all([
     supabase
       .from("training_paths")
       .select("id, name, visibility")
@@ -34,10 +34,27 @@ export default async function ManagerContentPage() {
       .order("name", { ascending: true }),
     supabase
       .from("courses")
-      .select("id, name, description, visibility")
+      .select("id, name, description, visibility, is_deleted_lessons_archive")
       .in("organization_id", orgIds)
       .order("name", { ascending: true }),
   ]);
+
+  type ContentCourseRow = {
+    id: string;
+    name: string;
+    description: string | null;
+    visibility: string;
+    is_deleted_lessons_archive?: boolean;
+  };
+  let courses: ContentCourseRow[] | null = coursesResult.data;
+  if (coursesResult.error) {
+    const fallback = await supabase
+      .from("courses")
+      .select("id, name, description, visibility")
+      .in("organization_id", orgIds)
+      .order("name", { ascending: true });
+    courses = fallback.data;
+  }
 
   return (
     <DashboardPageShell>

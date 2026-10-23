@@ -153,13 +153,27 @@ export async function createManagerModule(input: {
 
   const { data: existing } = await supabase
     .from("modules")
-    .select("number")
+    .select("id, number, is_hidden_from_users")
     .eq("course_id", input.courseId)
-    .order("number", { ascending: false })
-    .limit(1);
+    .order("number", { ascending: false });
+
+  const existingRows = existing ?? [];
+  if (existingRows.some((m) => m.is_hidden_from_users)) {
+    return {
+      ok: false,
+      error:
+        "Convert the default module into a regular module before adding another.",
+    };
+  }
+  if (input.isHiddenFromUsers && existingRows.length > 0) {
+    return {
+      ok: false,
+      error: "A default module can only be the first module in a course.",
+    };
+  }
 
   const nextOrder =
-    existing && existing.length > 0 ? (existing[0].number ?? 0) + 1 : 0;
+    existingRows.length > 0 ? (existingRows[0].number ?? 0) + 1 : 0;
 
   const { data: row, error } = await supabase
     .from("modules")
@@ -169,6 +183,7 @@ export async function createManagerModule(input: {
       description: input.description?.trim() || null,
       number: nextOrder,
       is_hidden_from_users: input.isHiddenFromUsers,
+      needs_setup: false,
     })
     .select("id")
     .single();
@@ -198,11 +213,12 @@ export async function updateModuleFields(
   const ctx = await getModuleInOwnedCourse(supabase, moduleId, user.id);
   if (!ctx) return { ok: false, error: "Module not found." };
 
-  const update: Record<string, string | null> = {};
+  const update: Record<string, string | boolean | null> = {};
   if (patch.title !== undefined) {
     const t = patch.title.trim();
     if (!t) return { ok: false, error: "Title cannot be empty." };
     update.title = t;
+    update.needs_setup = false;
   }
   if (patch.description !== undefined) {
     update.description = patch.description?.trim() || null;
@@ -261,11 +277,50 @@ export async function convertSoleModuleToDefaultModule(
       title,
       description: null,
       is_hidden_from_users: true,
+      needs_setup: false,
     })
     .eq("id", moduleId);
 
   if (error) {
     console.error("convertSoleModuleToDefaultModule", error);
+    return { ok: false, error: "Could not update module." };
+  }
+
+  revalidatePath(`/dashboard/manager/courses/${ctx.course.id}`);
+  revalidatePath(`/dashboard/manager/courses/${ctx.course.id}/modules/${moduleId}`);
+  return { ok: true };
+}
+
+/**
+ * Un-hides a default module so additional modules can be added. Marks it as
+ * needing a real title (and related details).
+ */
+export async function convertDefaultModuleToRegular(
+  moduleId: string
+): Promise<ActionResult> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const ctx = await getModuleInOwnedCourse(supabase, moduleId, user.id);
+  if (!ctx) return { ok: false, error: "Module not found." };
+
+  if (!ctx.module.is_hidden_from_users) {
+    return { ok: false, error: "This module is not a default module." };
+  }
+
+  const { error } = await supabase
+    .from("modules")
+    .update({
+      is_hidden_from_users: false,
+      needs_setup: true,
+    })
+    .eq("id", moduleId);
+
+  if (error) {
+    console.error("convertDefaultModuleToRegular", error);
     return { ok: false, error: "Could not update module." };
   }
 
@@ -335,10 +390,19 @@ export async function deleteManagerModule(
   const ctx = await getModuleInOwnedCourse(supabase, moduleId, user.id);
   if (!ctx) return { ok: false, error: "Module not found." };
 
-  const { error } = await supabase.from("modules").delete().eq("id", moduleId);
+  const { data, error } = await supabase.rpc("manager_delete_course_module", {
+    p_module_id: moduleId,
+  });
   if (error) {
     console.error("deleteManagerModule", error);
     return { ok: false, error: "Could not delete module." };
+  }
+  const payload = data as { ok?: boolean; error?: string } | null;
+  if (!payload?.ok) {
+    return {
+      ok: false,
+      error: payload?.error ?? "Could not delete module.",
+    };
   }
 
   revalidatePath(`/dashboard/manager/courses/${ctx.course.id}`);
@@ -450,6 +514,7 @@ export async function createManagerLesson(input: {
   mentorDiscussionQuestions: string | string[];
   weeklyDeliverable: string | null;
   talentLmsUnitId?: string | null;
+  talentLmsTestUnitId?: string | null;
 }): Promise<{ ok: true; lessonId: string } | { ok: false; error: string }> {
   const supabase = await createServerSupabaseClient();
   const {
@@ -481,6 +546,8 @@ export async function createManagerLesson(input: {
 
   const tlUnit = validateTalentLmsUnitIdForSave(input.talentLmsUnitId);
   if (!tlUnit.ok) return { ok: false, error: tlUnit.error };
+  const tlTestUnit = validateTalentLmsUnitIdForSave(input.talentLmsTestUnitId);
+  if (!tlTestUnit.ok) return { ok: false, error: tlTestUnit.error };
 
   const { data: row, error } = await supabase
     .from("lessons")
@@ -501,6 +568,7 @@ export async function createManagerLesson(input: {
       ),
       weekly_deliverable: input.weeklyDeliverable?.trim() || null,
       talent_lms_unit_id: tlUnit.unitId,
+      talent_lms_test_unit_id: tlTestUnit.unitId,
       hours: hoursParsed.hours,
     })
     .select("id")
@@ -538,6 +606,7 @@ export async function updateLessonFields(
     mentor_discussion_questions?: string | string[];
     weekly_deliverable?: string | null;
     talent_lms_unit_id?: string | null;
+    talent_lms_test_unit_id?: string | null;
   }
 ): Promise<ActionResult> {
   const supabase = await createServerSupabaseClient();
@@ -605,6 +674,11 @@ export async function updateLessonFields(
     const tl = validateTalentLmsUnitIdForSave(patch.talent_lms_unit_id);
     if (!tl.ok) return { ok: false, error: tl.error };
     update.talent_lms_unit_id = tl.unitId;
+  }
+  if (patch.talent_lms_test_unit_id !== undefined) {
+    const tlTest = validateTalentLmsUnitIdForSave(patch.talent_lms_test_unit_id);
+    if (!tlTest.ok) return { ok: false, error: tlTest.error };
+    update.talent_lms_test_unit_id = tlTest.unitId;
   }
 
   if (Object.keys(update).length === 0) return { ok: true };

@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus } from "lucide-react";
+import { AlertCircle, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   convertSoleModuleToDefaultModule,
   createManagerLesson,
   deleteManagerLesson,
+  deleteManagerModule,
   reorderModuleLessons,
   updateModuleFields,
 } from "@/app/actions/manager-training-content";
@@ -59,6 +60,7 @@ type Props = {
     title: string;
     description: string | null;
     is_hidden_from_users: boolean;
+    needs_setup: boolean;
   };
   moduleTree: LessonMapModule[];
   suggestedWeekNumber: number;
@@ -107,6 +109,11 @@ export function ManagerModuleDetailClient({
   >(() => []);
   const [weeklyDeliverable, setWeeklyDeliverable] = useState("");
   const [talentLmsUnitId, setTalentLmsUnitId] = useState("");
+  const [talentLmsTestUnitId, setTalentLmsTestUnitId] = useState("");
+  const [deleteModuleOpen, setDeleteModuleOpen] = useState(false);
+  const [deleteModuleError, setDeleteModuleError] = useState<string | null>(
+    null
+  );
   const [lessonHours, setLessonHours] = useState("0");
   const [acsCodesSelected, setAcsCodesSelected] = useState<number[]>([]);
   const [includeAcsCodes, setIncludeAcsCodes] = useState(false);
@@ -122,6 +129,7 @@ export function ManagerModuleDetailClient({
     setMentorDiscussionRows([]);
     setWeeklyDeliverable("");
     setTalentLmsUnitId("");
+    setTalentLmsTestUnitId("");
     setAcsCodesSelected([]);
     setIncludeAcsCodes(false);
     setLessonError(null);
@@ -216,6 +224,7 @@ export function ManagerModuleDetailClient({
         mentorDiscussionQuestions: stringsFromRows(mentorDiscussionRows),
         weeklyDeliverable: weeklyDeliverable.trim() || null,
         talentLmsUnitId: talentLmsUnitId.trim() || null,
+        talentLmsTestUnitId: talentLmsTestUnitId.trim() || null,
       });
       if (!result.ok) {
         setLessonError(result.error);
@@ -244,23 +253,38 @@ export function ManagerModuleDetailClient({
               {moduleIndex > 0 ? `${moduleIndex} -` : null}
             </span>
             <div className="min-w-0 flex-1">
-              <EditableInline
-                label="Module title"
-                value={module.title}
-                displayClassName="text-2xl font-bold tracking-tight"
-                placeholder="Module title"
-                onSave={async (t) => {
-                  const r = await updateModuleFields(module.id, { title: t });
-                  if (r.ok) router.refresh();
-                  return r;
-                }}
-              />
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <EditableInline
+                    label="Module title"
+                    value={module.title}
+                    displayClassName="text-2xl font-bold tracking-tight"
+                    placeholder="Module title"
+                    onSave={async (t) => {
+                      const r = await updateModuleFields(module.id, { title: t });
+                      if (r.ok) router.refresh();
+                      return r;
+                    }}
+                  />
+                </div>
+                {module.needs_setup ? (
+                  <AlertCircle
+                    className="mt-1 size-5 shrink-0 text-destructive"
+                    aria-label="This module needs a title and other details"
+                  />
+                ) : null}
+              </div>
             </div>
           </div>
           {module.is_hidden_from_users ? (
             <p className="text-sm text-amber-700 dark:text-amber-400/90 max-w-2xl">
               This is a default module and will not be displayed to users; lessons
               will appear directly under the course.
+            </p>
+          ) : null}
+          {module.needs_setup ? (
+            <p className="text-sm text-destructive max-w-2xl">
+              This module needs a title and other details before it is ready.
             </p>
           ) : null}
           <div className="w-full min-w-0 max-w-2xl">
@@ -299,11 +323,45 @@ export function ManagerModuleDetailClient({
             </div>
           ) : null}
         </div>
-        <Button asChild variant="outline" className="shrink-0 self-start">
-          <Link href={`/dashboard/manager/courses/${course.id}`}>
-            Back to Course
-          </Link>
-        </Button>
+        <div className="flex shrink-0 flex-col gap-2 self-start sm:items-end">
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/manager/courses/${course.id}`}>
+              Back to Course
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+            onClick={() => {
+              setDeleteModuleError(null);
+              const lessonCount =
+                moduleTree.find((m) => m.id === module.id)?.lessons.length ?? 0;
+              if (lessonCount === 0) {
+                startTransition(async () => {
+                  const r = await deleteManagerModule(module.id);
+                  if (!r.ok) {
+                    setDeleteModuleError(r.error);
+                    return;
+                  }
+                  router.push(`/dashboard/manager/courses/${course.id}`);
+                  router.refresh();
+                });
+                return;
+              }
+              setDeleteModuleOpen(true);
+            }}
+            disabled={pending}
+          >
+            <Trash2 className="size-4" aria-hidden />
+            {pending ? "Deleting…" : "Delete Module"}
+          </Button>
+          {deleteModuleError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {deleteModuleError}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <DashboardContentFrame className="space-y-4">
@@ -406,6 +464,60 @@ export function ManagerModuleDetailClient({
         }}
         pending={pending}
       />
+
+      <Dialog
+        open={deleteModuleOpen}
+        onOpenChange={(open) => {
+          setDeleteModuleOpen(open);
+          if (!open) setDeleteModuleError(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete this module and its lessons?</DialogTitle>
+            <DialogDescription className="text-left text-foreground pt-2 leading-relaxed">
+              This module contains lessons. Deleting it will remove the module
+              from the course. Those lessons will be moved to the Deleted
+              Lessons archive, which is only visible to Hangar god users.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteModuleError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {deleteModuleError}
+            </p>
+          ) : null}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteModuleOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                setDeleteModuleError(null);
+                startTransition(async () => {
+                  const r = await deleteManagerModule(module.id);
+                  if (!r.ok) {
+                    setDeleteModuleError(r.error);
+                    return;
+                  }
+                  setDeleteModuleOpen(false);
+                  router.push(`/dashboard/manager/courses/${course.id}`);
+                  router.refresh();
+                });
+              }}
+              disabled={pending}
+            >
+              {pending ? "Deleting…" : "Yes, delete module"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={defaultModuleWarningOpen}
@@ -557,6 +669,39 @@ export function ManagerModuleDetailClient({
                   aria-label="Talent LMS unit"
                   value={talentLmsUnitId}
                   onChange={(e) => setTalentLmsUnitId(e.target.value)}
+                  disabled={pending}
+                  className="max-w-xs font-mono text-sm tabular-nums"
+                />
+              ) : (
+                <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    No Talent LMS course defined
+                  </p>
+                  <Button asChild variant="secondary" size="sm" className="shrink-0">
+                    <Link
+                      href={`/dashboard/manager/courses/${course.id}?editTalentLms=1#talent-lms-course-id`}
+                    >
+                      Add Talent LMS Course ID
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 space-y-2 py-3">
+              <h3 className="text-base font-semibold tracking-tight">
+                Talent LMS Test
+              </h3>
+              {coerceTalentLmsCourseId(course.talentLmsCourseId) ? (
+                <Input
+                  id="les-talent-test-unit"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  placeholder="Test unit id (digits)"
+                  aria-label="Talent LMS test unit"
+                  value={talentLmsTestUnitId}
+                  onChange={(e) => setTalentLmsTestUnitId(e.target.value)}
                   disabled={pending}
                   className="max-w-xs font-mono text-sm tabular-nums"
                 />

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  AlertCircle,
   ChevronDown,
   ChevronRight,
   GripVertical,
@@ -23,6 +24,8 @@ export type LessonMapModule = {
   title: string;
   number: number;
   lessons: LessonMapLesson[];
+  isHiddenFromUsers?: boolean;
+  needsSetup?: boolean;
 };
 
 export type ModuleOrderEdit = {
@@ -322,6 +325,12 @@ export function LessonMap({
                 <span className="font-medium truncate min-w-0 flex-1">
                   {mod.title}
                 </span>
+                {mod.needsSetup ? (
+                  <AlertCircle
+                    className="size-4 shrink-0 text-destructive"
+                    aria-label="This module needs a title and other details"
+                  />
+                ) : null}
               </div>
             ) : (
               <Link
@@ -332,6 +341,12 @@ export function LessonMap({
                   {moduleNum}
                 </span>
                 <span className="font-medium truncate">{mod.title}</span>
+                {mod.needsSetup ? (
+                  <AlertCircle
+                    className="size-4 shrink-0 text-destructive"
+                    aria-label="This module needs a title and other details"
+                  />
+                ) : null}
               </Link>
             )}
             {editingModules && moduleOrderEdit?.onRemoveModuleId ? (

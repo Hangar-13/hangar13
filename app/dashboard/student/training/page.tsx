@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Edit,
   Percent,
+  ClipboardCheck,
   CheckCircle,
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/student/collapsible-section";
@@ -230,11 +231,12 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   }
 
   let lessonProgressSnapshot: TalentLessonProgressSnapshot | null = null;
+  let lessonTestSnapshot: TalentLessonProgressSnapshot | null = null;
 
   if (lessonId && user.email) {
     const { data: lessonTalentRow } = await supabase
       .from("lessons")
-      .select("talent_lms_unit_id")
+      .select("talent_lms_unit_id, talent_lms_test_unit_id")
       .eq("id", lessonId)
       .maybeSingle();
 
@@ -243,21 +245,43 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         ? lessonTalentRow.talent_lms_unit_id
         : null
     );
+    const hasTalentTest = coerceTalentLmsUnitId(
+      typeof lessonTalentRow?.talent_lms_test_unit_id === "string"
+        ? lessonTalentRow.talent_lms_test_unit_id
+        : null
+    );
 
-    if (hasTalentUnit) {
+    if (hasTalentUnit || hasTalentTest) {
       const { data: profileRow } = await supabase
         .from("users")
         .select("email")
         .eq("id", user.id)
         .maybeSingle();
 
-      lessonProgressSnapshot = await fetchTalentLessonProgressSnapshot(supabase, {
-        userEmail: user.email,
-        additionalEmails: [
-          typeof profileRow?.email === "string" ? profileRow.email : undefined,
-        ],
-        lessonId,
-      });
+      const extraEmails = [
+        typeof profileRow?.email === "string" ? profileRow.email : undefined,
+      ];
+
+      if (hasTalentUnit) {
+        lessonProgressSnapshot = await fetchTalentLessonProgressSnapshot(
+          supabase,
+          {
+            userEmail: user.email,
+            additionalEmails: extraEmails,
+            lessonId,
+            unitKind: "lesson",
+          }
+        );
+      }
+
+      if (hasTalentTest) {
+        lessonTestSnapshot = await fetchTalentLessonProgressSnapshot(supabase, {
+          userEmail: user.email,
+          additionalEmails: extraEmails,
+          lessonId,
+          unitKind: "test",
+        });
+      }
     }
   }
 
@@ -434,6 +458,24 @@ export default async function TrainingPage({ searchParams }: PageProps) {
               <LessonProgressCard
                 weekNumber={data.currentWeek}
                 initialSnapshot={lessonProgressSnapshot}
+                unitKind="lesson"
+              />
+            </CollapsibleSection>
+          ) : null}
+
+          {lessonTestSnapshot ? (
+            <CollapsibleSection
+              variant="section"
+              title="Lesson Test"
+              icon={<ClipboardCheck className="h-4 w-4" />}
+              titleClassName={sectionTitleClass}
+              headerHoverHighlight={false}
+              defaultOpen={true}
+            >
+              <LessonProgressCard
+                weekNumber={data.currentWeek}
+                initialSnapshot={lessonTestSnapshot}
+                unitKind="test"
               />
             </CollapsibleSection>
           ) : null}

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 import {
+  convertDefaultModuleToRegular,
   createManagerModule,
   deleteManagerLesson,
   deleteManagerModule,
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -88,7 +90,19 @@ export function ManagerCourseDetailClient({
   >([]);
   const [mapReorderError, setMapReorderError] = useState<string | null>(null);
   const [destructiveOpen, setDestructiveOpen] = useState(false);
+  const [convertDefaultOpen, setConvertDefaultOpen] = useState(false);
+  const [convertDefaultError, setConvertDefaultError] = useState<string | null>(
+    null
+  );
   const [pending, startTransition] = useTransition();
+
+  const sortedModules = useMemo(
+    () => [...moduleTree].sort((a, b) => a.number - b.number),
+    [moduleTree]
+  );
+  const firstModule = sortedModules[0] ?? null;
+  const firstIsDefault = firstModule?.isHiddenFromUsers === true;
+  const canMakeDefaultModule = moduleTree.length === 0;
 
   const moduleById = useMemo(
     () => new Map(moduleTree.map((m) => [m.id, m])),
@@ -179,12 +193,31 @@ export function ManagerCourseDetailClient({
     );
   }, []);
 
+  const modulesRemovedWithLessons = useMemo(
+    () =>
+      pendingRemoveModuleIds.filter((id) => {
+        const m = moduleById.get(id);
+        return (m?.lessons.length ?? 0) > 0;
+      }),
+    [moduleById, pendingRemoveModuleIds]
+  );
+
   const buildDestructiveDeleteLines = useCallback((): DeleteLine[] => {
     const lines: DeleteLine[] = [];
     const modRemoved = new Set(pendingRemoveModuleIds);
     for (const id of pendingRemoveModuleIds) {
       const m = moduleById.get(id);
       if (m) lines.push({ kind: "Module", label: m.title });
+    }
+    for (const id of modulesRemovedWithLessons) {
+      const m = moduleById.get(id);
+      if (!m) continue;
+      for (const les of m.lessons) {
+        lines.push({
+          kind: "Lesson → archive",
+          label: les.title,
+        });
+      }
     }
     for (const lid of pendingRemoveLessonIds) {
       const info = lessonInTree(moduleTree, lid);
@@ -196,6 +229,7 @@ export function ManagerCourseDetailClient({
   }, [
     moduleById,
     moduleTree,
+    modulesRemovedWithLessons,
     pendingRemoveLessonIds,
     pendingRemoveModuleIds,
   ]);
@@ -266,27 +300,28 @@ export function ManagerCourseDetailClient({
 
   function acceptModuleMapEdit() {
     setMapReorderError(null);
-    if (buildDestructiveDeleteLines().length > 0) {
+    const needsWarning =
+      modulesRemovedWithLessons.length > 0 ||
+      pendingRemoveLessonIds.length > 0;
+    if (needsWarning) {
       setDestructiveOpen(true);
       return;
     }
     startTransition(async () => {
-      const rOrder = await reorderCourseModules(course.id, moduleOrderDraft);
-      if (!rOrder.ok) {
-        setMapReorderError(rOrder.error);
-        return;
-      }
-      for (const mid of moduleOrderDraft) {
-        const ids = lessonOrderByModuleId[mid] ?? [];
-        const rL = await reorderModuleLessons(mid, ids);
-        if (!rL.ok) {
-          setMapReorderError(rL.error);
-          return;
-        }
-      }
+      const ok = await runPersistAfterDestructive();
+      if (!ok) return;
       cancelModuleMapEdit();
       router.refresh();
     });
+  }
+
+  function handleCreateModuleClick() {
+    if (firstIsDefault && firstModule) {
+      setConvertDefaultError(null);
+      setConvertDefaultOpen(true);
+      return;
+    }
+    setModuleOpen(true);
   }
 
   function submitModule() {
@@ -457,7 +492,7 @@ export function ManagerCourseDetailClient({
           type="button"
           variant="outline"
           className="w-full sm:w-auto"
-          onClick={() => setModuleOpen(true)}
+          onClick={handleCreateModuleClick}
         >
           <Plus className="size-4" aria-hidden />
           Create New Module
@@ -475,8 +510,18 @@ export function ManagerCourseDetailClient({
             cancelModuleMapEdit();
           }
         }}
-        title="Permanently delete content?"
-        description="The following will be deleted and cannot be restored. Course structure will then be updated from your map."
+        title={
+          modulesRemovedWithLessons.length > 0
+            ? "Delete modules and their lessons?"
+            : "Permanently delete content?"
+        }
+        description={
+          modulesRemovedWithLessons.length > 0
+            ? pendingRemoveLessonIds.length > 0
+              ? "Modules will be deleted. Lessons in those modules are moved to the Deleted Lessons archive (visible only to Hangar god users). Other listed lessons are permanently deleted. Course structure will then be updated from your map."
+              : "The following modules will be deleted. Their lessons will be moved to the Deleted Lessons archive (visible only to Hangar god users) and will no longer appear in this course."
+            : "The following will be deleted and cannot be restored. Course structure will then be updated from your map."
+        }
         lines={buildDestructiveDeleteLines()}
         onConfirm={() => {
           setMapReorderError(null);
@@ -490,21 +535,78 @@ export function ManagerCourseDetailClient({
         pending={pending}
       />
 
+      <Dialog
+        open={convertDefaultOpen}
+        onOpenChange={(open) => {
+          setConvertDefaultOpen(open);
+          if (!open) setConvertDefaultError(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Convert the default module first?</DialogTitle>
+            <DialogDescription className="text-left text-foreground pt-2 leading-relaxed">
+              This course uses a default module as a hidden container for all
+              lessons. Adding another module requires converting it into a
+              regular module. You will then need to give it a title and other
+              details.
+            </DialogDescription>
+          </DialogHeader>
+          {convertDefaultError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {convertDefaultError}
+            </p>
+          ) : null}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConvertDefaultOpen(false)}
+              disabled={pending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!firstModule) return;
+                setConvertDefaultError(null);
+                startTransition(async () => {
+                  const r = await convertDefaultModuleToRegular(firstModule.id);
+                  if (!r.ok) {
+                    setConvertDefaultError(r.error);
+                    return;
+                  }
+                  setConvertDefaultOpen(false);
+                  setModuleOpen(true);
+                  router.refresh();
+                });
+              }}
+              disabled={pending || !firstModule}
+            >
+              {pending ? "Converting…" : "Yes, convert it"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={moduleOpen} onOpenChange={handleModuleDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create New Module</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <label className="flex items-start gap-3 text-sm leading-tight cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-1 rounded border-input"
-                checked={defaultHidden}
-                onChange={(e) => setDefaultHidden(e.target.checked)}
-              />
-              <span>Make this a default module hidden from the user</span>
-            </label>
+            {canMakeDefaultModule ? (
+              <label className="flex items-start gap-3 text-sm leading-tight cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-1 rounded border-input"
+                  checked={defaultHidden}
+                  onChange={(e) => setDefaultHidden(e.target.checked)}
+                />
+                <span>Make this a default module hidden from the user</span>
+              </label>
+            ) : null}
             <div className="space-y-2">
               <Label htmlFor="mod-title">Title</Label>
               <Input

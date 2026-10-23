@@ -24,11 +24,20 @@ export default async function ManagerModuleDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const { data: module } = await supabase
+  const moduleFull = await supabase
     .from("modules")
-    .select("id, course_id, title, description, is_hidden_from_users")
+    .select("id, course_id, title, description, is_hidden_from_users, needs_setup")
     .eq("id", moduleId)
     .maybeSingle();
+  const module =
+    moduleFull.data ??
+    (
+      await supabase
+        .from("modules")
+        .select("id, course_id, title, description, is_hidden_from_users")
+        .eq("id", moduleId)
+        .maybeSingle()
+    ).data;
 
   if (!module || module.course_id !== courseId) {
     notFound();
@@ -57,6 +66,8 @@ export default async function ManagerModuleDetailPage({ params }: PageProps) {
       id: module.id,
       title: module.title,
       number: 0,
+      needsSetup: (module as { needs_setup?: boolean }).needs_setup === true,
+      isHiddenFromUsers: module.is_hidden_from_users === true,
       lessons: modLessons ?? [],
     },
   ];
@@ -105,6 +116,7 @@ export default async function ManagerModuleDetailPage({ params }: PageProps) {
         title: module.title,
         description: module.description,
         is_hidden_from_users: module.is_hidden_from_users,
+        needs_setup: (module as { needs_setup?: boolean }).needs_setup === true,
       }}
       moduleTree={moduleTree}
       suggestedWeekNumber={suggestedWeekNumber}

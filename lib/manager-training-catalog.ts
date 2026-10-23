@@ -39,11 +39,22 @@ export async function buildTrainingContentCatalog(
     return [];
   }
 
-  const { data: courses } = await supabase
+  const catalogSelect = "id, name, description";
+  let { data: courses } = await supabase
     .from("courses")
-    .select("id, name, description")
+    .select(catalogSelect)
     .in("organization_id", orgIds)
+    .eq("is_deleted_lessons_archive", false)
     .order("name", { ascending: true });
+
+  if (!courses) {
+    const fallback = await supabase
+      .from("courses")
+      .select(catalogSelect)
+      .in("organization_id", orgIds)
+      .order("name", { ascending: true });
+    courses = fallback.data;
+  }
 
   if (!courses?.length) {
     return [];

@@ -14,6 +14,7 @@ export type ManagerOwnedCourse = {
   organization_id: string;
   visibility: string;
   talent_lms_course_id: string | null;
+  is_deleted_lessons_archive?: boolean;
 };
 
 /**
@@ -127,6 +128,8 @@ export async function getCourseOwnedByUser(
   courseId: string,
   userId: string
 ): Promise<ManagerOwnedCourse | null> {
+  const selectFull =
+    "id, name, description, created_by, organization_id, visibility, talent_lms_course_id, is_deleted_lessons_archive";
   const selectWithTalent =
     "id, name, description, created_by, organization_id, visibility, talent_lms_course_id";
   const selectBase =
@@ -134,21 +137,37 @@ export async function getCourseOwnedByUser(
 
   const first = await supabase
     .from("courses")
-    .select(selectWithTalent)
+    .select(selectFull)
     .eq("id", courseId)
     .maybeSingle();
 
   let course: Record<string, unknown> | null = first.data ?? null;
 
-  // Until migration 083 is applied, `talent_lms_course_id` does not exist — full select fails.
+  // Until migration 101, `is_deleted_lessons_archive` does not exist.
   if (first.error && course === null) {
     const second = await supabase
+      .from("courses")
+      .select(selectWithTalent)
+      .eq("id", courseId)
+      .maybeSingle();
+    course = second.data
+      ? { ...second.data, is_deleted_lessons_archive: false }
+      : null;
+  }
+
+  // Until migration 083 is applied, `talent_lms_course_id` does not exist — full select fails.
+  if (course === null) {
+    const third = await supabase
       .from("courses")
       .select(selectBase)
       .eq("id", courseId)
       .maybeSingle();
-    course = second.data
-      ? { ...second.data, talent_lms_course_id: null }
+    course = third.data
+      ? {
+          ...third.data,
+          talent_lms_course_id: null,
+          is_deleted_lessons_archive: false,
+        }
       : null;
   }
 
@@ -183,18 +202,48 @@ export async function getModuleInOwnedCourse(
   moduleId: string,
   userId: string
 ) {
-  const { data: mod } = await supabase
+  const withSetup =
+    "id, course_id, title, description, number, is_hidden_from_users, needs_setup";
+  const withoutSetup =
+    "id, course_id, title, description, number, is_hidden_from_users";
+
+  const first = await supabase
     .from("modules")
-    .select("id, course_id, title, description, number, is_hidden_from_users")
+    .select(withSetup)
     .eq("id", moduleId)
     .maybeSingle();
 
+  let mod: Record<string, unknown> | null = first.data ?? null;
+  if (first.error && mod === null) {
+    const second = await supabase
+      .from("modules")
+      .select(withoutSetup)
+      .eq("id", moduleId)
+      .maybeSingle();
+    mod = second.data ? { ...second.data, needs_setup: false } : null;
+  }
+
   if (!mod) return null;
 
-  const course = await getCourseOwnedByUser(supabase, mod.course_id, userId);
+  const course = await getCourseOwnedByUser(
+    supabase,
+    mod.course_id as string,
+    userId
+  );
   if (!course) return null;
 
-  return { module: mod, course };
+  return {
+    module: mod as {
+      id: string;
+      course_id: string;
+      title: string;
+      description: string | null;
+      number: number;
+      is_hidden_from_users: boolean;
+      needs_setup: boolean;
+    },
+    course,
+  };
 }
 
 export async function getLessonInOwnedCourse(

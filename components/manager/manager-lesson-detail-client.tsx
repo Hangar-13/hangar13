@@ -28,6 +28,7 @@ export type LessonDetail = {
   acs_codes: number[];
   learning_objectives: string[];
   talent_lms_unit_id: string | null;
+  talent_lms_test_unit_id: string | null;
   study_materials: string | null;
   practical_application: string | null;
   mentor_discussion_questions: string[];
@@ -145,6 +146,39 @@ export function ManagerLessonDetailClient({
                   onSave={async (v) => {
                     const r = await updateLessonFields(lesson.id, {
                       talent_lms_unit_id: v.trim() || null,
+                    });
+                    if (r.ok) router.refresh();
+                    return r;
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col gap-3 rounded-md bg-muted/25 px-4 py-3 ring-1 ring-black/[0.04] sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    No Talent LMS course defined
+                  </p>
+                  <Button asChild variant="secondary" size="sm" className="shrink-0">
+                    <Link
+                      href={`/dashboard/manager/courses/${courseId}?editTalentLms=1#talent-lms-course-id`}
+                    >
+                      Add Talent LMS Course ID
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="max-w-3xl space-y-2">
+              <DashboardSectionLabel>Talent LMS Test</DashboardSectionLabel>
+              {coerceTalentLmsCourseId(courseTalentLmsCourseId) ? (
+                <EditableInline
+                  label="Talent LMS test unit"
+                  value={lesson.talent_lms_test_unit_id ?? ""}
+                  displayClassName="text-sm font-mono tabular-nums"
+                  placeholder="No TalentLMS test specified"
+                  editPlaceholder="e.g. 2066"
+                  onSave={async (v) => {
+                    const r = await updateLessonFields(lesson.id, {
+                      talent_lms_test_unit_id: v.trim() || null,
                     });
                     if (r.ok) router.refresh();
                     return r;
