@@ -1,0 +1,39 @@
+---
+description: End assistant replies with a bold Supabase migration banner when DB changes need applying
+alwaysApply: true
+---
+
+# Supabase migration notice (end-of-message banner)
+
+Whenever you:
+
+- Add or change files under `supabase/migrations/`, or
+- Tell the user to apply migrations, run `db push`, sync the remote database, or run new SQL (RPCs, RLS, tables),
+
+you **must** end your message with **`---` on its own line**, then a **highly visible banner** so the step cannot be missed.
+
+## Preferred (HTML)
+
+Append this block **verbatim** at the **very end** of the reply (adjust the `pre` command only if you already gave a different exact command in the same message):
+
+```html
+<div style="margin-top:1.5rem;padding:16px 20px;border-radius:12px;background:linear-gradient(135deg,#dc2626 0%,#ea580c 50%,#ca8a04 100%);color:#fff;font-family:system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.25);border:3px solid #fef08a;">
+<p style="margin:0 0 10px 0;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.95;">Action required</p>
+<p style="margin:0 0 8px 0;font-size:18px;font-weight:800;line-height:1.3;">Push migrations to Supabase</p>
+<p style="margin:0 0 12px 0;font-size:14px;opacity:.95;line-height:1.4;">Run new SQL on <strong>every</strong> database your app uses (remote and local), or RPCs/tables will be missing and the app will fail at runtime.</p>
+<pre style="margin:0;padding:12px 14px;background:rgba(0,0,0,.35);border-radius:8px;font-size:13px;overflow:auto;color:#fef9c3;border:1px solid rgba(255,255,255,.25);"><code>npx supabase db push</code></pre>
+<p style="margin:12px 0 0 0;font-size:12px;opacity:.9;">Local dev: use <code>supabase db reset</code> / your usual replay after pulling migrations, if you use <code>supabase start</code>.</p>
+</div>
+```
+
+## Fallback (if HTML is not allowed)
+
+```markdown
+---
+
+> ### SUPABASE — APPLY MIGRATIONS
+>
+> **Run:** `npx supabase db push` on each environment your app connects to.
+```
+
+Do not skip the banner for migration-related work.
