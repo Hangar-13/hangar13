@@ -254,13 +254,15 @@ export default async function TrainingPage({ searchParams }: PageProps) {
     if (hasTalentUnit || hasTalentTest) {
       const { data: profileRow } = await supabase
         .from("users")
-        .select("email")
+        .select("email, full_name")
         .eq("id", user.id)
         .maybeSingle();
 
       const extraEmails = [
         typeof profileRow?.email === "string" ? profileRow.email : undefined,
       ];
+      const fullName =
+        typeof profileRow?.full_name === "string" ? profileRow.full_name : null;
 
       if (hasTalentUnit) {
         lessonProgressSnapshot = await fetchTalentLessonProgressSnapshot(
@@ -268,6 +270,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           {
             userEmail: user.email,
             additionalEmails: extraEmails,
+            fullName,
             lessonId,
             unitKind: "lesson",
           }
@@ -278,6 +281,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         lessonTestSnapshot = await fetchTalentLessonProgressSnapshot(supabase, {
           userEmail: user.email,
           additionalEmails: extraEmails,
+          fullName,
           lessonId,
           unitKind: "test",
         });

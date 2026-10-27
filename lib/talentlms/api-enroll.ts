@@ -80,6 +80,11 @@ async function readTalentApiErrorMessage(res: Response): Promise<string> {
   return message;
 }
 
+/** Talent returns this for deleted or deactivated learners (often HTTP 400, not 404). */
+export function talentLmsIsRequestedUserGone(message: string): boolean {
+  return message.toLowerCase().includes("no longer available");
+}
+
 function baseUrl(config: TalentLmsApiConfig): string {
   return `https://${config.subdomain}.talentlms.com/api/v1`;
 }
@@ -186,6 +191,13 @@ export async function talentLmsGetUserIdByEmail(
   }
   if (!res.ok) {
     const { message, rawBody } = await readTalentApiError(res);
+    if (talentLmsIsRequestedUserGone(message)) {
+      return {
+        ok: false,
+        status: 404,
+        message: "Talent LMS user not found for this email.",
+      };
+    }
     console.error(
       "[TalentLMS] user lookup by email failed:",
       JSON.stringify({
@@ -262,10 +274,18 @@ export async function talentLmsGetUserIdByUsername(
     };
   }
   if (!res.ok) {
+    const message = await readTalentApiErrorMessage(res);
+    if (talentLmsIsRequestedUserGone(message)) {
+      return {
+        ok: false,
+        status: 404,
+        message: "Talent LMS user not found for this username.",
+      };
+    }
     return {
       ok: false,
       status: res.status,
-      message: await readTalentApiErrorMessage(res),
+      message,
     };
   }
 
@@ -723,9 +743,75 @@ export async function ensureTalentLmsUserAndEnrollInCourse(options: Readonly<{
     return ensured;
   }
 
+  const enrolled = await talentLmsApiAddUserToCourse({
+    config: options.config,
+    userEmail: email,
+    courseId: options.courseId,
+  });
+  if (enrolled.ok || !talentLmsIsRequestedUserGone(enrolled.message)) {
+    return enrolled;
+  }
+
+  const resolved = await talentLmsResolveLearnerUserId(options.config, email);
+  if (!resolved.ok) {
+    return enrolled;
+  }
+
+  const activated = await talentLmsSetUserActive({
+    config: options.config,
+    userId: resolved.userId,
+  });
+  if (!activated.ok) {
+    return enrolled;
+  }
+
   return talentLmsApiAddUserToCourse({
     config: options.config,
     userEmail: email,
     courseId: options.courseId,
   });
+}
+
+/** POST /edituser — reactivate a learner Talent marked inactive. */
+async function talentLmsSetUserActive(options: Readonly<{
+  config: TalentLmsApiConfig;
+  userId: string;
+}>): Promise<TalentLmsEnrollResult> {
+  const userId = options.userId.trim();
+  if (!userId) {
+    return { ok: false, status: 400, message: "Missing Talent LMS user id." };
+  }
+
+  const url = `${baseUrl(options.config)}/edituser`;
+  const body = new URLSearchParams({
+    user_id: userId,
+    status: "active",
+  });
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: basicAuthHeader(options.config.apiKey),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+      cache: "no-store",
+    });
+  } catch (e) {
+    const msg =
+      e instanceof Error ? e.message : "TalentLMS API request failed.";
+    return { ok: false, status: 0, message: msg };
+  }
+
+  if (res.ok) {
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    status: res.status,
+    message: await readTalentApiErrorMessage(res),
+  };
 }

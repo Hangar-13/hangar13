@@ -69,7 +69,7 @@ export async function refreshTalentLessonProgress(
 
   const { data: profileRow } = await supabase
     .from("users")
-    .select("email")
+    .select("email, full_name")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -78,6 +78,8 @@ export async function refreshTalentLessonProgress(
     additionalEmails: [
       typeof profileRow?.email === "string" ? profileRow.email : undefined,
     ],
+    fullName:
+      typeof profileRow?.full_name === "string" ? profileRow.full_name : null,
     lessonId,
     unitKind,
   });

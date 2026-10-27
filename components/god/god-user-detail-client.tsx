@@ -3,7 +3,11 @@
 import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Pencil, X } from "lucide-react";
-import { godUpdateUserSystemRole, type GodUserDetail } from "@/app/actions/god-users";
+import {
+  godForceCreateTalentLmsUser,
+  godUpdateUserSystemRole,
+  type GodUserDetail,
+} from "@/app/actions/god-users";
 import { LeadBadge } from "@/components/god/lead-badge";
 import { GOD_UI_SYSTEM_ROLES } from "@/lib/god-user-constants";
 import { normalizeSystemRole, type SystemRole } from "@/lib/auth-shared";
@@ -49,7 +53,10 @@ export function GodUserDetailClient({
   const [editing, setEditing] = useState(false);
   const [roleDraft, setRoleDraft] = useState<SystemRole>(initial.role as SystemRole);
   const [error, setError] = useState<string | null>(null);
+  const [talentError, setTalentError] = useState<string | null>(null);
+  const [talentNotice, setTalentNotice] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [talentPending, startTalentTransition] = useTransition();
 
   const beginEdit = () => {
     setError(null);
@@ -68,6 +75,45 @@ export function GodUserDetailClient({
     (viewerRole === "admin" &&
       viewerUserId !== user.id &&
       targetRoleNorm !== "god");
+
+  const talentProvisionStatusLabel = (status: string | null) => {
+    if (status === "provisioned") return "Created";
+    if (status === "failed") return "Failed";
+    if (status === "pending") return "Not created";
+    return "Unknown";
+  };
+
+  const createTalentUser = () => {
+    setTalentError(null);
+    setTalentNotice(null);
+    startTalentTransition(() => {
+      void (async () => {
+        const res = await godForceCreateTalentLmsUser(user.id);
+        if (!res.ok) {
+          setTalentError(res.error);
+          return;
+        }
+        setUser((u) => ({
+          ...u,
+          talentLmsProvisionStatus: "provisioned",
+          talentLmsProvisionLastError: null,
+          talentLmsProvisionedAt: new Date().toISOString(),
+        }));
+        const enrollBit =
+          res.enrolledCourseCount > 0
+            ? ` Enrolled in ${res.enrolledCourseCount} Talent course${
+                res.enrolledCourseCount === 1 ? "" : "s"
+              }.`
+            : " No mapped Talent courses on their Hangar enrollments yet.";
+        setTalentNotice(
+          res.enrollWarning
+            ? `Created the Talent LMS user.${enrollBit} Enrollment warning: ${res.enrollWarning}`
+            : `Created the Talent LMS user.${enrollBit}`
+        );
+        router.refresh();
+      })();
+    });
+  };
 
   const saveRole = () => {
     setError(null);
@@ -170,6 +216,60 @@ export function GodUserDetailClient({
           <span className="font-medium">{formatUiDate(user.createdAt)}</span>
         </p>
       </div>
+
+      <section className="space-y-3 max-w-2xl">
+        <DashboardSectionLabel>Talent LMS</DashboardSectionLabel>
+        <div className="space-y-3 text-sm">
+          <p>
+            <span className="text-muted-foreground">Account </span>
+            <span className="font-medium">
+              {talentProvisionStatusLabel(user.talentLmsProvisionStatus)}
+            </span>
+          </p>
+          {user.talentLmsProvisionedAt ? (
+            <p>
+              <span className="text-muted-foreground">Last created </span>
+              <span className="font-medium">
+                {formatUiDate(user.talentLmsProvisionedAt)}
+              </span>
+            </p>
+          ) : null}
+          {user.talentLmsProvisionStatus === "failed" &&
+          user.talentLmsProvisionLastError ? (
+            <p className="text-destructive" role="status">
+              {user.talentLmsProvisionLastError}
+            </p>
+          ) : null}
+          <p className="text-muted-foreground">
+            Creates the Talent LMS learner for this Hangar email if they are
+            missing, then enrolls them in Talent courses mapped from their
+            Hangar training.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={talentPending || !user.email}
+            onClick={createTalentUser}
+          >
+            {talentPending ? "Creating…" : "Create Talent LMS user"}
+          </Button>
+          {!user.email ? (
+            <p className="text-destructive text-sm" role="alert">
+              This Hangar user has no email, so Talent LMS cannot create them.
+            </p>
+          ) : null}
+          {talentError ? (
+            <p className="text-destructive text-sm" role="alert">
+              {talentError}
+            </p>
+          ) : null}
+          {talentNotice ? (
+            <p className="text-sm" role="status">
+              {talentNotice}
+            </p>
+          ) : null}
+        </div>
+      </section>
 
       <section className="space-y-3">
         <DashboardSectionLabel>Organizations</DashboardSectionLabel>

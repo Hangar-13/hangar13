@@ -5,7 +5,9 @@ import {
 } from "@/lib/talentlms/lesson-url";
 import { resolveTalentLmsCourseAndUnitForLesson } from "@/lib/talentlms/lesson-talent-context";
 import {
+  ensureTalentLmsUserAndEnrollInCourse,
   getTalentLmsApiEnrollmentConfig,
+  talentLmsIsRequestedUserGone,
   talentLmsResolveLearnerUserIdFromEmails,
   talentLmsGetUserStatusInCourse,
   talentLmsGetUsersProgressInUnit,
@@ -92,6 +94,10 @@ function unitPercentFromCoursePayload(
 
 export type TalentLessonUnitKind = "lesson" | "test";
 
+function talentProgressUserGoneMessage(): string {
+  return "Talent LMS has no active learner for your Hangar email (deleted or deactivated — common after a plan change). Ask a Talent admin to restore that user, or open the lesson once so Hangar can recreate it, then refresh.";
+}
+
 /**
  * Progress for the learner’s weekly lesson — unit id from `lessons.talent_lms_unit_id`
  * (or `talent_lms_test_unit_id` when `unitKind` is `"test"`);
@@ -105,6 +111,8 @@ export async function fetchTalentLessonProgressSnapshot(
     userEmail: string | null | undefined;
     /** Extra emails to try (e.g. `public.users.email` when it differs from Auth). */
     additionalEmails?: readonly (string | null | undefined)[];
+    /** Used only if Hangar must JIT-create the Talent learner. */
+    fullName?: string | null;
     lessonId: string;
     unitKind?: TalentLessonUnitKind;
   }>
@@ -182,6 +190,20 @@ export async function fetchTalentLessonProgressSnapshot(
     };
   }
 
+  const enroll = await ensureTalentLmsUserAndEnrollInCourse({
+    config: apiConfig,
+    userEmail: lookupEmails[0],
+    fullName: options.fullName,
+    courseId: effectiveCourseId,
+  });
+  if (!enroll.ok) {
+    console.error(
+      "[TalentLMS] progress-time enroll failed:",
+      enroll.status,
+      enroll.message
+    );
+  }
+
   const tlUser = await talentLmsResolveLearnerUserIdFromEmails(
     apiConfig,
     lookupEmails
@@ -190,9 +212,11 @@ export async function fetchTalentLessonProgressSnapshot(
     return {
       kind: "error",
       message:
-        tlUser.status === 404
-          ? "Talent LMS API could not match your Hangar account to a learner. Hangar expects the Talent learner login to match your Hangar email (same value in Supabase Auth and public.users). If you use SSO, ensure TALENTLMS_SAML_USERNAME_MODE matches how Talent stores login (usually full email)."
-          : tlUser.message,
+        talentLmsIsRequestedUserGone(tlUser.message)
+          ? talentProgressUserGoneMessage()
+          : tlUser.status === 404
+            ? "Talent LMS API could not match your Hangar account to a learner. Hangar expects the Talent learner login to match your Hangar email (same value in Supabase Auth and public.users). If you use SSO, ensure TALENTLMS_SAML_USERNAME_MODE matches how Talent stores login (usually full email)."
+            : tlUser.message,
       talentUrl,
     };
   }
@@ -230,7 +254,9 @@ export async function fetchTalentLessonProgressSnapshot(
   if (!courseStatus.ok) {
     return {
       kind: "error",
-      message: courseStatus.message,
+      message: talentLmsIsRequestedUserGone(courseStatus.message)
+        ? talentProgressUserGoneMessage()
+        : courseStatus.message,
       talentUrl,
     };
   }
