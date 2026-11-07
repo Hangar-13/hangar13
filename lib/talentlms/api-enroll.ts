@@ -85,6 +85,44 @@ export function talentLmsIsRequestedUserGone(message: string): boolean {
   return message.toLowerCase().includes("no longer available");
 }
 
+function talentLmsIsEmailAlreadyRegisteredMessage(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("already exists") ||
+    lower.includes("already registered") ||
+    lower.includes("already taken") ||
+    (lower.includes("same email") && lower.includes("exist"))
+  );
+}
+
+/** HTTP status Hangar uses when Talent still holds a deleted learner for the email. */
+export const TALENTLMS_DELETED_USER_STATUS = 410;
+
+export function talentLmsDeletedUserTombstoneMessage(): string {
+  return "Talent LMS still has a deleted account for this email, so it will not create a new user, list them under Users, or enroll them in a course. In Talent LMS open Users, filter to deleted users, restore this email, then click Create Talent LMS user again.";
+}
+
+function talentLookupMissingResult(
+  kind: "email" | "username",
+  message: string
+): { ok: false; status: number; message: string } {
+  if (talentLmsIsRequestedUserGone(message)) {
+    return {
+      ok: false,
+      status: TALENTLMS_DELETED_USER_STATUS,
+      message: talentLmsDeletedUserTombstoneMessage(),
+    };
+  }
+  return {
+    ok: false,
+    status: 404,
+    message:
+      kind === "email"
+        ? "Talent LMS user not found for this email."
+        : "Talent LMS user not found for this username.",
+  };
+}
+
 function baseUrl(config: TalentLmsApiConfig): string {
   return `https://${config.subdomain}.talentlms.com/api/v1`;
 }
@@ -151,6 +189,14 @@ export async function talentLmsApiAddUserToCourse(options: Readonly<{
     return { ok: true };
   }
 
+  if (talentLmsIsRequestedUserGone(message)) {
+    return {
+      ok: false,
+      status: TALENTLMS_DELETED_USER_STATUS,
+      message: talentLmsDeletedUserTombstoneMessage(),
+    };
+  }
+
   return { ok: false, status: res.status, message };
 }
 
@@ -187,16 +233,12 @@ export async function talentLmsGetUserIdByEmail(
   }
 
   if (res.status === 404) {
-    return { ok: false, status: 404, message: "Talent LMS user not found for this email." };
+    return talentLookupMissingResult("email", "not found");
   }
   if (!res.ok) {
     const { message, rawBody } = await readTalentApiError(res);
     if (talentLmsIsRequestedUserGone(message)) {
-      return {
-        ok: false,
-        status: 404,
-        message: "Talent LMS user not found for this email.",
-      };
+      return talentLookupMissingResult("email", message);
     }
     console.error(
       "[TalentLMS] user lookup by email failed:",
@@ -267,20 +309,12 @@ export async function talentLmsGetUserIdByUsername(
   }
 
   if (res.status === 404) {
-    return {
-      ok: false,
-      status: 404,
-      message: "Talent LMS user not found for this username.",
-    };
+    return talentLookupMissingResult("username", "not found");
   }
   if (!res.ok) {
     const message = await readTalentApiErrorMessage(res);
     if (talentLmsIsRequestedUserGone(message)) {
-      return {
-        ok: false,
-        status: 404,
-        message: "Talent LMS user not found for this username.",
-      };
+      return talentLookupMissingResult("username", message);
     }
     return {
       ok: false,
@@ -335,7 +369,7 @@ export async function talentLmsResolveLearnerUserId(
   if (byEmail.ok) {
     return byEmail;
   }
-  if (byEmail.status !== 404) {
+  if (byEmail.status !== 404 && byEmail.status !== TALENTLMS_DELETED_USER_STATUS) {
     return byEmail;
   }
 
@@ -374,7 +408,10 @@ export async function talentLmsResolveLearnerUserId(
     if (byUsername.ok) {
       return byUsername;
     }
-    if (byUsername.status !== 404) {
+    if (
+      byUsername.status !== 404 &&
+      byUsername.status !== TALENTLMS_DELETED_USER_STATUS
+    ) {
       return byUsername;
     }
   }
@@ -394,7 +431,7 @@ export async function talentLmsResolveLearnerUserIdFromEmails(
   | { ok: false; status: number; message: string }
 > {
   const seen = new Set<string>();
-  let last404:
+  let lastMissing:
     | { ok: false; status: number; message: string }
     | null = null;
 
@@ -407,15 +444,17 @@ export async function talentLmsResolveLearnerUserIdFromEmails(
     if (r.ok) {
       return r;
     }
-    if (r.status === 404) {
-      last404 = r;
+    if (r.status === 404 || r.status === TALENTLMS_DELETED_USER_STATUS) {
+      if (!lastMissing || r.status === TALENTLMS_DELETED_USER_STATUS) {
+        lastMissing = r;
+      }
       continue;
     }
     return r;
   }
 
   return (
-    last404 ?? {
+    lastMissing ?? {
       ok: false,
       status: 404,
       message: "Talent LMS user not found for this email.",
@@ -434,7 +473,7 @@ async function talentLmsUserExistsByEmail(
   if (got.ok) {
     return { ok: true, exists: true };
   }
-  if (got.status === 404) {
+  if (got.status === 404 || got.status === TALENTLMS_DELETED_USER_STATUS) {
     return { ok: true, exists: false };
   }
   return { ok: false, status: got.status, message: got.message };
@@ -668,17 +707,6 @@ async function talentLmsApiSignupUser(options: Readonly<{
     })
   );
 
-  const lower = message.toLowerCase();
-  if (
-    lower.includes("already") ||
-    lower.includes("exist") ||
-    lower.includes("registered") ||
-    lower.includes("duplicate") ||
-    lower.includes("taken")
-  ) {
-    return { ok: true };
-  }
-
   return { ok: false, status: res.status, message };
 }
 
@@ -709,13 +737,30 @@ export async function ensureTalentLmsUserExists(options: Readonly<{
   const policy = getTalentLmsUsernamePolicyFromEnv();
   const login = resolveTalentLmsUsername(email, policy);
   const { first, last } = splitFullName(options.fullName);
-  return talentLmsApiSignupUser({
+  const signedUp = await talentLmsApiSignupUser({
     config: options.config,
     email,
     login,
     firstName: first,
     lastName: last,
   });
+  if (
+    !signedUp.ok &&
+    !talentLmsIsEmailAlreadyRegisteredMessage(signedUp.message)
+  ) {
+    return signedUp;
+  }
+
+  const live = await talentLmsResolveLearnerUserId(options.config, email);
+  if (live.ok) {
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    status: TALENTLMS_DELETED_USER_STATUS,
+    message: talentLmsDeletedUserTombstoneMessage(),
+  };
 }
 
 /**

@@ -7,6 +7,8 @@ import { resolveTalentLmsCourseAndUnitForLesson } from "@/lib/talentlms/lesson-t
 import {
   ensureTalentLmsUserAndEnrollInCourse,
   getTalentLmsApiEnrollmentConfig,
+  TALENTLMS_DELETED_USER_STATUS,
+  talentLmsDeletedUserTombstoneMessage,
   talentLmsIsRequestedUserGone,
   talentLmsResolveLearnerUserIdFromEmails,
   talentLmsGetUserStatusInCourse,
@@ -93,10 +95,6 @@ function unitPercentFromCoursePayload(
 }
 
 export type TalentLessonUnitKind = "lesson" | "test";
-
-function talentProgressUserGoneMessage(): string {
-  return "Talent LMS has no active learner for your Hangar email (deleted or deactivated — common after a plan change). Ask a Talent admin to restore that user, or open the lesson once so Hangar can recreate it, then refresh.";
-}
 
 /**
  * Progress for the learner’s weekly lesson — unit id from `lessons.talent_lms_unit_id`
@@ -202,6 +200,13 @@ export async function fetchTalentLessonProgressSnapshot(
       enroll.status,
       enroll.message
     );
+    if (enroll.status === TALENTLMS_DELETED_USER_STATUS) {
+      return {
+        kind: "error",
+        message: enroll.message,
+        talentUrl,
+      };
+    }
   }
 
   const tlUser = await talentLmsResolveLearnerUserIdFromEmails(
@@ -212,8 +217,9 @@ export async function fetchTalentLessonProgressSnapshot(
     return {
       kind: "error",
       message:
+        tlUser.status === TALENTLMS_DELETED_USER_STATUS ||
         talentLmsIsRequestedUserGone(tlUser.message)
-          ? talentProgressUserGoneMessage()
+          ? talentLmsDeletedUserTombstoneMessage()
           : tlUser.status === 404
             ? "Talent LMS API could not match your Hangar account to a learner. Hangar expects the Talent learner login to match your Hangar email (same value in Supabase Auth and public.users). If you use SSO, ensure TALENTLMS_SAML_USERNAME_MODE matches how Talent stores login (usually full email)."
             : tlUser.message,
@@ -254,9 +260,11 @@ export async function fetchTalentLessonProgressSnapshot(
   if (!courseStatus.ok) {
     return {
       kind: "error",
-      message: talentLmsIsRequestedUserGone(courseStatus.message)
-        ? talentProgressUserGoneMessage()
-        : courseStatus.message,
+      message:
+        courseStatus.status === TALENTLMS_DELETED_USER_STATUS ||
+        talentLmsIsRequestedUserGone(courseStatus.message)
+          ? talentLmsDeletedUserTombstoneMessage()
+          : courseStatus.message,
       talentUrl,
     };
   }
