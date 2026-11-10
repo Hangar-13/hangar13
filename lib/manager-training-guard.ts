@@ -5,7 +5,7 @@ import { hasOrgRoleAtLeast } from "@/lib/organization";
 
 type PlatformOrOrgElevated = OrganizationRole | "god" | "admin";
 
-/** Hangar `courses` row after manager access check (includes optional Talent LMS numeric course id). */
+/** Hangar `courses` row after manager access check. */
 export type ManagerOwnedCourse = {
   id: string;
   name: string;
@@ -13,7 +13,6 @@ export type ManagerOwnedCourse = {
   created_by: string;
   organization_id: string;
   visibility: string;
-  talent_lms_course_id: string | null;
   is_deleted_lessons_archive?: boolean;
 };
 
@@ -129,9 +128,7 @@ export async function getCourseOwnedByUser(
   userId: string
 ): Promise<ManagerOwnedCourse | null> {
   const selectFull =
-    "id, name, description, created_by, organization_id, visibility, talent_lms_course_id, is_deleted_lessons_archive";
-  const selectWithTalent =
-    "id, name, description, created_by, organization_id, visibility, talent_lms_course_id";
+    "id, name, description, created_by, organization_id, visibility, is_deleted_lessons_archive";
   const selectBase =
     "id, name, description, created_by, organization_id, visibility";
 
@@ -147,27 +144,11 @@ export async function getCourseOwnedByUser(
   if (first.error && course === null) {
     const second = await supabase
       .from("courses")
-      .select(selectWithTalent)
+      .select(selectBase)
       .eq("id", courseId)
       .maybeSingle();
     course = second.data
       ? { ...second.data, is_deleted_lessons_archive: false }
-      : null;
-  }
-
-  // Until migration 083 is applied, `talent_lms_course_id` does not exist — full select fails.
-  if (course === null) {
-    const third = await supabase
-      .from("courses")
-      .select(selectBase)
-      .eq("id", courseId)
-      .maybeSingle();
-    course = third.data
-      ? {
-          ...third.data,
-          talent_lms_course_id: null,
-          is_deleted_lessons_archive: false,
-        }
       : null;
   }
 

@@ -12,6 +12,7 @@ import {
   reorderModuleLessons,
   updateModuleFields,
 } from "@/app/actions/manager-training-content";
+import { uploadLessonPackage } from "@/app/actions/lesson-player";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,7 +46,6 @@ import {
 } from "@/components/manager/manager-string-list-editor";
 import { ManagerMarkdownTextarea } from "@/components/manager/manager-markdown-textarea";
 import { AcsInclusionSwitchRow } from "@/components/manager/manager-acs-inclusion-toggle-row";
-import { coerceTalentLmsCourseId } from "@/lib/talentlms/lesson-url";
 import {
   DashboardContentFrame,
   DashboardPageShell,
@@ -53,7 +53,7 @@ import {
 } from "@/components/dashboard/page-shell";
 
 type Props = {
-  course: { id: string; name: string; talentLmsCourseId: string | null };
+  course: { id: string; name: string };
   moduleIndex: number;
   module: {
     id: string;
@@ -108,8 +108,6 @@ export function ManagerModuleDetailClient({
     StringListRow[]
   >(() => []);
   const [weeklyDeliverable, setWeeklyDeliverable] = useState("");
-  const [talentLmsUnitId, setTalentLmsUnitId] = useState("");
-  const [talentLmsTestUnitId, setTalentLmsTestUnitId] = useState("");
   const [deleteModuleOpen, setDeleteModuleOpen] = useState(false);
   const [deleteModuleError, setDeleteModuleError] = useState<string | null>(
     null
@@ -117,6 +115,9 @@ export function ManagerModuleDetailClient({
   const [lessonHours, setLessonHours] = useState("0");
   const [acsCodesSelected, setAcsCodesSelected] = useState<number[]>([]);
   const [includeAcsCodes, setIncludeAcsCodes] = useState(false);
+  const [contentZip, setContentZip] = useState<File | null>(null);
+  const [testZip, setTestZip] = useState<File | null>(null);
+  const [createdLessonId, setCreatedLessonId] = useState<string | null>(null);
   const [lessonError, setLessonError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -128,11 +129,20 @@ export function ManagerModuleDetailClient({
     setPracticalApplication("");
     setMentorDiscussionRows([]);
     setWeeklyDeliverable("");
-    setTalentLmsUnitId("");
-    setTalentLmsTestUnitId("");
     setAcsCodesSelected([]);
     setIncludeAcsCodes(false);
+    setContentZip(null);
+    setTestZip(null);
+    setCreatedLessonId(null);
     setLessonError(null);
+  }
+
+  function openCreatedLesson(lessonId: string) {
+    handleLessonDialog(false);
+    router.push(
+      `/dashboard/manager/courses/${course.id}/modules/${module.id}/lessons/${lessonId}`
+    );
+    router.refresh();
   }
 
   function handleLessonDialog(open: boolean) {
@@ -223,18 +233,43 @@ export function ManagerModuleDetailClient({
         practicalApplication: practicalApplication.trim() || null,
         mentorDiscussionQuestions: stringsFromRows(mentorDiscussionRows),
         weeklyDeliverable: weeklyDeliverable.trim() || null,
-        talentLmsUnitId: talentLmsUnitId.trim() || null,
-        talentLmsTestUnitId: talentLmsTestUnitId.trim() || null,
       });
       if (!result.ok) {
         setLessonError(result.error);
         return;
       }
-      handleLessonDialog(false);
-      router.push(
-        `/dashboard/manager/courses/${course.id}/modules/${module.id}/lessons/${result.lessonId}`
-      );
-      router.refresh();
+
+      const uploadErrors: string[] = [];
+      if (contentZip) {
+        const formData = new FormData();
+        formData.set("package", contentZip);
+        const uploaded = await uploadLessonPackage(
+          result.lessonId,
+          "content",
+          formData
+        );
+        if (!uploaded.ok) uploadErrors.push(`Lesson file: ${uploaded.error}`);
+      }
+      if (testZip) {
+        const formData = new FormData();
+        formData.set("package", testZip);
+        const uploaded = await uploadLessonPackage(
+          result.lessonId,
+          "test",
+          formData
+        );
+        if (!uploaded.ok) uploadErrors.push(`Test file: ${uploaded.error}`);
+      }
+
+      if (uploadErrors.length > 0) {
+        setCreatedLessonId(result.lessonId);
+        setLessonError(
+          `${uploadErrors.join(" ")} The lesson was created. Open it to upload again.`
+        );
+        return;
+      }
+
+      openCreatedLesson(result.lessonId);
     });
   }
 
@@ -655,70 +690,40 @@ export function ManagerModuleDetailClient({
               />
             </div>
             <div className="min-w-0 space-y-2 py-3">
-              <h3 className="text-base font-semibold tracking-tight">
-                Talent LMS
-              </h3>
-              {coerceTalentLmsCourseId(course.talentLmsCourseId) ? (
-                <Input
-                  id="les-talent-unit"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  autoComplete="off"
-                  placeholder="Unit id (digits)"
-                  aria-label="Talent LMS unit"
-                  value={talentLmsUnitId}
-                  onChange={(e) => setTalentLmsUnitId(e.target.value)}
-                  disabled={pending}
-                  className="max-w-xs font-mono text-sm tabular-nums"
-                />
-              ) : (
-                <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    No Talent LMS course defined
-                  </p>
-                  <Button asChild variant="secondary" size="sm" className="shrink-0">
-                    <Link
-                      href={`/dashboard/manager/courses/${course.id}?editTalentLms=1#talent-lms-course-id`}
-                    >
-                      Add Talent LMS Course ID
-                    </Link>
-                  </Button>
-                </div>
-              )}
+              <Label
+                htmlFor="les-scorm"
+                className="text-sm font-medium text-muted-foreground"
+              >
+                Lesson SCORM
+              </Label>
+              <Input
+                id="les-scorm"
+                type="file"
+                accept=".zip,application/zip"
+                disabled={pending || createdLessonId != null}
+                onChange={(e) => setContentZip(e.target.files?.[0] ?? null)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional zip learners play for this lesson.
+              </p>
             </div>
             <div className="min-w-0 space-y-2 py-3">
-              <h3 className="text-base font-semibold tracking-tight">
-                Talent LMS Test
-              </h3>
-              {coerceTalentLmsCourseId(course.talentLmsCourseId) ? (
-                <Input
-                  id="les-talent-test-unit"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  autoComplete="off"
-                  placeholder="Test unit id (digits)"
-                  aria-label="Talent LMS test unit"
-                  value={talentLmsTestUnitId}
-                  onChange={(e) => setTalentLmsTestUnitId(e.target.value)}
-                  disabled={pending}
-                  className="max-w-xs font-mono text-sm tabular-nums"
-                />
-              ) : (
-                <div className="flex flex-col gap-3 rounded-md border border-border bg-muted/30 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    No Talent LMS course defined
-                  </p>
-                  <Button asChild variant="secondary" size="sm" className="shrink-0">
-                    <Link
-                      href={`/dashboard/manager/courses/${course.id}?editTalentLms=1#talent-lms-course-id`}
-                    >
-                      Add Talent LMS Course ID
-                    </Link>
-                  </Button>
-                </div>
-              )}
+              <Label
+                htmlFor="les-scorm-test"
+                className="text-sm font-medium text-muted-foreground"
+              >
+                Test SCORM
+              </Label>
+              <Input
+                id="les-scorm-test"
+                type="file"
+                accept=".zip,application/zip"
+                disabled={pending || createdLessonId != null}
+                onChange={(e) => setTestZip(e.target.files?.[0] ?? null)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional zip for this lesson&apos;s test.
+              </p>
             </div>
             <div className="min-w-0 space-y-2 py-3">
               <Label
@@ -800,13 +805,22 @@ export function ManagerModuleDetailClient({
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={submitLesson}
-              disabled={pending || !title.trim()}
-            >
-              {pending ? "Creating…" : "Create"}
-            </Button>
+            {createdLessonId ? (
+              <Button
+                type="button"
+                onClick={() => openCreatedLesson(createdLessonId)}
+              >
+                Open lesson
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={submitLesson}
+                disabled={pending || !title.trim()}
+              >
+                {pending ? "Creating…" : "Create"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

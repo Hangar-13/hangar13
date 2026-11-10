@@ -27,7 +27,6 @@ import {
   DashboardContentFrame,
   DashboardPageShell,
 } from "@/components/dashboard/page-shell";
-import { TalentAccountSetupBanner } from "@/components/student/talent-account-setup-banner";
 import { getPriorOjtDashboardProgress } from "@/app/actions/prior-ojt";
 import { PriorOjtDashboardSection } from "@/components/student/prior-ojt-dashboard-section";
 import { FindTrainingDashboardSection } from "@/components/student/find-training-dashboard-section";
@@ -70,8 +69,6 @@ async function getUserProfile(userId: string) {
 
   return {
     full_name: profile.full_name,
-    talentProvisionStatus: profile.talent_lms_provision_status,
-    talentProvisionAttempts: profile.talent_lms_provision_attempts ?? 0,
   };
 }
 
@@ -313,9 +310,6 @@ export default async function StudentDashboard() {
 
   return (
     <DashboardPageShell>
-      {profile.talentProvisionStatus === "failed" ? (
-        <TalentAccountSetupBanner attempts={profile.talentProvisionAttempts} />
-      ) : null}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">

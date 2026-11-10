@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import { usePathname } from "next/navigation";
 import { Menu, Search } from "lucide-react";
 import { useAppNavigation } from "@/components/app-navigation-provider";
+import { useLessonViewerChrome } from "@/components/lesson-viewer-chrome";
 import { OrganizationSwitcher } from "@/components/organization-switcher";
 import { NotificationDropdown } from "@/components/notifications/notification-dropdown";
 import { UserMenu } from "@/components/user-menu";
@@ -14,6 +16,9 @@ import { TrainingSwitcherDock } from "@/components/training-switcher-dock";
 
 export function TopNav() {
   const router = useRouter();
+  const pathname = usePathname();
+  const { title: lessonTitle } = useLessonViewerChrome();
+  const inLessonViewer = pathname?.startsWith("/dashboard/lesson-player");
   const {
     openMobileNav,
     memberships,
@@ -73,16 +78,22 @@ export function TopNav() {
             activeOrganizationId={activeOrganizationId}
             onChanged={() => void refreshOrganizations()}
           />
-          <form onSubmit={handleSearch} className="relative max-w-md flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search training material, logs, users..."
-              className="h-9 w-full bg-background pl-9 pr-4"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </form>
+          {inLessonViewer ? (
+            <h1 className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight">
+              {lessonTitle ?? ""}
+            </h1>
+          ) : (
+            <form onSubmit={handleSearch} className="relative max-w-md flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search training material, logs, users..."
+                className="h-9 w-full bg-background pl-9 pr-4"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </form>
+          )}
         </div>
         <div className="flex items-center gap-1 sm:gap-2">
           <ThemeToggle />

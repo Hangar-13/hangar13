@@ -99,9 +99,9 @@ Helpers: [`lib/course-versions.ts`](../lib/course-versions.ts), [`lib/training-l
 
 ### What a training path is
 
-**`training_paths`** are managerial groupings layered on top of catalog content. Metadata includes name, organization, totals, `visibility`, `monetization`, `is_active`, optional **`talent_lms_course_id`** (numeric Talent LMS course id for REST enrollment after Hangar checkout when `TALENTLMS_API_KEY` is configured), etc.
+**`training_paths`** are managerial groupings layered on top of catalog content. Metadata includes name, organization, totals, `visibility`, `monetization`, `is_active`, and so on.
 
-**Talent LMS learner identity (Hangar policy):** Hangar does not persist a separate Talent “username” column on users. Integrations assume the **Talent learner login matches the Hangar email** (Supabase Auth email and `public.users.email` kept in sync). SAML uses `TALENTLMS_SAML_USERNAME_MODE` (usually full email so `login` equals email); REST progress resolves learners via `/users/email:{email}` and username fallbacks derived from that policy. If API lookup fails, align Talent user login and Hangar/Auth email or SAML mode—do not maintain alternate Talent logins as a first-class pattern. For SSO failures such as **`idp_email_already_exists`**, see [`docs/talent-lms-saml-troubleshooting.md`](./talent-lms-saml-troubleshooting.md).
+Lesson and test packages are SCORM 1.2 zips stored on the lesson (`content_package_id`, `test_package_id`) and played inside Hangar. The rest of the app talks to that player through [`lib/lesson-player`](../lib/lesson-player/index.ts).
 
 **`training_path_items`** glue a path to **exactly one** of:
 
@@ -216,7 +216,7 @@ flowchart TB
 | Enrollment on training paths only | `supabase/migrations/040_enrollment_paths_only.sql`, `041_drop_enrollment_source_course_singleton.sql` |
 | Roles split / platform elevation | `031_system_vs_organization_roles.sql`, `039_platform_elevation_sync_system_role.sql` |
 | Lesson progress math | [`lib/training-progress.ts`](../lib/training-progress.ts), [`lib/training-lessons.ts`](../lib/training-lessons.ts) |
+| Lesson packages (SCORM player) | [`lib/lesson-player`](../lib/lesson-player/index.ts), `supabase/migrations/102_lesson_player_packages.sql` |
 | Course versioning | [`lib/course-versions.ts`](../lib/course-versions.ts), `supabase/migrations/087_course_versions.sql` |
-| Talent LMS reconcile (cron) | **`TALENTLMS_RECONCILE_CRON_ENABLED` + `vercel.json` crons** opt-in ([`talent-lms-reconcile-cron.md`](./talent-lms-reconcile-cron.md)); code in [`lib/talentlms/reconcile-lesson-completion.ts`](../lib/talentlms/reconcile-lesson-completion.ts), [`lib/talentlms/reconcile-schedule.ts`](../lib/talentlms/reconcile-schedule.ts), [`lib/talentlms/reconcile-cron-flag.ts`](../lib/talentlms/reconcile-cron-flag.ts), [`app/api/cron/talent-lesson-completion/route.ts`](../app/api/cron/talent-lesson-completion/route.ts) |
 
 If you extend the product, update this document when behavior diverges from these sources of truth.

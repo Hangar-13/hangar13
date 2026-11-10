@@ -9,12 +9,11 @@ import { resolve } from "node:path";
 import process from "node:process";
 import dotenv from "dotenv";
 
-const envPath = resolve(process.cwd(), ".env.live.local");
+const envFile = process.argv[2] || ".env.live.local";
+const envPath = resolve(process.cwd(), envFile);
 
 if (!existsSync(envPath)) {
-  console.error(
-    "Missing .env.live.local. Create it from .env.example / Vercel (see README \"dev:live\")."
-  );
+  console.error(`Missing ${envFile}.`);
   process.exit(1);
 }
 
@@ -25,8 +24,11 @@ if (loaded.error) {
 }
 
 const opts = process.env.NODE_OPTIONS;
-if (opts && /--env-file\b/.test(opts)) {
-  const cleaned = opts.replace(/\s*--env-file(?:=\S*)?/g, " ").trim();
+if (opts && /(?:^|\s)(?:--env-file\b|-r\b|--require\b|--r\b)/.test(opts)) {
+  const cleaned = opts
+    .replace(/\s*--env-file(?:=\S*)?/g, " ")
+    .replace(/\s*(?:-r|--require|--r)(?:=\S*|\s+\S+)?/g, " ")
+    .trim();
   if (cleaned) {
     process.env.NODE_OPTIONS = cleaned;
   } else {

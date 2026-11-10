@@ -6,12 +6,12 @@ You do **not** need to ship every UI tweak to production to exercise real integr
 
 ### Everyday local development (`npm run dev`)
 
-Uses `.env.local` (gitignored). Point these at a dev Supabase project and Talent sandbox if you have them, or at production credentials when you accept writing real prod data from localhost.
+Uses `.env.local` (gitignored). Point these at a dev Supabase project, or at production credentials when you accept writing real prod data from localhost.
 
 ### Same code against production APIs (`npm run dev:live`)
 
 1. Requires **Node 20.9+** (matches Next.js 16).
-2. Create **`.env.live.local`** (gitignored) with the full variable set you want—typically a copy of production/Vercel env vars edited so **`APP_ORIGIN`** is `http://localhost:3000` (or whatever host/port you use). SAML metadata and Talent redirects must match what you actually open in the browser.
+2. Create **`.env.live.local`** (gitignored) with the full variable set you want—typically a copy of production/Vercel env vars edited so **`APP_ORIGIN`** is `http://localhost:3000` (or whatever host/port you use).
 3. Run:
 
 ```bash
@@ -29,21 +29,6 @@ The script loads `.env.live.local` into the process environment, then starts `ne
 ### Env template
 
 See [`.env.example`](./.env.example) for variable names used by this app.
-
-### Test Talent LMS REST lookup (no Postman)
-
-From the repo root, with `TALENTLMS_SUBDOMAIN` and `TALENTLMS_API_KEY` in `.env.local` (or another file):
-
-```bash
-npm run talent:probe -- learner@example.com
-npm run talent:probe -- --env-file=.env.live.local learner@example.com
-npm run talent:probe -- --env-file=.env.live.local --user-id=4 learner@example.com
-npm run talent:probe -- --env-file=.env.live.local --user-id=4
-```
-
-The optional **`--user-id`** runs **`GET .../users/id:N`** first (same [Talent API family](https://market.talentlms.com/pages/docs/TalentLMS-API-Documentation.pdf) as `/users/email:` / `/users/username:`). Use it when Admin shows `/plus/users/4` but email/username return 404 — then compare the JSON **`login`** / **`email`** fields to what you probe.
-
-This runs [`scripts/talent-lms-api-probe.mjs`](./scripts/talent-lms-api-probe.mjs): same Basic auth and `/users/email:` then `/users/username:` attempts as the app (including `TALENTLMS_SAML_USERNAME_MODE` username variants).
 
 ## Getting Started
 

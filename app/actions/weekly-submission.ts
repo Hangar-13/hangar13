@@ -5,147 +5,8 @@ import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { resolveLessonIdForProgramWeek } from "@/lib/training-lessons";
 import { resolveCourseVersionForLessonSubmission } from "@/lib/course-versions";
 import { noActiveTrainingServerError } from "@/lib/training-enrollment-messages";
-import {
-  getTalentLmsApiEnrollmentConfig,
-  talentLmsResolveLearnerUserIdFromEmails,
-  talentLmsGetUserStatusInCourse,
-  talentLmsIsUnitCompletedInPayload,
-} from "@/lib/talentlms/api-enroll";
-import { getLessonTalentContext } from "@/lib/talentlms/lesson-talent-context";
+import { checkLessonPlayerCompletion } from "@/lib/lesson-player";
 import { revalidatePath } from "next/cache";
-
-type TalentCompletionFields = {
-  talent_lms_unit_completed: boolean | null;
-  talent_lms_completion_checked_at: string | null;
-  talent_lms_completion_meta: Record<string, unknown> | null;
-};
-
-async function resolveTalentCompletionSnapshot(options: Readonly<{
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>;
-  userEmail: string | null | undefined;
-  additionalEmails?: readonly (string | null | undefined)[];
-  lessonId: string;
-}>): Promise<{ error: string } | TalentCompletionFields> {
-  const ctx = await getLessonTalentContext(
-    options.supabase,
-    options.lessonId
-  );
-
-  const { talentUrl, courseId, unitId } = ctx;
-
-  const apiConfig = getTalentLmsApiEnrollmentConfig();
-  const checkedIso = new Date().toISOString();
-
-  if (!apiConfig) {
-    return {
-      talent_lms_unit_completed: null,
-      talent_lms_completion_checked_at: null,
-      talent_lms_completion_meta: { skip_reason: "api_not_configured" },
-    };
-  }
-
-  if (!talentUrl) {
-    return {
-      talent_lms_unit_completed: null,
-      talent_lms_completion_checked_at: null,
-      talent_lms_completion_meta: { skip_reason: "no_talent_link_in_lesson" },
-    };
-  }
-
-  if (!courseId) {
-    return {
-      talent_lms_unit_completed: null,
-      talent_lms_completion_checked_at: null,
-      talent_lms_completion_meta: {
-        skip_reason: "could_not_resolve_course_id",
-        talent_url: talentUrl,
-      },
-    };
-  }
-
-  if (!unitId) {
-    return {
-      talent_lms_unit_completed: null,
-      talent_lms_completion_checked_at: null,
-      talent_lms_completion_meta: {
-        skip_reason: "unit_not_in_link",
-        talent_url: talentUrl,
-        course_id: courseId,
-      },
-    };
-  }
-
-  const lookupEmails = [
-    options.userEmail,
-    ...(options.additionalEmails ?? []),
-  ].filter((e): e is string => typeof e === "string" && e.trim().length > 0);
-
-  if (lookupEmails.length === 0) {
-    return {
-      error:
-        "Your account does not have an email address; Talent LMS verification cannot run.",
-    };
-  }
-
-  const tlUser = await talentLmsResolveLearnerUserIdFromEmails(
-    apiConfig,
-    lookupEmails
-  );
-  if (!tlUser.ok) {
-    if (tlUser.status === 404) {
-      return {
-        error:
-          "Talent LMS API could not match your Hangar account to a learner. Hangar expects the Talent learner login to match your Hangar email; check Supabase Auth email, public.users.email, and SAML username mode.",
-      };
-    }
-    return {
-      error: `Talent LMS could not look up your account (${tlUser.message}). Try again shortly.`,
-    };
-  }
-
-  const progress = await talentLmsGetUserStatusInCourse({
-    config: apiConfig,
-    userId: tlUser.userId,
-    courseId,
-  });
-
-  if (!progress.ok) {
-    return {
-      error: `Could not read your Talent LMS progress (${progress.message}). Try again in a moment.`,
-    };
-  }
-
-  const verdict = talentLmsIsUnitCompletedInPayload(progress.payload, unitId);
-
-  if (!verdict.found) {
-    return {
-      error:
-        "Talent LMS has no matching unit in this course yet. Check that the lesson link uses the correct course and unit, complete the unit in Talent, then submit again.",
-    };
-  }
-
-  if (!verdict.completed) {
-    return {
-      error:
-        "Finish this week's Talent LMS lesson (complete the linked unit), then submit your reflection.",
-    };
-  }
-
-  const unitSnap = progress.payload.units?.find(
-    (u) => String(u.id ?? "") === String(unitId)
-  );
-
-  return {
-    talent_lms_unit_completed: true,
-    talent_lms_completion_checked_at: checkedIso,
-    talent_lms_completion_meta: {
-      course_id: courseId,
-      unit_id: unitId,
-      course_completion_status: progress.payload.completion_status,
-      unit: unitSnap,
-    },
-  };
-}
 
 export async function submitWeeklyReflection(formData: {
   weekNumber: number;
@@ -209,30 +70,21 @@ export async function submitWeeklyReflection(formData: {
     return { error: "Maximum 5 files allowed." };
   }
 
-  const { data: profileRow } = await supabase
-    .from("users")
-    .select("email")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const talentSnap = await resolveTalentCompletionSnapshot({
-    supabase,
-    userEmail: user.email,
-    additionalEmails: [
-      typeof profileRow?.email === "string" ? profileRow.email : undefined,
-    ],
-    lessonId,
-  });
-
-  if ("error" in talentSnap) {
-    return { error: talentSnap.error };
-  }
-
   const courseVersion = await resolveCourseVersionForLessonSubmission(
     supabase,
     lessonId,
     versionContext
   );
+
+  const playerCompletion = await checkLessonPlayerCompletion(supabase, {
+    lessonId,
+    userId: user.id,
+    courseVersionId: courseVersion?.id ?? null,
+  });
+
+  if (!playerCompletion.readyToSubmit) {
+    return { error: playerCompletion.blockReason ?? "Finish the lesson before submitting." };
+  }
 
   const { data: submission, error: submissionError } = await supabase
     .from("lesson_submissions")
@@ -247,9 +99,11 @@ export async function submitWeeklyReflection(formData: {
         reject_reason: null,
         mentor_notes: null,
         course_version_id: courseVersion?.id ?? null,
-        talent_lms_unit_completed: talentSnap.talent_lms_unit_completed,
-        talent_lms_completion_checked_at: talentSnap.talent_lms_completion_checked_at,
-        talent_lms_completion_meta: talentSnap.talent_lms_completion_meta,
+        player_completion: {
+          checkedAt: playerCompletion.checkedAt,
+          content: playerCompletion.content,
+          test: playerCompletion.test,
+        },
       },
       {
         onConflict: "user_training_id,lesson_id",

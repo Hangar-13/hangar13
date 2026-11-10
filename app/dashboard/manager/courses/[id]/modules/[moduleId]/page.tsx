@@ -108,7 +108,6 @@ export default async function ManagerModuleDetailPage({ params }: PageProps) {
       course={{
         id: course.id,
         name: course.name,
-        talentLmsCourseId: course.talent_lms_course_id,
       }}
       moduleIndex={moduleIndex}
       module={{

@@ -6,10 +6,6 @@ import {
   userMaySelfEnrollFromVisibility,
 } from "@/lib/discoverable-training-paths";
 import { revalidatePath } from "next/cache";
-import {
-  ensureTalentLmsUserAndEnrollInCourse,
-  getTalentLmsApiEnrollmentConfig,
-} from "@/lib/talentlms/api-enroll";
 import { pinLatestCourseVersionsForPathEnrollment } from "@/lib/course-versions";
 
 export async function purchaseTrainingPlan(
@@ -125,104 +121,6 @@ export async function purchaseTrainingPlan(
     enrollmentSource: "self_service",
     pathOrganizationId: path.organization_id as string,
   });
-
-  // Enroll the learner into every Talent LMS course mapped to this path. The
-  // first call JIT-creates their Talent account (idempotent), so a brand-new
-  // user who has never used SSO still gets a Talent profile + enrollments here.
-  //
-  // Path items can be whole courses, modules, or individual lessons, so resolve the
-  // owning Hangar course for each granularity (lesson → module → course) before
-  // mapping to Talent course ids — otherwise module/lesson-built paths enroll nothing.
-  const { data: pathItemRows } = await supabase
-    .from("training_path_items")
-    .select("course_id, module_id, lesson_id")
-    .eq("training_path_id", trainingPathId);
-
-  const hangarCourseIdSet = new Set<string>();
-  const moduleIdSet = new Set<string>();
-  const lessonIdSet = new Set<string>();
-  for (const item of pathItemRows ?? []) {
-    if (typeof item.course_id === "string" && item.course_id) {
-      hangarCourseIdSet.add(item.course_id);
-    } else if (typeof item.module_id === "string" && item.module_id) {
-      moduleIdSet.add(item.module_id);
-    } else if (typeof item.lesson_id === "string" && item.lesson_id) {
-      lessonIdSet.add(item.lesson_id);
-    }
-  }
-
-  if (lessonIdSet.size > 0) {
-    const { data: lessonRows } = await supabase
-      .from("lessons")
-      .select("module_id")
-      .in("id", [...lessonIdSet]);
-    for (const row of lessonRows ?? []) {
-      if (typeof row.module_id === "string" && row.module_id) {
-        moduleIdSet.add(row.module_id);
-      }
-    }
-  }
-
-  if (moduleIdSet.size > 0) {
-    const { data: moduleRows } = await supabase
-      .from("modules")
-      .select("course_id")
-      .in("id", [...moduleIdSet]);
-    for (const row of moduleRows ?? []) {
-      if (typeof row.course_id === "string" && row.course_id) {
-        hangarCourseIdSet.add(row.course_id);
-      }
-    }
-  }
-
-  const distinctHangarCourseIds = [...hangarCourseIdSet];
-
-  if (distinctHangarCourseIds.length > 0) {
-    const apiConfig = getTalentLmsApiEnrollmentConfig();
-    if (apiConfig) {
-      const { data: talentCourseRows } = await supabase
-        .from("courses")
-        .select("talent_lms_course_id")
-        .in("id", distinctHangarCourseIds);
-
-      const talentCourseIds = [
-        ...new Set(
-          (talentCourseRows ?? [])
-            .map((c) => c.talent_lms_course_id as string | null | undefined)
-            .map((v) => (typeof v === "string" ? v.trim() : ""))
-            .filter((v) => v.length > 0)
-        ),
-      ];
-
-      if (talentCourseIds.length > 0) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("email, full_name")
-          .eq("id", user.id)
-          .maybeSingle();
-        const enrollEmail =
-          `${profile?.email || user.email || ""}`.trim().toLowerCase();
-        if (enrollEmail) {
-          for (const courseId of talentCourseIds) {
-            const tl = await ensureTalentLmsUserAndEnrollInCourse({
-              config: apiConfig,
-              userEmail: enrollEmail,
-              fullName: profile?.full_name,
-              courseId,
-            });
-            if (!tl.ok) {
-              console.error(
-                "[TalentLMS] enroll user in course on path enrollment failed:",
-                courseId,
-                tl.status,
-                tl.message
-              );
-            }
-          }
-        }
-      }
-    }
-  }
 
   revalidatePath("/dashboard/student/find-training");
   revalidatePath("/dashboard/student");

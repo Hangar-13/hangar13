@@ -9,15 +9,10 @@ import { getCourseOwnedByUser } from "@/lib/manager-training-guard";
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ editTalentLms?: string }>;
 };
 
-export default async function ManagerCourseDetailPage({
-  params,
-  searchParams,
-}: PageProps) {
+export default async function ManagerCourseDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const { editTalentLms } = await searchParams;
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -76,10 +71,8 @@ export default async function ManagerCourseDetailPage({
         name: course.name,
         description: course.description,
         visibility: normalizeCatalogVisibility(course.visibility, "proprietary"),
-        talentLmsCourseId: course.talent_lms_course_id,
       }}
       moduleTree={moduleTree}
-      focusTalentLmsCourseField={editTalentLms === "1"}
       versionsPanel={<CourseVersionsPanel courseId={id} initialVersions={versions} />}
     />
   );
