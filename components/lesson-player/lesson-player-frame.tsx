@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useLessonViewerChrome } from "@/components/lesson-viewer-chrome";
 
 type Props = {
@@ -89,11 +89,66 @@ function pinContentsBesideLesson(frame: HTMLIFrameElement) {
 const FOOTER_LAYOUT_STYLE_ID = "hangar-lesson-footer-layout";
 
 /**
+ * These packages show "3 / 26" and keep the furthest page reached in
+ * suspend_data.m. Match the package's own bar: furthest page ÷ (pages − 1).
+ */
+function readPackageProgress(
+  frame: HTMLIFrameElement | null,
+  cmi: Record<string, string>
+): number | null {
+  const doc = frame?.contentDocument;
+  const pg = doc?.getElementById("pg")?.textContent ?? "";
+  const match = /(\d+)\s*\/\s*(\d+)/.exec(pg);
+  const total = match ? Number(match[2]) : null;
+
+  let index: number | null = null;
+  const raw = cmi["cmi.suspend_data"];
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { m?: unknown; p?: unknown };
+      if (typeof parsed.m === "number") index = parsed.m;
+      else if (typeof parsed.p === "number") index = parsed.p;
+    } catch {
+      index = null;
+    }
+  }
+  if (index == null) {
+    const loc = Number(cmi["cmi.core.lesson_location"]);
+    if (Number.isFinite(loc)) index = loc;
+  }
+
+  if (index != null && total != null && total > 1) {
+    return Math.min(100, Math.max(0, Math.round((100 * index) / (total - 1))));
+  }
+
+  const bar = doc?.getElementById("bar")?.getAttribute("aria-valuenow");
+  if (bar != null && bar.trim() !== "") {
+    const n = Number(bar);
+    if (Number.isFinite(n)) return Math.min(100, Math.max(0, Math.round(n)));
+  }
+  return null;
+}
+
+function withProgress(
+  frame: HTMLIFrameElement | null,
+  cmi: Record<string, string>
+): Record<string, string> {
+  const next = { ...cmi };
+  const pct = readPackageProgress(frame, cmi);
+  if (pct != null) next["cmi.progress_measure"] = String(pct);
+  return next;
+}
+
+/**
  * The package footer pins Back and Next to opposite edges. Group them in the
  * center and add Exit lesson on the far left. Packages without this footer
  * are left alone.
  */
-function placeLessonFooter(frame: HTMLIFrameElement, returnPath: string) {
+function placeLessonFooter(
+  frame: HTMLIFrameElement,
+  returnPath: string,
+  onExit: () => Promise<void>
+) {
   const doc = frame.contentDocument;
   if (!doc || doc.getElementById("hangar-exit-lesson")) return;
   const footer = doc.querySelector("#app > footer");
@@ -131,7 +186,16 @@ function placeLessonFooter(frame: HTMLIFrameElement, returnPath: string) {
   exit.className = "sec";
   exit.textContent = "Exit lesson";
   exit.addEventListener("click", () => {
-    window.location.assign(returnPath);
+    if (exit.disabled) return;
+    exit.disabled = true;
+    void onExit().then(
+      () => {
+        window.location.assign(returnPath);
+      },
+      () => {
+        exit.disabled = false;
+      }
+    );
   });
 
   footer.replaceChildren(exit, nav);
@@ -172,6 +236,8 @@ export function LessonPlayerFrame({
   returnPath,
 }: Props) {
   const { setTitle } = useLessonViewerChrome();
+  const frameRef = useRef<HTMLIFrameElement | null>(null);
+  const cmiRef = useRef<Record<string, string>>({});
   const [src, setSrc] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -182,6 +248,7 @@ export function LessonPlayerFrame({
 
   useLayoutEffect(() => {
     const cmi = { ...initialCmi };
+    cmiRef.current = cmi;
     const api: Scorm12Api = {
       LMSInitialize() {
         return "true";
@@ -194,14 +261,14 @@ export function LessonPlayerFrame({
         return "true";
       },
       LMSCommit() {
-        void persist(packageId, cmi, false).then(
+        void persist(packageId, withProgress(frameRef.current, cmi), false).then(
           () => setSaveError(null),
           () => setSaveError("Progress could not be saved. Stay on this page and try again.")
         );
         return "true";
       },
       LMSFinish() {
-        void persist(packageId, cmi, true).then(
+        void persist(packageId, withProgress(frameRef.current, cmi), true).then(
           () => setSaveError(null),
           () => setSaveError("Progress could not be saved. Stay on this page and try again.")
         );
@@ -237,12 +304,28 @@ export function LessonPlayerFrame({
       {src ? (
         <iframe
           key={resumeKey}
+          ref={frameRef}
           title={title}
           src={src}
           className="min-h-0 w-full flex-1 border-0 bg-white"
           onLoad={(event) => {
+            frameRef.current = event.currentTarget;
             pinContentsBesideLesson(event.currentTarget);
-            placeLessonFooter(event.currentTarget, returnPath);
+            placeLessonFooter(event.currentTarget, returnPath, async () => {
+              try {
+                await persist(
+                  packageId,
+                  withProgress(frameRef.current, cmiRef.current),
+                  false
+                );
+                setSaveError(null);
+              } catch {
+                setSaveError(
+                  "Progress could not be saved. Stay on this page and try again."
+                );
+                throw new Error("Could not save lesson progress.");
+              }
+            });
           }}
         />
       ) : (

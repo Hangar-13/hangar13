@@ -17,6 +17,8 @@ const PERSISTED_KEYS = [
   "cmi.suspend_data",
   "cmi.core.session_time",
   "cmi.core.exit",
+  // 0–100, written by the player from the package's own page position.
+  "cmi.progress_measure",
 ] as const;
 
 const MAX_VALUE_LENGTH = 200_000;

@@ -13,7 +13,12 @@ function actionLabel(progress: LessonPlayerProgress): string {
   if (progress.status === "passed" || progress.status === "completed" || progress.percent >= 100) {
     return `Review ${noun}`;
   }
-  if (progress.status === "not_attempted" || progress.percent <= 0) {
+  if (
+    progress.status === "not_attempted" ||
+    (progress.percent <= 0 &&
+      progress.status !== "incomplete" &&
+      progress.status !== "browsed")
+  ) {
     return `Start ${noun}`;
   }
   return `Continue ${noun}`;

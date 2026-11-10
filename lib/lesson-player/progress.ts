@@ -37,13 +37,28 @@ export function lessonPlayerStatusSatisfied(status: string | null | undefined): 
   return s === "passed" || s === "completed";
 }
 
-function percentFor(status: LessonPlayerStatus, score: number | null): number {
+function bookmarkPercent(cmi: unknown): number | null {
+  if (!cmi || typeof cmi !== "object") return null;
+  const raw = (cmi as Record<string, unknown>)["cmi.progress_measure"];
+  if (typeof raw !== "string" && typeof raw !== "number") return null;
+  const n = typeof raw === "number" ? raw : Number.parseFloat(raw);
+  if (!Number.isFinite(n)) return null;
+  return Math.min(100, Math.max(0, Math.round(n)));
+}
+
+function percentFor(
+  status: LessonPlayerStatus,
+  score: number | null,
+  bookmark: number | null
+): number {
   if (status === "passed" || status === "completed") return 100;
   if (status === "failed") {
     const n = score ?? 0;
     return Math.min(100, Math.max(1, Math.round(n)));
   }
-  if (status === "incomplete" || status === "browsed") return 1;
+  if (status === "incomplete" || status === "browsed") {
+    return bookmark ?? 1;
+  }
   return 0;
 }
 
@@ -141,7 +156,7 @@ export async function getLessonPlayerProgress(
 
   const { data: attempt } = await supabase
     .from("lesson_player_attempts")
-    .select("lesson_status, score_raw, updated_at")
+    .select("lesson_status, score_raw, updated_at, cmi")
     .eq("package_id", pkg.id)
     .eq("user_id", options.userId)
     .maybeSingle();
@@ -156,7 +171,7 @@ export async function getLessonPlayerProgress(
   return {
     kind: options.kind,
     available: true,
-    percent: percentFor(status, scoreOrNull),
+    percent: percentFor(status, scoreOrNull, bookmarkPercent(attempt?.cmi)),
     status,
     statusLabel: labelFor(status, scoreOrNull),
     playHref: lessonPlayerHref({
