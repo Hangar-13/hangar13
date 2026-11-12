@@ -6,6 +6,7 @@ import {
   DashboardContentFrame,
   DashboardPageShell,
 } from "@/components/dashboard/page-shell";
+import { courseRevisionBadges } from "@/lib/courseware-revisions";
 
 export default async function ManagerContentPage() {
   const supabase = await createServerSupabaseClient();
@@ -56,6 +57,19 @@ export default async function ManagerContentPage() {
     courses = fallback.data;
   }
 
+  const badges = await courseRevisionBadges(
+    supabase,
+    (courses ?? []).map((course) => course.id)
+  );
+  const coursesWithRevisions = (courses ?? []).map((course) => {
+    const badge = badges.get(course.id);
+    return {
+      ...course,
+      versionLabel: badge?.versionLabel ?? null,
+      coursewareUpdated: badge?.coursewareUpdated ?? false,
+    };
+  });
+
   return (
     <DashboardPageShell>
       <div className="space-y-1">
@@ -72,7 +86,7 @@ export default async function ManagerContentPage() {
         <ManagerContentClient
           lists={{
             trainingPaths: trainingPaths ?? [],
-            courses: courses ?? [],
+            courses: coursesWithRevisions,
           }}
         />
       </DashboardContentFrame>

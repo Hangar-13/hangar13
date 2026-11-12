@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Hangar 13 colors</title>
+  <style>
+    @page { margin: 0.7in; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #121417;
+      background: #ffffff;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: 28px;
+      letter-spacing: -0.03em;
+    }
+    .lede {
+      margin: 0 0 28px;
+      max-width: 40rem;
+      color: #515860;
+    }
+    h2 {
+      margin: 28px 0 8px;
+      font-size: 15px;
+      letter-spacing: -0.01em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: #515860;
+      padding: 6px 10px 6px 0;
+      border-bottom: 1px solid rgb(18 20 23 / 20%);
+    }
+    td {
+      padding: 8px 12px 8px 0;
+      border-bottom: 1px solid rgb(18 20 23 / 10%);
+      vertical-align: middle;
+    }
+    td:last-child, th:last-child { padding-right: 0; }
+    .swatch {
+      display: inline-block;
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgb(18 20 23 / 20%);
+      vertical-align: middle;
+    }
+    code {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+    .note {
+      margin: 8px 0 0;
+      color: #515860;
+    }
+    h2, table { break-inside: avoid; }
+    tr { break-inside: avoid; }
+  </style>
+</head>
+<body>
+  <h1>Hangar 13 colors</h1>
+  <p class="lede">Current site colors: paper, ink, orange, and blue. The previous yellow and navy palette is not included.</p>
+
+  <h2>Brand</h2>
+  <table>
+    <thead>
+      <tr><th>Color</th><th>Hex</th><th>Where it is used</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="swatch" style="background:#ff4d00"></span></td>
+        <td><code>#ff4d00</code></td>
+        <td>Orange. Primary buttons, sidebar mark, charts.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#e64500"></span></td>
+        <td><code>#e64500</code></td>
+        <td>Orange hover. Sign-in and sign-up buttons.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#0055ff"></span></td>
+        <td><code>#0055ff</code></td>
+        <td>Blue. Links, focus rings, secondary actions, section labels.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#121417"></span></td>
+        <td><code>#121417</code></td>
+        <td>Ink. Body text, dark bands, footer, and the light-mode sidebar.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#f4f7f9"></span></td>
+        <td><code>#f4f7f9</code></td>
+        <td>Paper. Page background in light mode, and body text in dark mode.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Surfaces and text</h2>
+  <table>
+    <thead>
+      <tr><th>Color</th><th>Hex</th><th>Where it is used</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="swatch" style="background:#ffffff"></span></td>
+        <td><code>#ffffff</code></td>
+        <td>White. Cards, menus, form fields, and text on orange, blue, or ink.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#e8eef2"></span></td>
+        <td><code>#e8eef2</code></td>
+        <td>Mist. Quiet fills behind secondary content in the app.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#e9edf0"></span></td>
+        <td><code>#e9edf0</code></td>
+        <td>Cloud. Marketing section fill and the secondary button hover.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#515860"></span></td>
+        <td><code>#515860</code></td>
+        <td>Slate. Secondary text and supporting copy.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#30363d"></span></td>
+        <td><code>#30363d</code></td>
+        <td>Graphite. Lead paragraphs on the marketing pages.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#a3a9af"></span></td>
+        <td><code>#a3a9af</code></td>
+        <td>Ash. “Not included” marks in the comparison table.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Dark mode</h2>
+  <table>
+    <thead>
+      <tr><th>Color</th><th>Hex</th><th>Where it is used</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="swatch" style="background:#121417"></span></td>
+        <td><code>#121417</code></td>
+        <td>Page background. Ink from the light theme becomes the canvas.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#1a1d21"></span></td>
+        <td><code>#1a1d21</code></td>
+        <td>Charcoal. Cards, menus, and form fields.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#0d0f12"></span></td>
+        <td><code>#0d0f12</code></td>
+        <td>Night. Sidebar, one step darker than the page.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#2a2e33"></span></td>
+        <td><code>#2a2e33</code></td>
+        <td>Panel. Quiet fills behind secondary content.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#9aa3ad"></span></td>
+        <td><code>#9aa3ad</code></td>
+        <td>Fog. Secondary text.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#f4f7f9"></span></td>
+        <td><code>#f4f7f9</code></td>
+        <td>Paper. Body text on the dark page.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Status</h2>
+  <table>
+    <thead>
+      <tr><th>Color</th><th>Hex</th><th>Where it is used</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="swatch" style="background:#dc2626"></span></td>
+        <td><code>#dc2626</code></td>
+        <td>Red. Destructive actions in light mode.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#f87171"></span></td>
+        <td><code>#f87171</code></td>
+        <td>Coral. Destructive actions in dark mode.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:#b42318"></span></td>
+        <td><code>#b42318</code></td>
+        <td>Crimson. Error text on the mailing-list form.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Tints</h2>
+  <p class="note">These are the solid colors above, used at a percentage. They are borders, captions, and focus rings, not separate paints.</p>
+  <table>
+    <thead>
+      <tr><th>Color</th><th>Mix</th><th>Where it is used</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="swatch" style="background:rgb(18 20 23 / 15%)"></span></td>
+        <td><code>#121417</code> at 10–25%</td>
+        <td>Borders and dividers. 40% and 45% are faint labels. 50% and 70% are photo overlays and the mailing-list scrim.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:rgb(255 255 255 / 68%)"></span></td>
+        <td><code>#ffffff</code> at 65–70%</td>
+        <td>Captions and secondary lines on ink backgrounds.</td>
+      </tr>
+      <tr>
+        <td><span class="swatch" style="background:rgb(0 85 255 / 25%)"></span></td>
+        <td><code>#0055ff</code> at 25% and 40%</td>
+        <td>Focus rings on fields and the mailing-list checkbox.</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>

@@ -17,6 +17,7 @@ export type LessonMapLesson = {
   id: string;
   number: number;
   title: string;
+  coursewareRevision?: number;
 };
 
 export type LessonMapModule = {
@@ -64,6 +65,15 @@ const rowEdit = cn(
   rowBase,
   "cursor-grab active:cursor-grabbing select-none hover:bg-muted/20"
 );
+
+function CoursewareRev({ revision }: { revision?: number }) {
+  if (!revision || revision < 1) return null;
+  return (
+    <span className="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground">
+      rev {revision}
+    </span>
+  );
+}
 
 function reorderIds(ids: string[], sourceId: string, targetId: string) {
   if (sourceId === targetId) return ids;
@@ -203,6 +213,7 @@ export function LessonMap({
                   <span className="font-medium truncate min-w-0 flex-1">
                     {lesson.title}
                   </span>
+                  <CoursewareRev revision={lesson.coursewareRevision} />
                   {lessonOrderEdit.onRemoveLessonId ? (
                     <Button
                       type="button"
@@ -234,7 +245,8 @@ export function LessonMap({
                 <span className="tabular-nums text-muted-foreground w-8 shrink-0">
                   {displayNum}
                 </span>
-                <span className="font-medium truncate">{lesson.title}</span>
+                <span className="min-w-0 flex-1 truncate font-medium">{lesson.title}</span>
+                <CoursewareRev revision={lesson.coursewareRevision} />
               </Link>
             </li>
           );
@@ -449,6 +461,7 @@ export function LessonMap({
                         <span className="truncate min-w-0 flex-1">
                           {lesson.title}
                         </span>
+                        <CoursewareRev revision={lesson.coursewareRevision} />
                         {mEdit.onRemoveLessonId ? (
                           <Button
                             type="button"
@@ -489,7 +502,8 @@ export function LessonMap({
                       <span className="tabular-nums text-muted-foreground w-8 shrink-0">
                         {lesson.number}
                       </span>
-                      <span className="truncate">{lesson.title}</span>
+                      <span className="min-w-0 flex-1 truncate">{lesson.title}</span>
+                      <CoursewareRev revision={lesson.coursewareRevision} />
                     </Link>
                   </li>
                 ))}

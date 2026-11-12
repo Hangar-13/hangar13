@@ -30,6 +30,8 @@ export type ManagerContentLists = {
     description: string | null;
     visibility: string;
     is_deleted_lessons_archive?: boolean;
+    versionLabel?: string | null;
+    coursewareUpdated?: boolean;
   }>;
 };
 
@@ -156,31 +158,42 @@ export function ManagerContentClient({ lists }: { lists: ManagerContentLists }) 
                 <Link
                   href={`/dashboard/manager/courses/${c.id}`}
                   className={cn(
-                    "relative block px-4 py-3 pr-28 transition-colors",
+                    "flex items-start justify-between gap-4 px-4 py-3 transition-colors",
                     "hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:outline-none",
                     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   )}
                 >
-                  <CatalogVisibilityBadge
-                    visibility={normalizeCatalogVisibility(
-                      c.visibility,
-                      "proprietary"
-                    )}
-                    className="absolute top-3 right-3"
-                  />
-                  <span className="text-sm font-medium text-foreground">
-                    {c.name}
-                    {c.is_deleted_lessons_archive ? (
-                      <span className="ml-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Archive
+                  <span className="min-w-0">
+                    <span className="text-sm font-medium text-foreground">
+                      {c.name}
+                      {c.is_deleted_lessons_archive ? (
+                        <span className="ml-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          Archive
+                        </span>
+                      ) : null}
+                    </span>
+                    {c.description ? (
+                      <span className="mt-1 block text-xs text-muted-foreground line-clamp-2">
+                        {c.description}
                       </span>
                     ) : null}
                   </span>
-                  {c.description ? (
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                      {c.description}
-                    </p>
-                  ) : null}
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    {c.versionLabel ? (
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {c.versionLabel}
+                      </span>
+                    ) : null}
+                    {c.coursewareUpdated ? (
+                      <span className="text-xs text-primary">Courseware updated</span>
+                    ) : null}
+                    <CatalogVisibilityBadge
+                      visibility={normalizeCatalogVisibility(
+                        c.visibility,
+                        "proprietary"
+                      )}
+                    />
+                  </span>
                 </Link>
               </li>
             ))}

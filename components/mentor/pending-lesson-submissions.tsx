@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
 import {
   Calendar,
   User,
@@ -14,6 +14,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { formatUiDate } from "@/lib/format-ui-date";
 import {
   approveLessonSubmission,
+  approveLessonSubmissions,
   rejectLessonSubmission,
 } from "@/app/actions/lesson-submission-approval";
 
@@ -108,6 +110,13 @@ export function PendingLessonSubmissions({
   const [feedbackText, setFeedbackText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkCheckedIds, setBulkCheckedIds] = useState<Set<string>>(() => new Set());
+  const [bulkFeedback, setBulkFeedback] = useState<{
+    type: "success" | "error" | "warning";
+    message: string;
+  } | null>(null);
+  const [isBulkApproving, startBulkTransition] = useTransition();
 
   // Open detail modal when arriving from a notification deep link.
   useEffect(() => {
@@ -119,10 +128,72 @@ export function PendingLessonSubmissions({
     }
   }, [initialOpenSubmissionId, submissions]);
 
-  const pendingCount = useMemo(
-    () => submissions.filter((s) => s.status === "submitted").length,
+  const pendingSubmissions = useMemo(
+    () => submissions.filter((submission) => submission.status === "submitted"),
     [submissions]
   );
+  const pendingCount = pendingSubmissions.length;
+
+  const bulkRows = useMemo(() => {
+    return [...pendingSubmissions].sort((a, b) => {
+      const byName = a.student_name.localeCompare(b.student_name);
+      if (byName !== 0) return byName;
+      return (a.week_number ?? 0) - (b.week_number ?? 0);
+    });
+  }, [pendingSubmissions]);
+
+  const bulkSelectedCount = useMemo(
+    () => bulkRows.filter((row) => bulkCheckedIds.has(row.id)).length,
+    [bulkRows, bulkCheckedIds]
+  );
+  const allBulkChecked = bulkRows.length > 0 && bulkSelectedCount === bulkRows.length;
+
+  function openBulkReview() {
+    setBulkCheckedIds(new Set(bulkRows.map((row) => row.id)));
+    setBulkFeedback(null);
+    setBulkOpen(true);
+  }
+
+  function toggleBulkRow(id: string) {
+    setBulkCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllBulkRows() {
+    setBulkCheckedIds((prev) => {
+      if (bulkRows.length > 0 && bulkRows.every((row) => prev.has(row.id))) {
+        return new Set();
+      }
+      return new Set(bulkRows.map((row) => row.id));
+    });
+  }
+
+  function approveSelected() {
+    const ids = bulkRows.filter((row) => bulkCheckedIds.has(row.id)).map((row) => row.id);
+    if (ids.length === 0) return;
+    setBulkFeedback(null);
+    startBulkTransition(async () => {
+      const result = await approveLessonSubmissions(ids);
+      if ("error" in result && result.error && !result.approvedCount) {
+        setBulkFeedback({ type: "error", message: result.error });
+        return;
+      }
+      setBulkOpen(false);
+      if ("warning" in result && result.warning) {
+        setBulkFeedback({ type: "warning", message: result.warning });
+      } else if (result.approvedCount) {
+        setBulkFeedback({
+          type: "success",
+          message: `Approved ${result.approvedCount} reflection${result.approvedCount === 1 ? "" : "s"}.`,
+        });
+      }
+      router.refresh();
+    });
+  }
 
   const filteredSubmissions = useMemo(() => {
     return submissions.filter((submission) => {
@@ -190,13 +261,115 @@ export function PendingLessonSubmissions({
   return (
     <div className="space-y-6">
       {pendingCount > 0 && (
-        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
+        <div className="flex flex-col gap-3 rounded-md border border-primary/20 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-medium text-foreground">
             {pendingCount} weekly submission{pendingCount === 1 ? "" : "s"}{" "}
             awaiting your review
           </p>
+          <Button type="button" size="lg" className="shrink-0 gap-2" onClick={openBulkReview}>
+            <CheckCircle2 className="h-4 w-4" />
+            Review all
+          </Button>
         </div>
       )}
+
+      <Dialog
+        open={bulkOpen}
+        onOpenChange={(open) => {
+          setBulkOpen(open);
+          if (open) setBulkCheckedIds(new Set(bulkRows.map((row) => row.id)));
+        }}
+      >
+        <DialogContent className="flex max-h-[min(90vh,760px)] flex-col sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Review pending reflections</DialogTitle>
+            <DialogDescription>
+              {pendingCount} reflection{pendingCount === 1 ? "" : "s"} listed below. All are
+              selected by default; uncheck any you do not want to approve.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 px-1 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-input accent-primary"
+              checked={allBulkChecked}
+              onChange={toggleAllBulkRows}
+              aria-label="Select all reflections"
+              disabled={bulkRows.length === 0 || isBulkApproving}
+            />
+            <span className="text-muted-foreground">Select all</span>
+          </div>
+          <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+            {bulkRows.map((row) => (
+              <li key={row.id} className="flex gap-3 rounded-md px-3 py-3 ring-1 ring-black/[0.04]">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 shrink-0 rounded border-input accent-primary"
+                  checked={bulkCheckedIds.has(row.id)}
+                  onChange={() => toggleBulkRow(row.id)}
+                  aria-label={`Approve ${row.student_name}'s reflection`}
+                  disabled={isBulkApproving}
+                />
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm font-medium">
+                    {row.student_name}
+                    {row.lesson_title ? ` · ${row.lesson_title}` : ""}
+                    {row.week_number != null ? ` · Week ${row.week_number}` : ""}
+                  </p>
+                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                    {row.reflection_text || "No reflection provided."}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isBulkApproving}
+              onClick={() => setBulkOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={isBulkApproving || bulkSelectedCount === 0}
+              onClick={approveSelected}
+            >
+              {isBulkApproving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Approving…
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Approve {bulkSelectedCount}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {bulkFeedback ? (
+        <p
+          className={cn(
+            "rounded-md border px-3 py-2 text-sm",
+            bulkFeedback.type === "error" &&
+              "border-destructive/30 bg-destructive/10 text-destructive",
+            bulkFeedback.type === "warning" &&
+              "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100",
+            bulkFeedback.type === "success" &&
+              "border-emerald-500/25 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100"
+          )}
+          role="status"
+        >
+          {bulkFeedback.message}
+        </p>
+      ) : null}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4">

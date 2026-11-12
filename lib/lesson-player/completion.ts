@@ -4,26 +4,42 @@ import {
   getLessonPlayerProgress,
   lessonPlayerStatusSatisfied,
 } from "@/lib/lesson-player/progress";
-import type {
-  LessonPlayerCompletionCheck,
-  LessonPlayerCompletionRecord,
-} from "@/lib/lesson-player/types";
+import type { LessonPlayerCompletionCheck } from "@/lib/lesson-player/types";
 
 function slotFromProgress(
-  progress: Awaited<ReturnType<typeof getLessonPlayerProgress>>
-): { status: string; score: number | null } | null {
+  progress: Awaited<ReturnType<typeof getLessonPlayerProgress>>,
+  options?: { includeCoursewareRevision?: boolean }
+): { status: string; score: number | null; coursewareRevision: number | null } | null {
   if (!progress.available) return null;
+  const priorSatisfied =
+    progress.priorCompletion != null &&
+    lessonPlayerStatusSatisfied(progress.priorCompletion.status);
+  const currentSatisfied = lessonPlayerStatusSatisfied(progress.status);
+  const status = currentSatisfied
+    ? progress.status
+    : priorSatisfied
+      ? progress.priorCompletion!.status
+      : progress.status;
   const score =
-    progress.status === "passed" ||
-    progress.status === "failed" ||
-    progress.status === "completed"
-      ? progress.percent === 1 && progress.status === "failed"
+    status === "passed" || status === "failed" || status === "completed"
+      ? progress.percent === 1 && status === "failed"
         ? 0
-        : progress.percent
+        : currentSatisfied
+          ? progress.percent
+          : priorSatisfied
+            ? 100
+            : progress.percent
       : null;
   return {
-    status: progress.status,
-    score: progress.status === "passed" || progress.status === "completed" ? 100 : score,
+    status,
+    score: status === "passed" || status === "completed" ? 100 : score,
+    coursewareRevision: options?.includeCoursewareRevision
+      ? currentSatisfied
+        ? progress.coursewareRevision
+        : priorSatisfied
+          ? progress.priorCompletion!.coursewareRevision
+          : progress.coursewareRevision
+      : null,
   };
 }
 
@@ -43,7 +59,12 @@ export async function checkLessonPlayerCompletion(
   const checkedAt = new Date().toISOString();
   let blockReason: string | null = null;
 
-  if (content.available && !lessonPlayerStatusSatisfied(content.status)) {
+  const contentSatisfied =
+    lessonPlayerStatusSatisfied(content.status) ||
+    (content.priorCompletion != null &&
+      lessonPlayerStatusSatisfied(content.priorCompletion.status));
+
+  if (content.available && !contentSatisfied) {
     blockReason =
       content.status === "failed"
         ? "Pass this week's lesson before submitting your reflection."
@@ -57,26 +78,12 @@ export async function checkLessonPlayerCompletion(
 
   return {
     checkedAt,
-    content: slotFromProgress(content),
-    test: slotFromProgress(test),
+    content: slotFromProgress(content, { includeCoursewareRevision: true }),
+    test: (() => {
+      const slot = slotFromProgress(test);
+      return slot ? { status: slot.status, score: slot.score } : null;
+    })(),
     readyToSubmit: blockReason == null,
     blockReason,
   };
-}
-
-export function describeStoredCompletion(raw: unknown): string | null {
-  if (!raw || typeof raw !== "object") return null;
-  const rec = raw as Partial<LessonPlayerCompletionRecord>;
-  const contentOk = lessonPlayerStatusSatisfied(rec.content?.status);
-  const testOk = lessonPlayerStatusSatisfied(rec.test?.status);
-  if (contentOk && testOk) {
-    return "Lesson and test were passed when this reflection was submitted.";
-  }
-  if (contentOk) {
-    return "Lesson was passed when this reflection was submitted.";
-  }
-  if (testOk) {
-    return "Test was passed when this reflection was submitted.";
-  }
-  return null;
 }

@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect, notFound } from "next/navigation";
 import { managerListCourseVersions } from "@/app/actions/manager-course-versions";
+import { listUnpublishedCourseware } from "@/lib/courseware-revisions";
 import { CourseVersionsPanel } from "@/components/manager/course-versions-panel";
 import { ManagerCourseDetailClient } from "@/components/manager/manager-course-detail-client";
 import type { LessonMapModule } from "@/components/manager/lesson-map";
@@ -47,10 +48,10 @@ export default async function ManagerCourseDetailPage({ params }: PageProps) {
     moduleIds.length > 0
       ? await supabase
           .from("lessons")
-          .select("id, module_id, number, title")
+          .select("id, module_id, number, title, courseware_revision")
           .in("module_id", moduleIds)
           .order("number", { ascending: true })
-      : { data: [] as { id: string; module_id: string; number: number; title: string }[] };
+      : { data: [] as { id: string; module_id: string; number: number; title: string; courseware_revision?: number }[] };
 
   const moduleTree: LessonMapModule[] = (modules ?? []).map((m) => ({
     id: m.id,
@@ -58,11 +59,19 @@ export default async function ManagerCourseDetailPage({ params }: PageProps) {
     number: m.number,
     isHiddenFromUsers: m.is_hidden_from_users === true,
     needsSetup: (m as { needs_setup?: boolean }).needs_setup === true,
-    lessons: (lessons ?? []).filter((l) => l.module_id === m.id),
+    lessons: (lessons ?? [])
+      .filter((l) => l.module_id === m.id)
+      .map((l) => ({
+        id: l.id,
+        number: l.number,
+        title: l.title,
+        coursewareRevision: Number(l.courseware_revision ?? 0),
+      })),
   }));
 
   const versionsResult = await managerListCourseVersions(id);
   const versions = versionsResult.ok ? versionsResult.versions : [];
+  const unpublishedCourseware = await listUnpublishedCourseware(supabase, id);
 
   return (
     <ManagerCourseDetailClient
@@ -73,7 +82,13 @@ export default async function ManagerCourseDetailPage({ params }: PageProps) {
         visibility: normalizeCatalogVisibility(course.visibility, "proprietary"),
       }}
       moduleTree={moduleTree}
-      versionsPanel={<CourseVersionsPanel courseId={id} initialVersions={versions} />}
+      versionsPanel={
+        <CourseVersionsPanel
+          courseId={id}
+          initialVersions={versions}
+          unpublishedCourseware={unpublishedCourseware}
+        />
+      }
     />
   );
 }

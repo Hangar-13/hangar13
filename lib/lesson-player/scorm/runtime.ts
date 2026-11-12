@@ -116,10 +116,21 @@ export async function commitLessonPlayerAttempt(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { data: pkg } = await supabase
     .from("lesson_packages")
-    .select("id")
+    .select("id, lesson_id, kind")
     .eq("id", options.packageId)
     .maybeSingle();
   if (!pkg) return { ok: false, error: "Package not found." };
+
+  let coursewareRevision: number | null = null;
+  if (pkg.kind === "content" && typeof pkg.lesson_id === "string") {
+    const { data: lesson } = await supabase
+      .from("lessons")
+      .select("courseware_revision")
+      .eq("id", pkg.lesson_id)
+      .maybeSingle();
+    const revision = Number(lesson?.courseware_revision ?? 0);
+    coursewareRevision = revision > 0 ? revision : null;
+  }
 
   const stored: Record<string, string> = {};
   for (const key of PERSISTED_KEYS) {
@@ -140,6 +151,8 @@ export async function commitLessonPlayerAttempt(
 
   const row = {
     package_id: options.packageId,
+    lesson_id: typeof pkg.lesson_id === "string" ? pkg.lesson_id : null,
+    courseware_revision: coursewareRevision,
     user_id: options.userId,
     lesson_status: status,
     score_raw: numOrNull(stored["cmi.core.score.raw"]),

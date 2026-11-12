@@ -24,10 +24,7 @@ export {
   lessonPlayerStatusSatisfied,
 } from "@/lib/lesson-player/progress";
 
-export {
-  checkLessonPlayerCompletion,
-  describeStoredCompletion,
-} from "@/lib/lesson-player/completion";
+export { checkLessonPlayerCompletion } from "@/lib/lesson-player/completion";
 
 export {
   clearLessonPackage,

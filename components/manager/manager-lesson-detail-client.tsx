@@ -135,8 +135,8 @@ export function ManagerLessonDetailClient({
             <LessonPackageSlot
               lessonId={lesson.id}
               kind="content"
-              label="Lesson package"
-              emptyLabel="No SCORM lesson uploaded"
+              label="Courseware"
+              emptyLabel="No courseware uploaded"
               pkg={packages.content}
               returnPath={`/dashboard/manager/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}`}
             />

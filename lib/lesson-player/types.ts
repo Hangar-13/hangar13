@@ -30,6 +30,10 @@ export type LessonPlayerProgress = {
   packageTitle: string | null;
   updatedAt: string | null;
   message: string | null;
+  /** Revision of the sitting shown above. Null for tests and courseware that has never been uploaded. */
+  coursewareRevision: number | null;
+  /** A finished sitting from an earlier courseware revision, when the current file is not finished. */
+  priorCompletion: { status: LessonPlayerStatus; coursewareRevision: number } | null;
 };
 
 export type LessonPackageSummary = {
@@ -51,7 +55,7 @@ export type LessonPackageSlots = {
 /** Stored on lesson_submissions.player_completion. */
 export type LessonPlayerCompletionRecord = {
   checkedAt: string;
-  content: { status: string; score: number | null } | null;
+  content: { status: string; score: number | null; coursewareRevision: number | null } | null;
   test: { status: string; score: number | null } | null;
 };
 

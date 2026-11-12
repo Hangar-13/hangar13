@@ -7,6 +7,7 @@ import {
   DashboardPageShell,
 } from "@/components/dashboard/page-shell";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
+import { pendingSubmissionCountsByUser } from "@/lib/student-coursework";
 import {
   fetchCurrentCurriculumIdsForUsers,
   fetchTraineeUserIdsForMentor,
@@ -48,6 +49,10 @@ async function getMentees(userId: string): Promise<{ mentees: AssignedStudent[] 
 
   const now = new Date();
   const targetHours = 5200; // Program target hours
+  const pendingSubmissions = await pendingSubmissionCountsByUser(
+    supabase,
+    traineeUserIds
+  );
 
   // Enrolled students: full progress cards.
   const enrolledCards = await Promise.all(
@@ -115,6 +120,7 @@ async function getMentees(userId: string): Promise<{ mentees: AssignedStudent[] 
         },
         progressStatus,
         pendingEntries,
+        pendingSubmissions: pendingSubmissions.get(student.user_id) ?? 0,
       };
     })
   );

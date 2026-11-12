@@ -147,7 +147,7 @@ export function LessonProgressCard({
           ) : (
             <Button size="lg" className="w-full" disabled variant="secondary">
               <PlayCircle className="mr-2 h-5 w-5 shrink-0" />
-              No lesson package
+              {progress.kind === "test" ? "No test" : "No lesson"}
             </Button>
           )}
           {!isComplete ? (

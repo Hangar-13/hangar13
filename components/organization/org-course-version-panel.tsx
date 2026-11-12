@@ -65,9 +65,9 @@ export function OrgCourseVersionPanel({
             <div>
               <span className="font-medium">{row.courseName}</span>
               <span className="text-muted-foreground ml-2 tabular-nums">
-                {row.pinnedLabel ? `Pinned v${row.pinnedLabel}` : "Not pinned"}
+                {row.pinnedLabel ? `Pinned ${row.pinnedLabel}` : "Not pinned"}
                 {" · "}
-                Latest v{row.latestLabel}
+                Latest {row.latestLabel}
               </span>
             </div>
             <div className="flex gap-2">
@@ -82,7 +82,7 @@ export function OrgCourseVersionPanel({
                   {pendingCourseId === row.courseId ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    `Adopt v${row.latestLabel}`
+                    `Adopt ${row.latestLabel}`
                   )}
                 </Button>
               ) : row.courseVersionId ? (
@@ -100,7 +100,7 @@ export function OrgCourseVersionPanel({
                   {pendingCourseId === row.courseId ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    `Pin v${row.latestLabel}`
+                    `Pin ${row.latestLabel}`
                   )}
                 </Button>
               )}

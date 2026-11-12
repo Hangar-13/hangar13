@@ -61,7 +61,7 @@ export function CourseVersionUpdateBanner({ updates }: Props) {
               <div className="min-w-0">
                 <span className="font-medium">{u.courseName}</span>
                 <span className="ml-2 tabular-nums text-muted-foreground">
-                  v{u.pinnedLabel} → v{u.latestLabel}
+                  {u.pinnedLabel} → {u.latestLabel}
                 </span>
                 {u.releaseNotes ? (
                   <p className="mt-1 text-xs text-muted-foreground">{u.releaseNotes}</p>

@@ -694,7 +694,7 @@ export function ManagerModuleDetailClient({
                 htmlFor="les-scorm"
                 className="text-sm font-medium text-muted-foreground"
               >
-                Lesson SCORM
+                Courseware
               </Label>
               <Input
                 id="les-scorm"
@@ -704,7 +704,7 @@ export function ManagerModuleDetailClient({
                 onChange={(e) => setContentZip(e.target.files?.[0] ?? null)}
               />
               <p className="text-xs text-muted-foreground">
-                Optional zip learners play for this lesson.
+                Optional courseware zip learners play for this lesson.
               </p>
             </div>
             <div className="min-w-0 space-y-2 py-3">

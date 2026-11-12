@@ -136,11 +136,14 @@ export async function replaceLessonPackage(
   const column = options.kind === "test" ? "test_package_id" : "content_package_id";
   const { data: existingLesson } = await supabase
     .from("lessons")
-    .select("content_package_id, test_package_id")
+    .select("content_package_id, test_package_id, courseware_revision")
     .eq("id", options.lessonId)
     .maybeSingle();
   const previousRaw = existingLesson?.[column];
   const previousId = typeof previousRaw === "string" ? previousRaw : null;
+  const previousRevision = Number(existingLesson?.courseware_revision ?? 0);
+  const nextRevision =
+    options.kind === "content" ? Math.max(1, previousRevision + 1) : null;
 
   const packageId = crypto.randomUUID();
   const objectPaths: string[] = [];
@@ -176,9 +179,23 @@ export async function replaceLessonPackage(
     });
     if (insertError) throw new Error(insertError.message);
 
+    if (options.kind === "content" && previousId && previousRevision > 0) {
+      const { error: stampError } = await supabase
+        .from("lesson_player_attempts")
+        .update({
+          lesson_id: options.lessonId,
+          courseware_revision: previousRevision,
+        })
+        .eq("package_id", previousId);
+      if (stampError) throw new Error(stampError.message);
+    }
+
     const { error: pointError } = await supabase
       .from("lessons")
-      .update({ [column]: packageId })
+      .update({
+        [column]: packageId,
+        ...(nextRevision != null ? { courseware_revision: nextRevision } : {}),
+      })
       .eq("id", options.lessonId);
     if (pointError) throw new Error(pointError.message);
   } catch (e) {

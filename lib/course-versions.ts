@@ -20,9 +20,9 @@ export type CourseVersionUpdateOffer = {
   authority: CourseVersionPinScope;
 };
 
-/** Display label, e.g. "2.1". */
+/** Display label, e.g. "rev 2.3". */
 export function formatCourseVersion(major: number, minor: number): string {
-  return `${major}.${minor}`;
+  return `rev ${major}.${minor}`;
 }
 
 export function compareCourseVersions(

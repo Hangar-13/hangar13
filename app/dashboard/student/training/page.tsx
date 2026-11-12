@@ -27,11 +27,9 @@ import {
 } from "@/lib/training-lessons";
 import {
   buildVersionContextForUserTraining,
-  formatCourseVersion,
   resolveCourseVersionForLessonSubmission,
 } from "@/lib/course-versions";
 import {
-  describeStoredCompletion,
   getLessonPlayerProgress,
   type LessonPlayerProgress,
 } from "@/lib/lesson-player";
@@ -222,21 +220,6 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         .eq("lesson_id", lessonId)
         .maybeSingle()
     : { data: null };
-
-  let submissionVersionLabel: string | null = null;
-  if (submission?.course_version_id) {
-    const { data: versionRow } = await supabase
-      .from("course_versions")
-      .select("major_version, minor_version")
-      .eq("id", submission.course_version_id)
-      .maybeSingle();
-    if (versionRow) {
-      submissionVersionLabel = formatCourseVersion(
-        versionRow.major_version as number,
-        versionRow.minor_version as number
-      );
-    }
-  }
 
   const playerReturnPath = `/dashboard/student/training?week=${data.currentWeek}`;
   let lessonProgress: LessonPlayerProgress | null = null;
@@ -577,21 +560,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                 <dd className="text-sm text-foreground whitespace-pre-wrap">
                   {submission.reflection_text || "No reflection provided."}
                 </dd>
-                {submissionVersionLabel ? (
-                  <>
-                    <dt className="text-sm font-medium text-muted-foreground">Course version</dt>
-                    <dd className="text-sm text-foreground tabular-nums">
-                      v{submissionVersionLabel}
-                    </dd>
-                  </>
-                ) : null}
               </dl>
-
-              {describeStoredCompletion(submission.player_completion) ? (
-                <p className="rounded-md bg-muted/25 px-3 py-2 text-sm ring-1 ring-black/[0.04]">
-                  {describeStoredCompletion(submission.player_completion)}
-                </p>
-              ) : null}
 
               {submission.lesson_submission_files &&
                submission.lesson_submission_files.length > 0 && (
