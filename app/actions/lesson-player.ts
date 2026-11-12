@@ -5,10 +5,8 @@ import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getLessonInOwnedCourse } from "@/lib/manager-training-guard";
 import {
   clearLessonPackage,
-  getLessonPlayerProgress,
   replaceLessonPackage,
   type LessonPackageKind,
-  type LessonPlayerProgress,
 } from "@/lib/lesson-player";
 
 function parseKind(kind: string): LessonPackageKind | null {
@@ -74,25 +72,4 @@ export async function clearLessonPackageAction(
   revalidatePath(`/dashboard/manager/courses/${ctx.course.id}`);
   revalidatePath("/dashboard/student/training");
   return { ok: true };
-}
-
-export async function refreshLessonPlayerProgress(options: {
-  lessonId: string;
-  kind: LessonPackageKind;
-  courseVersionId: string | null;
-  returnPath: string | null;
-}): Promise<LessonPlayerProgress | { error: string }> {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not signed in." };
-
-  return getLessonPlayerProgress(supabase, {
-    lessonId: options.lessonId,
-    userId: user.id,
-    kind: options.kind,
-    courseVersionId: options.courseVersionId,
-    returnPath: options.returnPath,
-  });
 }

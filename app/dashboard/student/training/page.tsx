@@ -414,11 +414,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
               headerHoverHighlight={false}
               defaultOpen={true}
             >
-              <LessonProgressCard
-                lessonId={lessonId}
-                courseVersionId={courseVersion?.id ?? null}
-                initial={lessonProgress}
-              />
+              <LessonProgressCard initial={lessonProgress} />
             </CollapsibleSection>
           ) : null}
 
@@ -431,11 +427,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
               headerHoverHighlight={false}
               defaultOpen={true}
             >
-              <LessonProgressCard
-                lessonId={lessonId}
-                courseVersionId={courseVersion?.id ?? null}
-                initial={testProgress}
-              />
+              <LessonProgressCard initial={testProgress} />
             </CollapsibleSection>
           ) : null}
 

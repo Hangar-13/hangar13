@@ -1,9 +1,5 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
-import { PlayCircle, RefreshCw } from "lucide-react";
-import { refreshLessonPlayerProgress } from "@/app/actions/lesson-player";
+import { PlayCircle } from "lucide-react";
 import type { LessonPlayerProgress } from "@/lib/lesson-player";
 import { Button } from "@/components/ui/button";
 import { formatUiDate } from "@/lib/format-ui-date";
@@ -78,45 +74,13 @@ function LessonSemicircleGauge({
 }
 
 export function LessonProgressCard({
-  lessonId,
-  courseVersionId,
   initial,
 }: {
-  lessonId: string;
-  courseVersionId: string | null;
   initial: LessonPlayerProgress;
 }) {
-  const [progress, setProgress] = useState(initial);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-
+  const progress = initial;
   const isComplete =
     progress.status === "passed" || progress.status === "completed";
-
-  async function handleUpdate() {
-    setActionError(null);
-    setIsUpdating(true);
-    try {
-      const result = await refreshLessonPlayerProgress({
-        lessonId,
-        kind: progress.kind,
-        courseVersionId,
-        returnPath: null,
-      });
-      if ("error" in result) {
-        setActionError(result.error);
-      } else {
-        setProgress({
-          ...result,
-          playHref: progress.playHref,
-        });
-      }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : "Could not update progress.");
-    } finally {
-      setIsUpdating(false);
-    }
-  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -150,24 +114,8 @@ export function LessonProgressCard({
               {progress.kind === "test" ? "No test" : "No lesson"}
             </Button>
           )}
-          {!isComplete ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isUpdating}
-              onClick={() => void handleUpdate()}
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${isUpdating ? "animate-spin" : ""}`} />
-              Update progress
-            </Button>
-          ) : null}
         </div>
       </div>
-      {actionError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {actionError}
-        </p>
-      ) : null}
     </div>
   );
 }
