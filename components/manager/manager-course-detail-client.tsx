@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 import {
@@ -45,11 +45,8 @@ type Props = {
     name: string;
     description: string | null;
     visibility: CatalogVisibility;
-    talentLmsCourseId: string | null;
   };
   moduleTree: LessonMapModule[];
-  /** Open Talent LMS course ID editor and scroll into view (e.g. `?editTalentLms=1`). */
-  focusTalentLmsCourseField?: boolean;
   versionsPanel?: React.ReactNode;
 };
 
@@ -67,11 +64,9 @@ function lessonInTree(
 export function ManagerCourseDetailClient({
   course,
   moduleTree,
-  focusTalentLmsCourseField,
   versionsPanel,
 }: Props) {
   const router = useRouter();
-  const talentLmsSectionRef = useRef<HTMLDivElement>(null);
   const [moduleOpen, setModuleOpen] = useState(false);
   const [defaultHidden, setDefaultHidden] = useState(false);
   const [modTitle, setModTitle] = useState("");
@@ -115,14 +110,6 @@ export function ManagerCourseDetailClient({
       setModDescription("");
     }
   }, [defaultHidden, course.name]);
-
-  useEffect(() => {
-    if (!focusTalentLmsCourseField) return;
-    talentLmsSectionRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  }, [focusTalentLmsCourseField]);
 
   function resetModuleForm() {
     setDefaultHidden(false);
@@ -392,38 +379,6 @@ export function ManagerCourseDetailClient({
             }
             onSaved={() => router.refresh()}
           />
-        </div>
-        <div
-          ref={talentLmsSectionRef}
-          id="talent-lms-course-id"
-          className="w-full min-w-0 max-w-2xl pt-2 space-y-2 scroll-mt-24"
-        >
-          <h3 className="text-base font-semibold tracking-tight">
-            Talent LMS numeric course ID
-          </h3>
-          <EditableInline
-            label="Talent LMS numeric course ID"
-            value={course.talentLmsCourseId ?? ""}
-            initialEditing={focusTalentLmsCourseField === true}
-            displayClassName="text-sm font-medium font-mono tabular-nums"
-            placeholder="Not set"
-            editPlaceholder="e.g. 126"
-            onSave={async (raw) => {
-              const trimmed = raw.trim();
-              const r = await updateCourseFields(course.id, {
-                talentLmsCourseId: trimmed === "" ? null : trimmed,
-              });
-              if (r.ok) router.refresh();
-              return r;
-            }}
-          />
-          <p className="text-sm text-muted-foreground max-w-2xl">
-            This is the numeric id from Talent LMS (often visible in Talent lesson URLs),{" "}
-            <strong>not</strong> this Hangar course&apos;s UUID in the browser address bar.
-            Used with lesson unit IDs and <code className="text-xs">TALENTLMS_API_KEY</code>{" "}
-            for Talent progress and for enrolling learners when they self-enroll on this
-            Hangar course&apos;s path.
-          </p>
         </div>
       </header>
 

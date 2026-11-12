@@ -124,7 +124,7 @@ export async function managerPublishCourseVersion(input: {
     const { data: lessons } = await supabase
       .from("lessons")
       .select(
-        "id, number, title, ata_chapter, learning_objectives, study_materials, practical_application, mentor_discussion_questions, weekly_deliverable, hours, acs_codes, ata_chapter_ids, talent_lms_unit_id, talent_lms_test_unit_id"
+        "id, number, title, ata_chapter, learning_objectives, study_materials, practical_application, mentor_discussion_questions, weekly_deliverable, hours, acs_codes, ata_chapter_ids, content_package_id, test_package_id, courseware_revision"
       )
       .eq("module_id", mod.id)
       .order("number", { ascending: true });
@@ -145,8 +145,9 @@ export async function managerPublishCourseVersion(input: {
           hours: l.hours ?? 0,
           acs_codes: l.acs_codes,
           ata_chapter_ids: l.ata_chapter_ids,
-          talent_lms_unit_id: l.talent_lms_unit_id,
-          talent_lms_test_unit_id: l.talent_lms_test_unit_id,
+          content_package_id: l.content_package_id,
+          test_package_id: l.test_package_id,
+          courseware_revision: l.courseware_revision ?? 0,
         }))
       );
       if (lesErr) {

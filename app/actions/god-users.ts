@@ -13,10 +13,6 @@ import {
 } from "@/lib/auth-shared";
 import { GOD_UI_ORG_ROLES, GOD_UI_SYSTEM_ROLES } from "@/lib/god-user-constants";
 import { updateUserRole } from "@/lib/role-management";
-import {
-  provisionTalentLmsAccountAndEnrollHangarTrainings,
-  provisionTalentLmsAccountForInvitedUser,
-} from "@/lib/talentlms/provision-account";
 
 function assertPlatformAdmin() {
   return getActiveUser().then((u) => {
@@ -206,18 +202,6 @@ export async function godCreateUser(input: {
     return { ok: false, error: "Invite did not return a user id." };
   }
 
-  // Provision the learner's TalentLMS account up front (best-effort; failures are
-  // recorded on the user row and surfaced via the dashboard banner).
-  try {
-    await provisionTalentLmsAccountForInvitedUser({
-      userId: newId,
-      email: parsed.data.email.trim(),
-      fullName,
-    });
-  } catch {
-    // Never block the invite on TalentLMS provisioning.
-  }
-
   if (parsed.data.organizations.length) {
     const { error: uoError } = await supabase.from("user_organizations").insert(
       parsed.data.organizations.map((o) => ({
@@ -256,10 +240,6 @@ export type GodUserDetail = {
     enrolledBy: string;
     dateCompleted: string | null;
   }>;
-  talentLmsProvisionStatus: string | null;
-  talentLmsProvisionAttempts: number;
-  talentLmsProvisionedAt: string | null;
-  talentLmsProvisionLastError: string | null;
 };
 
 export async function godGetUserDetail(
@@ -275,7 +255,7 @@ export async function godGetUserDetail(
   const { data: u, error: uErr } = await supabase
     .from("users")
     .select(
-      "id, email, full_name, role, created_at, talent_lms_provision_status, talent_lms_provision_attempts, talent_lms_provisioned_at, talent_lms_provision_last_error"
+      "id, email, full_name, role, created_at"
     )
     .eq("id", userId)
     .maybeSingle();
@@ -409,70 +389,7 @@ export async function godGetUserDetail(
       createdAt: u.created_at,
       organizations,
       trainings,
-      talentLmsProvisionStatus: u.talent_lms_provision_status ?? null,
-      talentLmsProvisionAttempts: Number(u.talent_lms_provision_attempts ?? 0),
-      talentLmsProvisionedAt: u.talent_lms_provisioned_at ?? null,
-      talentLmsProvisionLastError: u.talent_lms_provision_last_error ?? null,
     },
-  };
-}
-
-export type GodProvisionTalentLmsResult =
-  | { ok: true; enrolledCourseCount: number; enrollWarning?: string }
-  | { ok: false; error: string };
-
-export async function godForceCreateTalentLmsUser(
-  userId: string
-): Promise<GodProvisionTalentLmsResult> {
-  const auth = await assertPlatformAdmin();
-  if (!auth.ok) {
-    return { ok: false, error: "Forbidden" };
-  }
-
-  const parsed = z.string().uuid().safeParse(userId);
-  if (!parsed.success) {
-    return { ok: false, error: "Invalid user." };
-  }
-
-  const supabase = await createServerSupabaseClient();
-  const { data: target, error: targetErr } = await supabase
-    .from("users")
-    .select("id, email, full_name")
-    .eq("id", parsed.data)
-    .maybeSingle();
-
-  if (targetErr) {
-    return { ok: false, error: targetErr.message };
-  }
-  if (!target) {
-    return { ok: false, error: "User not found." };
-  }
-
-  const outcome = await provisionTalentLmsAccountAndEnrollHangarTrainings({
-    supabase,
-    userId: target.id,
-    email: target.email,
-    fullName: target.full_name,
-  });
-
-  if (outcome.state === "skipped") {
-    return {
-      ok: false,
-      error:
-        "Talent LMS API is not configured on the server (TALENTLMS_SUBDOMAIN and TALENTLMS_API_KEY).",
-    };
-  }
-  if (outcome.state === "failed") {
-    return { ok: false, error: outcome.message };
-  }
-
-  revalidatePath(`/dashboard/god/users/${target.id}`);
-  revalidatePath("/dashboard/god/users");
-
-  return {
-    ok: true,
-    enrolledCourseCount: outcome.enrolledCourseCount ?? 0,
-    enrollWarning: outcome.enrollWarning,
   };
 }
 

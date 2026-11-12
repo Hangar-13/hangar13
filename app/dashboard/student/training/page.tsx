@@ -14,7 +14,6 @@ import {
   Edit,
   Percent,
   ClipboardCheck,
-  CheckCircle,
 } from "lucide-react";
 import { CollapsibleSection } from "@/components/student/collapsible-section";
 import { LessonMarkdownBody } from "@/components/student/lesson-markdown-body";
@@ -28,16 +27,15 @@ import {
 } from "@/lib/training-lessons";
 import {
   buildVersionContextForUserTraining,
-  formatCourseVersion,
+  resolveCourseVersionForLessonSubmission,
 } from "@/lib/course-versions";
 import {
-  fetchTalentLessonProgressSnapshot,
-  type TalentLessonProgressSnapshot,
-} from "@/lib/talentlms/fetch-lesson-progress";
-import { coerceTalentLmsUnitId } from "@/lib/talentlms/lesson-url";
+  getLessonPlayerProgress,
+  type LessonPlayerProgress,
+} from "@/lib/lesson-player";
 import { LessonProgressCard } from "@/components/student/lesson-progress-card";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
-import { formatUiDate, formatUiDateTime } from "@/lib/format-ui-date";
+import { formatUiDate } from "@/lib/format-ui-date";
 import { CourseVersionUpdateBanner } from "@/components/student/course-version-update-banner";
 import { getCourseVersionUpdatesForCurrentEnrollment } from "@/app/actions/course-version-adoption";
 import {
@@ -194,12 +192,20 @@ export default async function TrainingPage({ searchParams }: PageProps) {
     );
   }
 
+  const versionContext = await buildVersionContextForUserTraining(
+    supabase,
+    user.id,
+    data.student
+  );
   const lessonId = await resolveLessonIdForProgramWeek(
     supabase,
     data.student,
     data.currentWeek,
-    await buildVersionContextForUserTraining(supabase, user.id, data.student)
+    versionContext
   );
+  const courseVersion = lessonId
+    ? await resolveCourseVersionForLessonSubmission(supabase, lessonId, versionContext)
+    : null;
 
   const { data: submission } = lessonId
     ? await supabase
@@ -215,78 +221,27 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         .maybeSingle()
     : { data: null };
 
-  let submissionVersionLabel: string | null = null;
-  if (submission?.course_version_id) {
-    const { data: versionRow } = await supabase
-      .from("course_versions")
-      .select("major_version, minor_version")
-      .eq("id", submission.course_version_id)
-      .maybeSingle();
-    if (versionRow) {
-      submissionVersionLabel = formatCourseVersion(
-        versionRow.major_version as number,
-        versionRow.minor_version as number
-      );
-    }
-  }
+  const playerReturnPath = `/dashboard/student/training?week=${data.currentWeek}`;
+  let lessonProgress: LessonPlayerProgress | null = null;
+  let testProgress: LessonPlayerProgress | null = null;
 
-  let lessonProgressSnapshot: TalentLessonProgressSnapshot | null = null;
-  let lessonTestSnapshot: TalentLessonProgressSnapshot | null = null;
-
-  if (lessonId && user.email) {
-    const { data: lessonTalentRow } = await supabase
-      .from("lessons")
-      .select("talent_lms_unit_id, talent_lms_test_unit_id")
-      .eq("id", lessonId)
-      .maybeSingle();
-
-    const hasTalentUnit = coerceTalentLmsUnitId(
-      typeof lessonTalentRow?.talent_lms_unit_id === "string"
-        ? lessonTalentRow.talent_lms_unit_id
-        : null
-    );
-    const hasTalentTest = coerceTalentLmsUnitId(
-      typeof lessonTalentRow?.talent_lms_test_unit_id === "string"
-        ? lessonTalentRow.talent_lms_test_unit_id
-        : null
-    );
-
-    if (hasTalentUnit || hasTalentTest) {
-      const { data: profileRow } = await supabase
-        .from("users")
-        .select("email, full_name")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      const extraEmails = [
-        typeof profileRow?.email === "string" ? profileRow.email : undefined,
-      ];
-      const fullName =
-        typeof profileRow?.full_name === "string" ? profileRow.full_name : null;
-
-      if (hasTalentUnit) {
-        lessonProgressSnapshot = await fetchTalentLessonProgressSnapshot(
-          supabase,
-          {
-            userEmail: user.email,
-            additionalEmails: extraEmails,
-            fullName,
-            lessonId,
-            unitKind: "lesson",
-          }
-        );
-      }
-
-      if (hasTalentTest) {
-        lessonTestSnapshot = await fetchTalentLessonProgressSnapshot(supabase, {
-          userEmail: user.email,
-          additionalEmails: extraEmails,
-          fullName,
-          lessonId,
-          unitKind: "test",
-        });
-      }
-    }
+  if (lessonId) {
+    [lessonProgress, testProgress] = await Promise.all([
+      getLessonPlayerProgress(supabase, {
+        lessonId,
+        userId: user.id,
+        kind: "content",
+        courseVersionId: courseVersion?.id ?? null,
+        returnPath: playerReturnPath,
+      }),
+      getLessonPlayerProgress(supabase, {
+        lessonId,
+        userId: user.id,
+        kind: "test",
+        courseVersionId: courseVersion?.id ?? null,
+        returnPath: playerReturnPath,
+      }),
+    ]);
   }
 
   const discussion = lessonId
@@ -450,7 +405,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
             <LessonMarkdownBody markdown={w.study_materials ?? ""} />
           </CollapsibleSection>
 
-          {lessonProgressSnapshot ? (
+          {lessonId && lessonProgress?.available ? (
             <CollapsibleSection
               variant="section"
               title="Lesson Progress"
@@ -459,15 +414,11 @@ export default async function TrainingPage({ searchParams }: PageProps) {
               headerHoverHighlight={false}
               defaultOpen={true}
             >
-              <LessonProgressCard
-                weekNumber={data.currentWeek}
-                initialSnapshot={lessonProgressSnapshot}
-                unitKind="lesson"
-              />
+              <LessonProgressCard initial={lessonProgress} />
             </CollapsibleSection>
           ) : null}
 
-          {lessonTestSnapshot ? (
+          {lessonId && testProgress?.available ? (
             <CollapsibleSection
               variant="section"
               title="Lesson Test"
@@ -476,11 +427,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
               headerHoverHighlight={false}
               defaultOpen={true}
             >
-              <LessonProgressCard
-                weekNumber={data.currentWeek}
-                initialSnapshot={lessonTestSnapshot}
-                unitKind="test"
-              />
+              <LessonProgressCard initial={testProgress} />
             </CollapsibleSection>
           ) : null}
 
@@ -605,68 +552,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
                 <dd className="text-sm text-foreground whitespace-pre-wrap">
                   {submission.reflection_text || "No reflection provided."}
                 </dd>
-                {submissionVersionLabel ? (
-                  <>
-                    <dt className="text-sm font-medium text-muted-foreground">Course version</dt>
-                    <dd className="text-sm text-foreground tabular-nums">
-                      v{submissionVersionLabel}
-                    </dd>
-                  </>
-                ) : null}
               </dl>
-
-              {submission.talent_lms_unit_completed === true &&
-                submission.talent_lms_completion_checked_at && (
-                  <div className="flex items-start gap-2 rounded-md bg-muted/25 px-3 py-2 text-sm ring-1 ring-black/[0.04]">
-                    <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                    <div>
-                      <p className="font-medium">Talent LMS lesson verified</p>
-                      <p className="text-xs opacity-90">
-                        Checked{" "}
-                        {formatUiDateTime(
-                          submission.talent_lms_completion_checked_at as string
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-              {submission.talent_lms_unit_completed == null &&
-                (() => {
-                  const meta = submission.talent_lms_completion_meta as Record<
-                    string,
-                    unknown
-                  > | null;
-                  const reason =
-                    meta && typeof meta.skip_reason === "string"
-                      ? meta.skip_reason
-                      : null;
-                  if (reason === "unit_not_in_link") {
-                    return (
-                      <p className="rounded-md bg-muted/25 px-3 py-2 text-xs text-muted-foreground ring-1 ring-black/[0.04]">
-                        Talent completion was not checked because the lesson link does not
-                        include a unit id (expected in URLs like{" "}
-                        <span className="font-mono text-[11px]">
-                          …/plus/my/training/COURSE/units/UNIT
-                        </span>{" "}
-                        or{" "}
-                        <span className="font-mono text-[11px]">
-                          …/course/play/id:COURSE/unit:UNIT
-                        </span>
-                        ). Your reflection was still saved.
-                      </p>
-                    );
-                  }
-                  if (reason === "could_not_resolve_course_id") {
-                    return (
-                      <p className="rounded-md bg-muted/25 px-3 py-2 text-xs text-muted-foreground ring-1 ring-black/[0.04]">
-                        Talent completion was not checked because neither the lesson URL nor
-                        your training path specifies a Talent course id.
-                      </p>
-                    );
-                  }
-                  return null;
-                })()}
 
               {submission.lesson_submission_files &&
                submission.lesson_submission_files.length > 0 && (

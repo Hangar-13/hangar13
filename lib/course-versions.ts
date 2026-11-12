@@ -20,9 +20,9 @@ export type CourseVersionUpdateOffer = {
   authority: CourseVersionPinScope;
 };
 
-/** Display label, e.g. "2.1". */
+/** Display label, e.g. "rev 2.3". */
 export function formatCourseVersion(major: number, minor: number): string {
-  return `${major}.${minor}`;
+  return `rev ${major}.${minor}`;
 }
 
 export function compareCourseVersions(
@@ -331,15 +331,18 @@ type VersionLessonRow = Record<string, unknown> & {
   course_version_id: string;
 };
 
-/** Lessons from version snapshots for one course, ordered by module/lesson number. */
+/**
+ * Lessons from version snapshots for one course, ordered by module then lesson.
+ * A default module (`is_hidden_from_users`) is only a container: its lessons are
+ * included so a course with no real modules still lists them under the course.
+ */
 export async function fetchVersionLessonsForCourse(
   supabase: SupabaseClient,
-  courseVersion: CourseVersionRow,
-  options?: { includeHiddenModules?: boolean }
+  courseVersion: CourseVersionRow
 ): Promise<VersionLessonRow[]> {
   const { data: modules } = await supabase
     .from("course_version_modules")
-    .select("id, source_module_id, number, is_hidden_from_users")
+    .select("id, source_module_id, number")
     .eq("course_version_id", courseVersion.id)
     .order("number", { ascending: true });
 
@@ -348,13 +351,6 @@ export async function fetchVersionLessonsForCourse(
   const ordered: VersionLessonRow[] = [];
 
   for (const mod of modules) {
-    if (
-      !options?.includeHiddenModules &&
-      mod.is_hidden_from_users === true
-    ) {
-      continue;
-    }
-
     const { data: rows } = await supabase
       .from("course_version_lessons")
       .select("*")

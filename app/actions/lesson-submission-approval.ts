@@ -33,6 +33,7 @@ async function loadSubmissionContext(
 
 async function revalidateAfterReview(userTrainingId: string) {
   revalidatePath("/dashboard/mentor");
+  revalidatePath("/dashboard/mentor/mentees");
   revalidatePath("/dashboard/mentor/review-submissions");
   revalidatePath(`/dashboard/mentor/student/${userTrainingId}`);
   revalidatePath("/dashboard/student/training");
@@ -84,6 +85,47 @@ export async function approveLessonSubmission(
   await revalidateAfterReview(ctx.userTrainingId);
 
   return { success: true };
+}
+
+/** Approve the selected submitted reflections. Each one is checked against the caller's mentees. */
+export async function approveLessonSubmissions(
+  submissionIds: string[]
+): Promise<
+  | { success: true; approvedCount: number; warning?: string }
+  | { error: string; approvedCount?: number }
+> {
+  const ids = [...new Set(submissionIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) {
+    return { success: true, approvedCount: 0 };
+  }
+
+  let approvedCount = 0;
+  let failCount = 0;
+  let firstError: string | null = null;
+
+  for (const id of ids) {
+    const result = await approveLessonSubmission(id);
+    if ("error" in result && result.error) {
+      failCount += 1;
+      firstError ??= result.error;
+      continue;
+    }
+    approvedCount += 1;
+  }
+
+  if (approvedCount === 0 && firstError) {
+    return { error: firstError, approvedCount: 0 };
+  }
+
+  return {
+    success: true,
+    approvedCount,
+    ...(failCount > 0
+      ? {
+          warning: `${failCount} reflection${failCount === 1 ? "" : "s"} could not be approved. ${firstError ?? ""}`.trim(),
+        }
+      : {}),
+  };
 }
 
 export async function rejectLessonSubmission(

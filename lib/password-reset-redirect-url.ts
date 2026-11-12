@@ -2,7 +2,7 @@ import "server-only";
 
 import { headers } from "next/headers";
 
-import { parseOptionalOrigin } from "@/lib/talentlms/saml-config";
+import { parseOptionalOrigin } from "@/lib/app-origin";
 
 /** Absolute URL Supabase should redirect to after a password-recovery link is opened. */
 export async function passwordResetRedirectUrl(): Promise<string> {

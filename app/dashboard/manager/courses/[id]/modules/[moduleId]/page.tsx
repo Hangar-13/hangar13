@@ -57,7 +57,7 @@ export default async function ManagerModuleDetailPage({ params }: PageProps) {
 
   const { data: modLessons } = await supabase
     .from("lessons")
-    .select("id, module_id, number, title")
+    .select("id, module_id, number, title, courseware_revision")
     .eq("module_id", moduleId)
     .order("number", { ascending: true });
 
@@ -68,7 +68,12 @@ export default async function ManagerModuleDetailPage({ params }: PageProps) {
       number: 0,
       needsSetup: (module as { needs_setup?: boolean }).needs_setup === true,
       isHiddenFromUsers: module.is_hidden_from_users === true,
-      lessons: modLessons ?? [],
+      lessons: (modLessons ?? []).map((l) => ({
+        id: l.id,
+        number: l.number,
+        title: l.title,
+        coursewareRevision: Number(l.courseware_revision ?? 0),
+      })),
     },
   ];
 
@@ -108,7 +113,6 @@ export default async function ManagerModuleDetailPage({ params }: PageProps) {
       course={{
         id: course.id,
         name: course.name,
-        talentLmsCourseId: course.talent_lms_course_id,
       }}
       moduleIndex={moduleIndex}
       module={{

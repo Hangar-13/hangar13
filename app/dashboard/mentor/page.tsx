@@ -10,6 +10,7 @@ import {
 import { getAcsCodesByEntry } from "@/app/actions/logbook";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
+import { pendingSubmissionCountsByUser } from "@/lib/student-coursework";
 import {
   fetchActiveEnrollmentIdsForMentor,
   fetchCurrentCurriculumIdsForUsers,
@@ -106,6 +107,10 @@ async function buildStudentCards(
   now: Date,
   targetHours: number
 ): Promise<AssignedStudent[]> {
+  const pendingSubmissions = await pendingSubmissionCountsByUser(
+    supabase,
+    students.map((student) => student.user_id)
+  );
   return Promise.all(
     students.map(async (student) => {
       const { data: profile } = await supabase
@@ -163,6 +168,7 @@ async function buildStudentCards(
         weeks: { current: currentWeek },
         progressStatus,
         pendingEntries,
+        pendingSubmissions: pendingSubmissions.get(student.user_id) ?? 0,
       } as AssignedStudent;
     })
   );

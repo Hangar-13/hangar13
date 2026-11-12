@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateLessonFields } from "@/app/actions/manager-training-content";
 import { Button } from "@/components/ui/button";
+import { LessonPackageSlot } from "@/components/lesson-player/lesson-package-slot";
+import type { LessonPackageSlots } from "@/lib/lesson-player";
 import { EditableInline, EditableLessonHours } from "@/components/manager/editable-inline";
 import { EditableMarkdownField } from "@/components/manager/editable-markdown-field";
 import { ManagerContentLevelBar } from "@/components/manager/manager-content-level-bar";
@@ -12,7 +14,6 @@ import { ManagerLessonAtaChaptersSection } from "@/components/manager/manager-le
 import { ManagerLessonStringListSection } from "@/components/manager/manager-lesson-string-list-section";
 import type { AcsCodePickerRow } from "@/components/manager/acs-codes-picker";
 import type { AtaChapterPickerRow } from "@/components/manager/ata-chapters-picker";
-import { coerceTalentLmsCourseId } from "@/lib/talentlms/lesson-url";
 import {
   DashboardContentFrame,
   DashboardPageShell,
@@ -27,8 +28,6 @@ export type LessonDetail = {
   ata_chapter_ids: number[];
   acs_codes: number[];
   learning_objectives: string[];
-  talent_lms_unit_id: string | null;
-  talent_lms_test_unit_id: string | null;
   study_materials: string | null;
   practical_application: string | null;
   mentor_discussion_questions: string[];
@@ -38,11 +37,10 @@ export type LessonDetail = {
 type Props = {
   courseId: string;
   courseName: string;
-  /** Hangar course Talent LMS course id (digits); controls whether unit editing is shown. */
-  courseTalentLmsCourseId: string | null;
   moduleId: string;
   moduleTitle: string;
   lesson: LessonDetail;
+  packages: LessonPackageSlots;
   lessonTitleInBar: string;
   acsCodeCatalog: AcsCodePickerRow[];
   ataChapterCatalog: AtaChapterPickerRow[];
@@ -51,10 +49,10 @@ type Props = {
 export function ManagerLessonDetailClient({
   courseId,
   courseName,
-  courseTalentLmsCourseId,
   moduleId,
   moduleTitle,
   lesson,
+  packages,
   lessonTitleInBar,
   acsCodeCatalog,
   ataChapterCatalog,
@@ -134,71 +132,22 @@ export function ManagerLessonDetailClient({
               idPrefix="lesson-lo"
             />
 
-            <div className="max-w-3xl space-y-2">
-              <DashboardSectionLabel>Talent LMS</DashboardSectionLabel>
-              {coerceTalentLmsCourseId(courseTalentLmsCourseId) ? (
-                <EditableInline
-                  label="Talent LMS unit"
-                  value={lesson.talent_lms_unit_id ?? ""}
-                  displayClassName="text-sm font-mono tabular-nums"
-                  placeholder="No TalentLMS lesson specified"
-                  editPlaceholder="e.g. 2065"
-                  onSave={async (v) => {
-                    const r = await updateLessonFields(lesson.id, {
-                      talent_lms_unit_id: v.trim() || null,
-                    });
-                    if (r.ok) router.refresh();
-                    return r;
-                  }}
-                />
-              ) : (
-                <div className="flex flex-col gap-3 rounded-md bg-muted/25 px-4 py-3 ring-1 ring-black/[0.04] sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    No Talent LMS course defined
-                  </p>
-                  <Button asChild variant="secondary" size="sm" className="shrink-0">
-                    <Link
-                      href={`/dashboard/manager/courses/${courseId}?editTalentLms=1#talent-lms-course-id`}
-                    >
-                      Add Talent LMS Course ID
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="max-w-3xl space-y-2">
-              <DashboardSectionLabel>Talent LMS Test</DashboardSectionLabel>
-              {coerceTalentLmsCourseId(courseTalentLmsCourseId) ? (
-                <EditableInline
-                  label="Talent LMS test unit"
-                  value={lesson.talent_lms_test_unit_id ?? ""}
-                  displayClassName="text-sm font-mono tabular-nums"
-                  placeholder="No TalentLMS test specified"
-                  editPlaceholder="e.g. 2066"
-                  onSave={async (v) => {
-                    const r = await updateLessonFields(lesson.id, {
-                      talent_lms_test_unit_id: v.trim() || null,
-                    });
-                    if (r.ok) router.refresh();
-                    return r;
-                  }}
-                />
-              ) : (
-                <div className="flex flex-col gap-3 rounded-md bg-muted/25 px-4 py-3 ring-1 ring-black/[0.04] sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    No Talent LMS course defined
-                  </p>
-                  <Button asChild variant="secondary" size="sm" className="shrink-0">
-                    <Link
-                      href={`/dashboard/manager/courses/${courseId}?editTalentLms=1#talent-lms-course-id`}
-                    >
-                      Add Talent LMS Course ID
-                    </Link>
-                  </Button>
-                </div>
-              )}
-            </div>
+            <LessonPackageSlot
+              lessonId={lesson.id}
+              kind="content"
+              label="Courseware"
+              emptyLabel="No courseware uploaded"
+              pkg={packages.content}
+              returnPath={`/dashboard/manager/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}`}
+            />
+            <LessonPackageSlot
+              lessonId={lesson.id}
+              kind="test"
+              label="Test package"
+              emptyLabel="No SCORM test uploaded"
+              pkg={packages.test}
+              returnPath={`/dashboard/manager/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}`}
+            />
 
             <EditableMarkdownField
               id="lesson-study-materials"

@@ -12,22 +12,6 @@ import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 import { supabaseSsrAuthCookieSerializeOptions } from "@/lib/supabase-ssr-cookie-options";
 import { resolveUserStartPath } from "@/lib/user-start-path";
 
-/** Same-origin SAML resume URL from `/auth/login?redirect=…` after Talent sends the learner back to Hangar. */
-function safeTalentSamlResumeUrl(requestUrl: string, redirectRaw: string): URL | null {
-  try {
-    const candidate = new URL(redirectRaw, requestUrl);
-    if (candidate.origin !== new URL(requestUrl).origin) return null;
-
-    if (candidate.pathname.startsWith("/api/auth/saml/talentlms/")) {
-      return candidate;
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -42,15 +26,6 @@ export async function middleware(request: NextRequest) {
   if (!supabaseUrl || !supabasePublishableKey) {
     return response;
   }
-
-  const redirectForLogin =
-    request.nextUrl.pathname === "/auth/login"
-      ? request.nextUrl.searchParams.get("redirect")
-      : null;
-  const postLoginInterceptUrl =
-    redirectForLogin != null
-      ? safeTalentSamlResumeUrl(request.url, redirectForLogin)
-      : null;
 
   const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
     cookieOptions: supabaseSsrAuthCookieSerializeOptions(),
@@ -77,16 +52,11 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthPage = request.nextUrl.pathname.startsWith("/auth");
-  const isTalentLmsSamlApi = request.nextUrl.pathname.startsWith(
-    "/api/auth/saml/talentlms/"
-  );
 
-  /** SAML endpoints handle anonymous entry (login handler redirects signed-out users). */
   const isPublicPath =
     request.nextUrl.pathname === "/" ||
     request.nextUrl.pathname === "/join" ||
-    isAuthPage ||
-    isTalentLmsSamlApi;
+    isAuthPage;
 
   const isApiRoute = request.nextUrl.pathname.startsWith("/api/");
 
@@ -163,11 +133,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // If user is authenticated and on auth pages, redirect to dashboard — unless resuming SAML to Talent
+  // If user is authenticated and on auth pages, redirect to dashboard
   if (user && isAuthPage && !isResetPasswordPage) {
-    if (postLoginInterceptUrl) {
-      return NextResponse.redirect(postLoginInterceptUrl);
-    }
     const ctx = await loadUserContext(user.id);
     const orgRole = effectiveOrgRoleForRedirect(ctx.memberships);
     return redirectForUserContext(

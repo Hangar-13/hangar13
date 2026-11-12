@@ -155,6 +155,7 @@ export function getNavigationSections(
       icon: LayoutDashboard,
     },
     { name: "Content", href: "/dashboard/manager/content", icon: Library },
+    { name: "Students", href: "/dashboard/manager/students", icon: Users },
   ];
 
   const godAdminNavigation: NavItem[] = [

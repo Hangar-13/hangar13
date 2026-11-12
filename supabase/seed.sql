@@ -1,5 +1,32 @@
 -- Seed reference data. Runs after migrations on supabase db reset / supabase start.
 
+-- Migration 028 inserts a placeholder tenant named "Default organization" when
+-- the database has none. The app looks up "Hangar 13" by name for self sign-up.
+UPDATE public.organizations
+SET name = 'Hangar 13'
+WHERE name = 'Default organization'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM public.organizations
+    WHERE lower(btrim(name)) = 'hangar 13'
+  );
+
+-- Attach the local god login when that account already exists. Seed does not
+-- create auth users, so a fresh reset still needs the account signed up first.
+INSERT INTO public.user_organizations (user_id, organization_id, role)
+SELECT u.id, o.id, 'lead'
+FROM public.users u
+JOIN public.organizations o ON lower(btrim(o.name)) = 'hangar 13'
+WHERE u.email = 'god@hangar13.io'
+ON CONFLICT (user_id, organization_id) DO UPDATE
+SET role = 'lead';
+
+UPDATE public.users u
+SET last_active_organization_id = o.id
+FROM public.organizations o
+WHERE u.email = 'god@hangar13.io'
+  AND lower(btrim(o.name)) = 'hangar 13';
+
 -- 1. ATA chapters (must run before acs_code - IDs are referenced)
 INSERT INTO public.ata_chapter (chapter_number, title, description) VALUES
 ('00', 'General', NULL),

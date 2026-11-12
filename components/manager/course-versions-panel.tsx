@@ -23,13 +23,19 @@ import {
   DashboardTableShell,
 } from "@/components/dashboard/page-shell";
 import { formatUiDateTime } from "@/lib/format-ui-date";
+import type { UnpublishedCourseware } from "@/lib/courseware-revisions";
 
 type Props = {
   courseId: string;
   initialVersions: ManagerCourseVersionSummary[];
+  unpublishedCourseware: UnpublishedCourseware[];
 };
 
-export function CourseVersionsPanel({ courseId, initialVersions }: Props) {
+export function CourseVersionsPanel({
+  courseId,
+  initialVersions,
+  unpublishedCourseware,
+}: Props) {
   const router = useRouter();
   const [versions, setVersions] = useState(initialVersions);
   const [open, setOpen] = useState(false);
@@ -72,11 +78,34 @@ export function CourseVersionsPanel({ courseId, initialVersions }: Props) {
           <div className="flex items-center gap-2">
             <Tag className="h-4 w-4 text-muted-foreground" aria-hidden />
             <DashboardSectionLabel className="mb-0">Course versions</DashboardSectionLabel>
+            {unpublishedCourseware.length > 0 ? (
+              <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                Courseware updated
+              </span>
+            ) : null}
           </div>
           <p className="text-sm text-muted-foreground">
             Publish a snapshot when learners should see updated content. Minor bumps
             for small changes; major bumps for structural overhauls.
           </p>
+          {unpublishedCourseware.length > 0 ? (
+            <div className="space-y-1 text-sm">
+              <p className="text-muted-foreground">
+                These courseware files are newer than the latest published version.
+                Publish a version to record them.
+              </p>
+              <ul className="space-y-1">
+                {unpublishedCourseware.map((item) => (
+                  <li key={item.lessonId} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate">{item.lessonTitle}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">
+                      rev {item.revision}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </div>
         <Button type="button" size="sm" onClick={() => setOpen(true)} disabled={pending}>
           Publish new version
@@ -94,7 +123,7 @@ export function CourseVersionsPanel({ courseId, initialVersions }: Props) {
                 className="flex flex-wrap items-start justify-between gap-2 p-3 text-sm"
               >
                 <div>
-                  <span className="font-medium tabular-nums">v{v.label}</span>
+                  <span className="font-medium tabular-nums">{v.label}</span>
                   {v.isLatest ? (
                     <span className="ml-2 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
                       Latest
@@ -129,7 +158,7 @@ export function CourseVersionsPanel({ courseId, initialVersions }: Props) {
                   onClick={() => setBump("minor")}
                   disabled={pending}
                 >
-                  Minor (e.g. 1.0 → 1.1)
+                  Minor (rev 1.0 → rev 1.1)
                 </Button>
                 <Button
                   type="button"
@@ -138,7 +167,7 @@ export function CourseVersionsPanel({ courseId, initialVersions }: Props) {
                   onClick={() => setBump("major")}
                   disabled={pending}
                 >
-                  Major (e.g. 1.2 → 2.0)
+                  Major (rev 1.2 → rev 2.0)
                 </Button>
               </div>
             </div>

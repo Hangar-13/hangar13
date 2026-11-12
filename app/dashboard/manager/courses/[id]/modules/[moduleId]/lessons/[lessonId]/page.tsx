@@ -4,6 +4,7 @@ import { getAllAcsCodesWithChapters } from "@/app/actions/acs-codes";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { ManagerLessonDetailClient } from "@/components/manager/manager-lesson-detail-client";
 import { getCourseOwnedByUser } from "@/lib/manager-training-guard";
+import { listLessonPackages } from "@/lib/lesson-player";
 
 type PageProps = {
   params: Promise<{ id: string; moduleId: string; lessonId: string }>;
@@ -92,9 +93,9 @@ export default async function ManagerLessonDetailPage({ params }: PageProps) {
     <ManagerLessonDetailClient
       courseId={courseId}
       courseName={course.name}
-      courseTalentLmsCourseId={course.talent_lms_course_id}
       moduleId={moduleId}
       moduleTitle={moduleTitleInBar}
+      packages={await listLessonPackages(supabase, lesson.id)}
       lesson={{
         id: lesson.id,
         number: lesson.number,
@@ -103,16 +104,6 @@ export default async function ManagerLessonDetailPage({ params }: PageProps) {
         ata_chapter_ids: ataChapterIds,
         acs_codes: acsCodes,
         learning_objectives: lesson.learning_objectives ?? [],
-        talent_lms_unit_id:
-          typeof (lesson as { talent_lms_unit_id?: unknown }).talent_lms_unit_id ===
-          "string"
-            ? (lesson as { talent_lms_unit_id: string }).talent_lms_unit_id
-            : null,
-        talent_lms_test_unit_id:
-          typeof (lesson as { talent_lms_test_unit_id?: unknown })
-            .talent_lms_test_unit_id === "string"
-            ? (lesson as { talent_lms_test_unit_id: string }).talent_lms_test_unit_id
-            : null,
         study_materials: lesson.study_materials,
         practical_application: lesson.practical_application,
         mentor_discussion_questions: lesson.mentor_discussion_questions ?? [],

@@ -1,0 +1,11 @@
+# Supabase
+.branches
+.temp
+
+# Local SQL editor snippets
+snippets/
+
+# dotenvx
+.env.keys
+.env.local
+.env.*.local

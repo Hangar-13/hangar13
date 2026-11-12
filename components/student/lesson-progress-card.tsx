@@ -1,32 +1,25 @@
-"use client";
-
-import { useState } from "react";
+import Link from "next/link";
+import { PlayCircle } from "lucide-react";
+import type { LessonPlayerProgress } from "@/lib/lesson-player";
 import { Button } from "@/components/ui/button";
-import { PlayCircle, RefreshCw } from "lucide-react";
-import { refreshTalentLessonProgress } from "@/app/actions/talent-lesson-progress";
-import type {
-  TalentLessonProgressSnapshot,
-  TalentLessonUnitKind,
-} from "@/lib/talentlms/fetch-lesson-progress";
 import { formatUiDate } from "@/lib/format-ui-date";
 
-function lessonActionLabel(percent: number, kind: TalentLessonUnitKind): string {
-  const rounded = Math.round(percent);
-  if (kind === "test") {
-    if (rounded >= 100) return "Review Test";
-    if (rounded <= 0) return "Start Test";
-    return "Continue Test";
+function actionLabel(progress: LessonPlayerProgress): string {
+  const noun = progress.kind === "test" ? "Test" : "Lesson";
+  if (progress.status === "passed" || progress.status === "completed" || progress.percent >= 100) {
+    return `Review ${noun}`;
   }
-  if (rounded >= 100) {
-    return "Review Lesson";
+  if (
+    progress.status === "not_attempted" ||
+    (progress.percent <= 0 &&
+      progress.status !== "incomplete" &&
+      progress.status !== "browsed")
+  ) {
+    return `Start ${noun}`;
   }
-  if (rounded <= 0) {
-    return "Start Lesson";
-  }
-  return "Continue Lesson";
+  return `Continue ${noun}`;
 }
 
-/** Semicircular arc gauge (speedometer-style); `pathLength={100}` maps stroke dash to percent. */
 function LessonSemicircleGauge({
   percent,
   label,
@@ -47,7 +40,7 @@ function LessonSemicircleGauge({
       aria-valuetext={`${Math.round(p)} percent`}
       aria-label={label}
     >
-      <svg viewBox="0 0 100 58" className="w-[152px] h-[88px] overflow-visible">
+      <svg viewBox="0 0 100 58" className="h-[88px] w-[152px] overflow-visible">
         <path
           d={arcPath}
           fill="none"
@@ -80,124 +73,49 @@ function LessonSemicircleGauge({
   );
 }
 
-interface LessonProgressCardProps {
-  weekNumber: number;
-  initialSnapshot: TalentLessonProgressSnapshot;
-  unitKind?: TalentLessonUnitKind;
-}
-
 export function LessonProgressCard({
-  weekNumber,
-  initialSnapshot,
-  unitKind = "lesson",
-}: LessonProgressCardProps) {
-  const [snapshot, setSnapshot] = useState<TalentLessonProgressSnapshot>(initialSnapshot);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  const handleUpdateProgress = async () => {
-    setActionError(null);
-    setIsUpdating(true);
-    try {
-      const result = await refreshTalentLessonProgress(weekNumber, unitKind);
-      if ("error" in result) {
-        setActionError(result.error);
-      } else {
-        setSnapshot(result);
-      }
-    } catch (e) {
-      setActionError(
-        e instanceof Error ? e.message : "Something went wrong updating progress."
-      );
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const talentHref = snapshot.talentUrl;
-  /** Same-origin bridge so session cookies are sent before Talent’s cross-site SAML hop. */
-  const talentLessonHref = talentHref
-    ? `/api/auth/saml/talentlms/bridge?to=${encodeURIComponent(talentHref)}`
-    : null;
-
-  const percent =
-    snapshot.kind === "ready" ? Math.min(100, Math.max(0, snapshot.percent)) : null;
-
-  const isComplete = snapshot.kind === "ready" && percent !== null && percent >= 100;
+  initial,
+}: {
+  initial: LessonPlayerProgress;
+}) {
+  const progress = initial;
+  const isComplete =
+    progress.status === "passed" || progress.status === "completed";
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
         <div className="flex shrink-0 flex-col items-center gap-2 sm:items-start">
-          {snapshot.kind === "ready" ? (
-            <>
-              <LessonSemicircleGauge
-                percent={percent!}
-                label={
-                  unitKind === "test"
-                    ? "Lesson test progress"
-                    : "Lesson progress"
-                }
-              />
-              {isComplete ? (
-                <p className="text-sm text-muted-foreground">
-                  Completed on {formatUiDate(snapshot.checkedAt)}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <div className="w-full max-w-md rounded-md bg-muted/25 px-3 py-3 ring-1 ring-black/[0.04] sm:max-w-sm">
-              <p className="text-sm text-muted-foreground">{snapshot.message}</p>
-            </div>
-          )}
+          <LessonSemicircleGauge
+            percent={progress.percent}
+            label={progress.kind === "test" ? "Lesson test progress" : "Lesson progress"}
+          />
+          {progress.statusLabel ? (
+            <p className="text-sm text-muted-foreground">
+              {progress.statusLabel}
+              {isComplete && progress.updatedAt
+                ? ` on ${formatUiDate(progress.updatedAt)}`
+                : ""}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:min-w-[200px]">
-          {talentLessonHref ? (
-            <Button
-              asChild
-              size="lg"
-              className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <a href={talentLessonHref} target="_blank" rel="noopener noreferrer">
+          {progress.playHref ? (
+            <Button asChild size="lg" className="w-full gap-2">
+              <Link href={progress.playHref}>
                 <PlayCircle className="h-5 w-5 shrink-0" />
-                {snapshot.kind === "ready"
-                  ? lessonActionLabel(snapshot.percent, unitKind)
-                  : unitKind === "test"
-                    ? "Open Talent test"
-                    : "Open Talent lesson"}
-              </a>
+                {actionLabel(progress)}
+              </Link>
             </Button>
           ) : (
             <Button size="lg" className="w-full" disabled variant="secondary">
-              <PlayCircle className="h-5 w-5 shrink-0 mr-2" />
-              {unitKind === "test" ? "No Talent test link" : "No Talent lesson link"}
+              <PlayCircle className="mr-2 h-5 w-5 shrink-0" />
+              {progress.kind === "test" ? "No test" : "No lesson"}
             </Button>
           )}
-
-          {!isComplete ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="lg"
-              className="w-full gap-2"
-              onClick={handleUpdateProgress}
-              disabled={isUpdating}
-            >
-              <RefreshCw
-                className={`h-4 w-4 shrink-0 ${isUpdating ? "animate-spin" : ""}`}
-              />
-              {isUpdating ? "Updating…" : "Update Progress"}
-            </Button>
-          ) : null}
         </div>
       </div>
-
-      {actionError ? (
-        <p className="text-sm text-destructive" role="alert">
-          {actionError}
-        </p>
-      ) : null}
     </div>
   );
 }

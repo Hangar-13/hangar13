@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:live": "node scripts/dev-live.mjs",
-    "talent:probe": "node scripts/talent-lms-api-probe.mjs",
+    "dev:scorm": "node scripts/dev-live.mjs .env.scorm.local",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -28,6 +28,7 @@
     "@xmldom/xmldom": "^0.9.10",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fflate": "^0.8.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.562.0",
@@ -39,7 +40,6 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.14.0",
-    "samlify": "^2.12.0",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.5"
   },

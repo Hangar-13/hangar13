@@ -2,11 +2,8 @@ import type { SerializeOptions } from "cookie";
 
 /**
  * Supabase SSR packages auth into browser cookies (@supabase/ssr defaults SameSite=Lax).
- * Talent LMS (and similar SPs) redirects the learner **cross-site** into Hangar’s SAML IdP URL.
- * In some browsers/versions, **Lax** session cookies are not attached on that hop, so Hangar incorrectly
- * treats the learner as logged out (`/auth/login`) even though the training tab session is fine.
  *
- * **Production HTTPS:** use **`SameSite=None`** + **`Secure`** so the SSO redirect carries the cookie.
+ * **Production HTTPS:** use **`SameSite=None`** + **`Secure`** so a cross-site return still carries the session.
  *
  * **Local dev (HTTP):** keep **Lax** — **None + Secure** cannot be set reliably without HTTPS.
  */

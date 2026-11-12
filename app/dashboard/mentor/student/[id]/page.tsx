@@ -21,6 +21,9 @@ import { Button } from "@/components/ui/button";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
 import { formatUiDate } from "@/lib/format-ui-date";
 import { mentorHasAccessToTrainee } from "@/lib/mentor-enrollments";
+import { hasOrgRoleAtLeast } from "@/lib/organization";
+import { listStudentCoursework } from "@/lib/student-coursework";
+import { StudentCoursework } from "@/components/mentor/student-coursework";
 import { fetchLessonsForEnrollment } from "@/lib/training-lessons";
 import { buildVersionContextForUserTraining } from "@/lib/course-versions";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
@@ -45,7 +48,18 @@ async function getStudentData(studentId: string, mentorId: string) {
   // Verify the mentor has permission to view this student
   const allowed = await mentorHasAccessToTrainee(supabase, mentorId, student.user_id);
   if (!allowed) {
-    return { unauthorized: true };
+    const { data: path } = await supabase
+      .from("training_paths")
+      .select("organization_id")
+      .eq("id", student.training_path_id)
+      .maybeSingle();
+    const organizationId = path?.organization_id as string | null | undefined;
+    const manager =
+      organizationId != null &&
+      (await hasOrgRoleAtLeast(supabase, mentorId, organizationId, "manager"));
+    if (!manager) {
+      return { unauthorized: true };
+    }
   }
 
   // Get student profile
@@ -250,6 +264,12 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
     sp.question != null && /^\d+$/.test(sp.question)
       ? parseInt(sp.question, 10)
       : null;
+  const coursework = await listStudentCoursework(supabase, {
+    id: student.id,
+    user_id: student.user_id,
+    training_path_id: student.training_path_id,
+    enrollment_source: student.enrollment_source,
+  });
   const discussionData = await getStudentDiscussionData(
     {
       id: student.id,
@@ -415,6 +435,14 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
             />
           </div>
         </DashboardStatStrip>
+
+        <section className="space-y-4 border-t border-border/40 pt-6">
+          <DashboardSectionLabel>Coursework</DashboardSectionLabel>
+          <StudentCoursework
+            courses={coursework}
+            studentName={profile?.full_name || profile?.email || ""}
+          />
+        </section>
 
         <section className="space-y-4 border-t border-border/40 pt-6">
           <DashboardSectionLabel>Training & certifications</DashboardSectionLabel>

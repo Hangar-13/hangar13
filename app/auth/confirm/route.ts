@@ -3,8 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { sendWelcomeEmail } from "@/lib/email/welcome-email";
-import { parseOptionalOrigin } from "@/lib/talentlms/saml-config";
-import { provisionTalentLmsAccountForCurrentUser } from "@/lib/talentlms/provision-account";
+import { parseOptionalOrigin } from "@/lib/app-origin";
 
 /** Only allow same-origin, relative redirect targets to avoid open-redirects. */
 function safeNextPath(raw: string | null): string {
@@ -62,28 +61,6 @@ export async function GET(request: NextRequest) {
       // Swallow — confirmation already succeeded.
     }
 
-    // Provision the learner's TalentLMS account now, so it exists before any
-    // training-path enrollment. Failures are recorded on the user row and surfaced
-    // via a dashboard banner with a "Try again" action.
-    if (user) {
-      try {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("email, full_name")
-          .eq("id", user.id)
-          .maybeSingle();
-        await provisionTalentLmsAccountForCurrentUser({
-          supabase,
-          email: profile?.email || user.email,
-          fullName:
-            profile?.full_name ??
-            (user.user_metadata?.full_name as string | undefined) ??
-            null,
-        });
-      } catch {
-        // Swallow — confirmation already succeeded.
-      }
-    }
   }
 
   return NextResponse.redirect(new URL(next, request.url));

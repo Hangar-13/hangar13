@@ -395,7 +395,7 @@ export function WeeklySubmissionForm({
           }
         </Button>
         <p className="text-xs text-center text-muted-foreground">
-          Your submission will be sent to your mentor for review
+          If you have a mentor, they will review this reflection
         </p>
       </div>
     </form>

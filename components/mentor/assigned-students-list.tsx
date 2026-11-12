@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { User, Mail, Calendar, Clock, Target, CheckCircle, AlertCircle, TrendingUp, UserMinus, Plus } from "lucide-react";
+import { User, Mail, Calendar, Clock, Target, FileText, CheckCircle, AlertCircle, TrendingUp, UserMinus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ export interface AssignedStudent {
   };
   progressStatus?: "on_track" | "behind_pace" | "ahead";
   pendingEntries?: number;
+  pendingSubmissions?: number;
 }
 
 interface AssignedStudentsListProps {
@@ -97,6 +98,13 @@ export function AssignedStudentsList({
     e.preventDefault();
     const name = studentName || studentEmail || "";
     router.push(`/dashboard/mentor/review-logs?student=${encodeURIComponent(name)}`);
+  };
+
+  const handlePendingSubmissionsClick = (e: React.MouseEvent, studentName?: string | null, studentEmail?: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const name = studentName || studentEmail || "";
+    router.push(`/dashboard/mentor/review-submissions?student=${encodeURIComponent(name)}`);
   };
 
   const getStatusBadge = (progressStatus?: "on_track" | "behind_pace" | "ahead", small?: boolean) => {
@@ -202,12 +210,27 @@ export function AssignedStudentsList({
                     variant="ghost"
                     size="sm"
                     className="h-6 px-2 text-xs hover:bg-primary/10"
+                    title="Pending logbook entries"
                     onClick={(e) =>
                       handlePendingEntriesClick(e, student.users?.full_name, student.users?.email)
                     }
                   >
                     <Target className="mr-1 h-3 w-3" />
                     {student.pendingEntries}
+                  </Button>
+                )}
+                {student.pendingSubmissions !== undefined && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs hover:bg-primary/10"
+                    title="Pending submissions"
+                    onClick={(e) =>
+                      handlePendingSubmissionsClick(e, student.users?.full_name, student.users?.email)
+                    }
+                  >
+                    <FileText className="mr-1 h-3 w-3" />
+                    {student.pendingSubmissions}
                   </Button>
                 )}
               </div>
@@ -354,6 +377,26 @@ export function AssignedStudentsList({
                     className={`text-sm font-semibold ${student.pendingEntries > 0 ? "text-primary" : ""}`}
                   >
                     {student.pendingEntries}
+                  </span>
+                </Button>
+              )}
+              {student.pendingSubmissions !== undefined && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-between hover:bg-primary/10"
+                  onClick={(e) =>
+                    handlePendingSubmissionsClick(e, student.users?.full_name, student.users?.email)
+                  }
+                >
+                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <FileText className="h-3 w-3" />
+                    Pending Submissions
+                  </span>
+                  <span
+                    className={`text-sm font-semibold ${student.pendingSubmissions > 0 ? "text-primary" : ""}`}
+                  >
+                    {student.pendingSubmissions}
                   </span>
                 </Button>
               )}
