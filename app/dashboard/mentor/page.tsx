@@ -151,6 +151,8 @@ async function buildStudentCards(
         hoursCompleted,
         hoursRequired,
         trainingProgressPercent,
+        completedItems,
+        totalItems,
       } = await getEnrollmentLessonSnapshot(supabase, student.id, student);
 
       return {
@@ -163,6 +165,8 @@ async function buildStudentCards(
           overall: trainingProgressPercent,
           hoursCompleted,
           hoursRequired,
+          lessonsCompleted: completedItems,
+          lessonsTotal: totalItems,
         },
         hours: { total: totalHours, target: targetHours, progress: Math.round(hoursProgress) },
         weeks: { current: currentWeek },

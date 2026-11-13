@@ -4,7 +4,6 @@ import Link from "next/link";
 import { SidebarNavLinks } from "@/components/sidebar-nav-links";
 import { useAppNavigation } from "@/components/app-navigation-provider";
 import { Hangar13Mark } from "@/components/brand/hangar13-mark";
-import { PaletteToggle } from "@/components/palette-toggle";
 
 export function Sidebar() {
   const { navigationSections, isLoading } = useAppNavigation();
@@ -24,8 +23,7 @@ export function Sidebar() {
         navigationSections={navigationSections}
         isLoading={isLoading}
       />
-      <div className="mt-auto space-y-4 border-t border-sidebar-border p-4">
-        <PaletteToggle />
+      <div className="mt-auto border-t border-sidebar-border p-4">
         <div className="text-center text-xs text-sidebar-foreground/45">
           <p className="font-medium">v1.0.0</p>
           <p className="mt-1">Aviation Training System</p>

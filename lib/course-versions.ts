@@ -409,6 +409,42 @@ export async function fetchVersionLessonBySourceId(
   };
 }
 
+/** Swap lessons the student is still taking from an older course version. */
+export async function applyLessonVersionHolds(
+  supabase: SupabaseClient,
+  userId: string,
+  lessons: Record<string, unknown>[]
+): Promise<Record<string, unknown>[]> {
+  const ids = lessons
+    .map((lesson) => lesson.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+  if (ids.length === 0) return lessons;
+
+  const { data: holds } = await supabase
+    .from("lesson_version_holds")
+    .select("lesson_id, course_version_id")
+    .eq("user_id", userId)
+    .in("lesson_id", ids);
+
+  if (!holds?.length) return lessons;
+
+  const holdByLesson = new Map(
+    holds.map((hold) => [hold.lesson_id as string, hold.course_version_id as string])
+  );
+  const overlaid: Record<string, unknown>[] = [];
+  for (const lesson of lessons) {
+    const lessonId = lesson.id as string;
+    const heldVersionId = holdByLesson.get(lessonId);
+    if (!heldVersionId || heldVersionId === lesson.course_version_id) {
+      overlaid.push(lesson);
+      continue;
+    }
+    const snap = await fetchVersionLessonBySourceId(supabase, heldVersionId, lessonId);
+    overlaid.push(snap ?? lesson);
+  }
+  return overlaid;
+}
+
 export async function findCourseVersionUpdatesForPath(
   supabase: SupabaseClient,
   trainingPathId: string,
@@ -477,6 +513,24 @@ export async function resolveCourseVersionForLessonSubmission(
 ): Promise<CourseVersionRow | null> {
   const courseId = await resolveCourseIdForLesson(supabase, lessonId);
   if (!courseId) return null;
+
+  if (ctx.userId) {
+    const { data: hold } = await supabase
+      .from("lesson_version_holds")
+      .select("course_version_id")
+      .eq("user_id", ctx.userId)
+      .eq("lesson_id", lessonId)
+      .maybeSingle();
+    if (hold?.course_version_id) {
+      const { data: held } = await supabase
+        .from("course_versions")
+        .select("*")
+        .eq("id", hold.course_version_id)
+        .maybeSingle();
+      if (held) return held as CourseVersionRow;
+    }
+  }
+
   return resolveEffectiveCourseVersion(supabase, courseId, ctx);
 }
 

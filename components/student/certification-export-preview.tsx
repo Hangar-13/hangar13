@@ -25,7 +25,7 @@ function PdfLayoutPreview({ report }: { report: CertificationExportReport }) {
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-border/40 bg-[#1E1E38] text-white">
+            <tr className="border-b border-border/40 bg-[#121417] text-white">
               <th className="px-2 py-1.5 font-semibold">Section</th>
               <th className="px-2 py-1.5 font-semibold">Progress</th>
               <th className="px-2 py-1.5 font-semibold">Signed codes</th>
@@ -73,7 +73,7 @@ function PdfLayoutPreview({ report }: { report: CertificationExportReport }) {
                     key={code.code}
                     className="overflow-hidden rounded-md ring-1 ring-black/[0.06]"
                   >
-                    <div className="bg-primary/90 px-2 py-1.5 text-xs font-semibold text-[#1E1E38]">
+                    <div className="bg-primary/90 px-2 py-1.5 text-xs font-semibold text-white">
                       {code.code}
                       <span className="ml-2 font-normal opacity-80">{code.description}</span>
                     </div>
@@ -144,7 +144,7 @@ function TextFormatPreview({
   format: "csv" | "json";
 }) {
   return (
-    <div className="overflow-hidden rounded-md bg-[#1E1E38] ring-1 ring-black/[0.08]">
+    <div className="overflow-hidden rounded-md bg-[#121417] ring-1 ring-black/[0.08]">
       <div className="border-b border-white/10 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-white/60">
         {format === "csv" ? "Comma-separated values" : "JSON document"}
       </div>

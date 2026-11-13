@@ -34,9 +34,19 @@ import {
   type LessonPlayerProgress,
 } from "@/lib/lesson-player";
 import { LessonProgressCard } from "@/components/student/lesson-progress-card";
+import { LessonCompletedDialog } from "@/components/student/lesson-completed-dialog";
+import {
+  TrainingContents,
+  type TrainingContentsItem,
+} from "@/components/student/training-contents";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
+import {
+  firstActionableWeek,
+  loadTrainingLessonStates,
+} from "@/lib/training-lesson-state";
 import { formatUiDate } from "@/lib/format-ui-date";
 import { CourseVersionUpdateBanner } from "@/components/student/course-version-update-banner";
+import { LessonVersionUpdate } from "@/components/student/lesson-version-update";
 import { getCourseVersionUpdatesForCurrentEnrollment } from "@/app/actions/course-version-adoption";
 import {
   DashboardContentFrame,
@@ -75,14 +85,45 @@ async function getStudentTrainingData(userId: string, week?: number) {
     versionContext
   );
   const lessonCount = lessonsOrdered.length;
+  const lessonRows = lessonsOrdered.flatMap((row, index) => {
+    const id = row.id;
+    if (typeof id !== "string" || !id) return [];
+    const title =
+      typeof row.title === "string" && row.title.trim().length > 0
+        ? row.title
+        : `Lesson ${index + 1}`;
+    const number =
+      typeof row.number === "number" && Number.isFinite(row.number)
+        ? row.number
+        : index + 1;
+    return [
+      {
+        id,
+        title,
+        number,
+        contentPackageId:
+          typeof row.content_package_id === "string" ? row.content_package_id : null,
+        testPackageId: typeof row.test_package_id === "string" ? row.test_package_id : null,
+      },
+    ];
+  });
+  const lessonStates = await loadTrainingLessonStates(
+    supabase,
+    userId,
+    student.id,
+    lessonRows
+  );
+  const requestedWeek =
+    typeof week === "number" && Number.isFinite(week) && week >= 1
+      ? Math.floor(week)
+      : null;
+  const landingWeek =
+    firstActionableWeek(lessonStates) ?? (lessonCount > 0 ? 1 : undefined);
 
   const { currentWeek, totalWeeks } = computeProgramLessonWeek({
     startDateIso: student.start_date,
     lessonCount,
-    explicitWeek:
-      typeof week === "number" && Number.isFinite(week) && week >= 1
-        ? Math.floor(week)
-        : undefined,
+    explicitWeek: requestedWeek ?? landingWeek,
   });
 
   let weekContent = null;
@@ -127,6 +168,16 @@ async function getStudentTrainingData(userId: string, week?: number) {
     dueDate.setDate(startDate.getDate() + currentWeek * 7 - 1);
   }
 
+  const contents: TrainingContentsItem[] = lessonStates.map((lesson, index) => ({
+    week: index + 1,
+    number: lesson.number,
+    title: lesson.title,
+    completed: lesson.completed,
+    optional: lesson.optional,
+    current: index + 1 === currentWeek,
+  }));
+  const currentLesson = lessonStates[currentWeek - 1];
+
   return {
     student,
     currentWeek,
@@ -134,6 +185,10 @@ async function getStudentTrainingData(userId: string, week?: number) {
     dueDate,
     weekContent,
     trainingPlanName,
+    contents,
+    currentLessonCompleted: currentLesson?.completed ?? false,
+    currentLessonOptional: currentLesson?.optional ?? false,
+    nextRequiredWeek: firstActionableWeek(lessonStates),
   };
 }
 
@@ -142,6 +197,7 @@ interface PageProps {
     week?: string;
     question?: string;
     openSubmission?: string;
+    completed?: string;
   }>;
 }
 
@@ -206,6 +262,16 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const courseVersion = lessonId
     ? await resolveCourseVersionForLessonSubmission(supabase, lessonId, versionContext)
     : null;
+  let lessonUpdateAvailable = false;
+  if (lessonId) {
+    const { data: lessonHold } = await supabase
+      .from("lesson_version_holds")
+      .select("kept_by_user")
+      .eq("user_id", user.id)
+      .eq("lesson_id", lessonId)
+      .maybeSingle();
+    lessonUpdateAvailable = lessonHold?.kept_by_user === true;
+  }
 
   const { data: submission } = lessonId
     ? await supabase
@@ -289,32 +355,31 @@ export default async function TrainingPage({ searchParams }: PageProps) {
   const learningObjectives = w.learning_objectives || [];
   const mentorQuestions = w.mentor_discussion_questions || [];
 
-  const pageTitle = data.trainingPlanName ?? "Training";
   const sectionTitleClass =
     "text-[0.8125rem] font-semibold uppercase tracking-wide text-muted-foreground";
 
   return (
     <DashboardPageShell>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
-          <p className="text-base text-muted-foreground">Your weekly learning materials</p>
-        </div>
-        <Button asChild className="shrink-0 bg-primary text-primary-foreground">
-          <Link href={`/dashboard/student/training/submit?week=${data.currentWeek}`}>
-            <FileText className="mr-2 h-4 w-4" />
-            Submit Week
-          </Link>
-        </Button>
-      </div>
-
-      <DashboardContentFrame className="px-5 py-7 sm:px-8 sm:py-9">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch">
+      <DashboardContentFrame className="order-2 min-w-0 flex-1 px-5 py-7 sm:px-8 sm:py-9 lg:order-1">
         <CourseVersionUpdateBanner updates={versionUpdates} />
 
+        {params.completed === "1" && data.currentLessonCompleted ? (
+          <LessonCompletedDialog nextWeek={data.nextRequiredWeek} />
+        ) : null}
+
+        {data.currentLessonOptional ? (
+          <p className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+            This lesson is covered by prior experience and optional for you to complete.
+          </p>
+        ) : null}
+
+        <div className="mb-8 flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
         {/* Week navigation */}
         <nav
           aria-label="Week navigation"
-          className="mb-8 flex items-center justify-between"
+          className="flex items-center justify-between"
         >
           {prevWeek ? (
             <Link
@@ -351,6 +416,14 @@ export default async function TrainingPage({ searchParams }: PageProps) {
             </span>
           )}
         </nav>
+          </div>
+          <Button asChild className="shrink-0 bg-primary text-primary-foreground">
+            <Link href={`/dashboard/student/training/submit?week=${data.currentWeek}`}>
+              <FileText className="mr-2 h-4 w-4" />
+              Submit Week
+            </Link>
+          </Button>
+        </div>
 
         {/* Lesson hero */}
         <header className="mb-12">
@@ -367,6 +440,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
               <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden />
               Due {formatUiDate(data.dueDate)}
             </p>
+            {lessonUpdateAvailable && lessonId ? <LessonVersionUpdate lessonId={lessonId} /> : null}
           </div>
         </header>
 
@@ -622,6 +696,8 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           </CollapsibleSection>
         </div>
       </DashboardContentFrame>
+      <TrainingContents items={data.contents} />
+      </div>
     </DashboardPageShell>
   );
 }

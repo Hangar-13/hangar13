@@ -2,12 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ArrowUpCircle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   acceptCourseVersionUpdate,
+  type CourseVersionUpdateMode,
   type CourseVersionUpdateOfferView,
 } from "@/app/actions/course-version-adoption";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type Props = {
   updates: CourseVersionUpdateOfferView[];
@@ -17,73 +26,153 @@ export function CourseVersionUpdateBanner({ updates }: Props) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [openUpdate, setOpenUpdate] = useState<CourseVersionUpdateOfferView | null>(null);
+  const [chosenIds, setChosenIds] = useState<string[]>([]);
   const [, startTransition] = useTransition();
 
   if (updates.length === 0) return null;
 
-  function accept(update: CourseVersionUpdateOfferView) {
+  function apply(update: CourseVersionUpdateOfferView, mode: CourseVersionUpdateMode, lessonIds?: string[]) {
     setError(null);
     setPendingId(update.courseId);
     startTransition(async () => {
       const res = await acceptCourseVersionUpdate({
         courseId: update.courseId,
         courseVersionId: update.latestVersionId,
+        mode,
+        lessonIds,
       });
       setPendingId(null);
       if (!res.ok) {
         setError(res.error);
         return;
       }
+      setOpenUpdate(null);
       router.refresh();
     });
   }
 
+  function requestUpdate(update: CourseVersionUpdateOfferView) {
+    if (update.completedLessons.length === 0) {
+      apply(update, "all");
+      return;
+    }
+    setChosenIds(update.completedLessons.map((lesson) => lesson.id));
+    setOpenUpdate(update);
+  }
+
+  function toggleLesson(lessonId: string) {
+    setChosenIds((current) =>
+      current.includes(lessonId)
+        ? current.filter((id) => id !== lessonId)
+        : [...current, lessonId]
+    );
+  }
+
+  const busy = openUpdate != null && pendingId === openUpdate.courseId;
+
   return (
     <div className="relative mb-6 overflow-hidden rounded-md bg-amber-500/10 px-5 py-4 ring-1 ring-amber-500/20">
       <div className="absolute inset-y-0 left-0 w-1 bg-amber-500" aria-hidden />
-      <div className="space-y-3 pl-2">
-        <div className="flex items-start gap-2">
-          <ArrowUpCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" />
-          <div className="min-w-0 space-y-1">
-            <p className="text-sm font-medium">Course updates available</p>
-            <p className="text-sm text-muted-foreground">
-              New course versions are published. Accept an update to see the latest
-              content in your training program.
-            </p>
-          </div>
-        </div>
-        <ul className="divide-y divide-border/25 rounded-md ring-1 ring-black/[0.04]">
-          {updates.map((u) => (
-            <li
-              key={u.courseId}
-              className="flex flex-wrap items-center justify-between gap-2 bg-background/80 px-3 py-2.5 text-sm first:rounded-t-md last:rounded-b-md"
-            >
-              <div className="min-w-0">
-                <span className="font-medium">{u.courseName}</span>
-                <span className="ml-2 tabular-nums text-muted-foreground">
-                  {u.pinnedLabel} → {u.latestLabel}
-                </span>
-                {u.releaseNotes ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{u.releaseNotes}</p>
-                ) : null}
-              </div>
+      <ul className="space-y-3 pl-2">
+        {updates.map((update) => (
+          <li
+            key={update.courseId}
+            className="flex flex-wrap items-center justify-between gap-3 text-sm"
+          >
+            <div className="min-w-0">
+              <span className="font-medium">{update.courseName}</span>
+              <span className="ml-2 tabular-nums text-muted-foreground">
+                {update.pinnedLabel} → {update.latestLabel}
+              </span>
+              {update.releaseNotes ? (
+                <p className="mt-1 text-xs text-muted-foreground">{update.releaseNotes}</p>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">Course update available</span>
               <Button
                 type="button"
                 size="sm"
-                onClick={() => accept(u)}
-                disabled={pendingId === u.courseId}
+                onClick={() => requestUpdate(update)}
+                disabled={pendingId === update.courseId}
               >
-                {pendingId === u.courseId ? (
+                {pendingId === update.courseId && openUpdate == null ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  "Update to latest"
+                  "Update course"
                 )}
               </Button>
-            </li>
-          ))}
-        </ul>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {error ? <p className="mt-3 pl-2 text-sm text-destructive">{error}</p> : null}
+
+      <Dialog
+        open={openUpdate != null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setOpenUpdate(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update course</DialogTitle>
+            <DialogDescription>
+              Updating a lesson resets your progress for that lesson.
+            </DialogDescription>
+          </DialogHeader>
+          {openUpdate ? (
+            <div className="space-y-3">
+              <p className="text-sm">
+                These lessons are already finished. Choose which of them to update.
+                Unfinished lessons update with the course. Lessons covered by prior
+                experience stay as they are unless you have already finished them.
+              </p>
+              <ul className="max-h-64 space-y-2 overflow-y-auto">
+                {openUpdate.completedLessons.map((lesson) => (
+                  <li key={lesson.id}>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-primary"
+                        checked={chosenIds.includes(lesson.id)}
+                        onChange={() => toggleLesson(lesson.id)}
+                      />
+                      <span>{lesson.title}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <DialogFooter className="gap-2 sm:flex-col sm:items-stretch">
+            <Button
+              type="button"
+              disabled={busy || openUpdate == null}
+              onClick={() => openUpdate && apply(openUpdate, "all")}
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update all lessons"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy || openUpdate == null}
+              onClick={() => openUpdate && apply(openUpdate, "unfinished")}
+            >
+              Update unfinished lessons
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy || openUpdate == null}
+              onClick={() => openUpdate && apply(openUpdate, "selected", chosenIds)}
+            >
+              Update chosen lessons
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

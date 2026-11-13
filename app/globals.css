@@ -48,7 +48,7 @@
 
 :root {
   --radius: 0.625rem;
-  /* Landing palette (default): paper, ink, orange, blue */
+  /* Paper, ink, orange, blue */
   --background: #f4f7f9;
   --foreground: #121417;
   --card: #ffffff;
@@ -116,84 +116,12 @@
   --sidebar-ring: #ff4d00;
 }
 
-html[data-palette="classic"] {
-  /* Previous app palette: yellow, navy, mauve card */
-  --background: #ffffff;
-  --foreground: #1e1e38;
-  --card: #d6cccd;
-  --card-foreground: #1e1e38;
-  --popover: #ffffff;
-  --popover-foreground: #1e1e38;
-  --primary: #ffcf03;
-  --primary-foreground: #1e1e38;
-  --secondary: #0098c7;
-  --secondary-foreground: #ffffff;
-  --muted: #9ca69e;
-  --muted-foreground: #6b7280;
-  --accent: #ffcf03;
-  --accent-foreground: #1e1e38;
-  --destructive: #6c5067;
-  --border: #6c5067;
-  --input: #ffffff;
-  --ring: #ffcf03;
-  --chart-1: #ffcf03;
-  --chart-2: #0098c7;
-  --chart-3: #6c5067;
-  --chart-4: #1e1e38;
-  --chart-5: #d6cccd;
-  --sidebar: #1e1e38;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ffcf03;
-  --sidebar-primary-foreground: #1e1e38;
-  --sidebar-accent: #0098c7;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #6c5067;
-  --sidebar-ring: #ffcf03;
-}
-
-html.dark[data-palette="classic"] {
-  --background: #1e1e38;
-  --foreground: #ffffff;
-  --card: #1e1e38;
-  --card-foreground: #ffffff;
-  --popover: #1e1e38;
-  --popover-foreground: #ffffff;
-  --primary: #ffcf03;
-  --primary-foreground: #1e1e38;
-  --secondary: #0098c7;
-  --secondary-foreground: #ffffff;
-  --muted: #9ca69e;
-  --muted-foreground: #ffffff;
-  --accent: #ffcf03;
-  --accent-foreground: #1e1e38;
-  --destructive: #6c5067;
-  --border: #6c5067;
-  --input: #1e1e38;
-  --ring: #ffcf03;
-  --chart-1: #ffcf03;
-  --chart-2: #0098c7;
-  --chart-3: #6c5067;
-  --chart-4: #1e1e38;
-  --chart-5: #d6cccd;
-  --sidebar: #1e1e38;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ffcf03;
-  --sidebar-primary-foreground: #1e1e38;
-  --sidebar-accent: #0098c7;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #6c5067;
-  --sidebar-ring: #ffcf03;
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
-  }
-  html[data-palette="classic"] [data-slot="card"] .text-muted-foreground {
-    color: var(--card-foreground) !important;
   }
 }
 
