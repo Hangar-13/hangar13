@@ -1,9 +1,9 @@
 import { Progress } from "@/components/ui/progress";
 
 interface ProgressBarProps {
-  /** 0–100, training hours completed vs required. */
+  /** 0–100, lessons credited (finished or covered by prior experience) vs lessons in the course. */
   percent: number;
-  /** e.g. "12.5 / 80.0 training hours" */
+  /** e.g. "12 of 20 lessons" */
   summary?: string | null;
   /** Shown as "{name} Progress"; falls back to "Program Progress" when missing. */
   trainingProgramName?: string | null;

@@ -96,8 +96,13 @@ async function getMentees(userId: string): Promise<{ mentees: AssignedStudent[] 
         progressStatus = "ahead";
       }
 
-      const { hoursCompleted, hoursRequired, trainingProgressPercent } =
-        await getEnrollmentLessonSnapshot(supabase, student.id, student);
+      const {
+        hoursCompleted,
+        hoursRequired,
+        trainingProgressPercent,
+        completedItems,
+        totalItems,
+      } = await getEnrollmentLessonSnapshot(supabase, student.id, student);
 
       return {
         ...student,
@@ -109,6 +114,8 @@ async function getMentees(userId: string): Promise<{ mentees: AssignedStudent[] 
           overall: trainingProgressPercent,
           hoursCompleted,
           hoursRequired,
+          lessonsCompleted: completedItems,
+          lessonsTotal: totalItems,
         },
         hours: {
           total: totalHours,

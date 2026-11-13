@@ -85,8 +85,12 @@ function CourseBlock({
           <span className="truncate text-sm font-medium">{course.name}</span>
         </span>
         {course.versionLabel ? (
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+          <span
+            className="shrink-0 text-xs tabular-nums text-muted-foreground"
+            title={course.versionMixed ? "Some lessons from older versions" : undefined}
+          >
             {course.versionLabel}
+            {course.versionMixed ? "*" : null}
           </span>
         ) : null}
       </button>

@@ -120,6 +120,8 @@ async function getStudentData(studentId: string, mentorId: string) {
     hoursCompleted,
     hoursRequired,
     trainingProgressPercent,
+    completedItems,
+    totalItems,
   } = await getEnrollmentLessonSnapshot(supabase, student.id, student);
 
   return {
@@ -133,6 +135,8 @@ async function getStudentData(studentId: string, mentorId: string) {
       overall: trainingProgressPercent,
       hoursCompleted,
       hoursRequired,
+      lessonsCompleted: completedItems,
+      lessonsTotal: totalItems,
     },
     hours: {
       total: totalHours,
@@ -396,9 +400,9 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
                 value={`${progress?.overall ?? 0}%`}
                 label="Training progress"
                 detail={
-                  progress && progress.hoursRequired > 0
-                    ? `${progress.hoursCompleted.toFixed(1)} / ${progress.hoursRequired.toFixed(1)} training hours`
-                    : "No training hours defined for this program"
+                  progress && progress.lessonsTotal > 0
+                    ? `${progress.lessonsCompleted} of ${progress.lessonsTotal} lessons`
+                    : "No lessons in this program"
                 }
               />
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">

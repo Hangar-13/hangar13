@@ -13,9 +13,17 @@ export function TrainingSwitcherDock() {
     return null;
   }
 
+  const prominent = pathname === "/dashboard/student/training";
+
   return (
-    <div className="flex w-full flex-col gap-0 border-t border-border bg-background/95 px-4 py-0 backdrop-blur sm:px-6 supports-[backdrop-filter]:bg-background/60">
-      <TrainingProgramSwitcherBar data={trainingSwitcherData} />
+    <div
+      className={
+        prominent
+          ? "flex w-full flex-col gap-0 border-t border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6 supports-[backdrop-filter]:bg-background/60"
+          : "flex w-full flex-col gap-0 border-t border-border bg-background/95 px-4 py-0 backdrop-blur sm:px-6 supports-[backdrop-filter]:bg-background/60"
+      }
+    >
+      <TrainingProgramSwitcherBar data={trainingSwitcherData} prominent={prominent} />
     </div>
   );
 }

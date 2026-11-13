@@ -214,7 +214,7 @@ export function WeeklySubmissionForm({
       });
 
       // Redirect to training page on success
-      router.push(`/dashboard/student/training?week=${weekNumber}`);
+      router.push(`/dashboard/student/training?week=${weekNumber}&completed=1`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred while submitting.");

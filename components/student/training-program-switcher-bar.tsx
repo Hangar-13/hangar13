@@ -19,9 +19,11 @@ import {
 
 type Props = {
   data: TrainingProgramSwitcherInitialData | null;
+  /** Larger label and bold program name on Current Training. */
+  prominent?: boolean;
 };
 
-export function TrainingProgramSwitcherBar({ data }: Props) {
+export function TrainingProgramSwitcherBar({ data, prominent = false }: Props) {
   const router = useRouter();
   const { refreshTrainingSwitcher } = useAppNavigation();
   const [pending, startTransition] = useTransition();
@@ -52,8 +54,15 @@ export function TrainingProgramSwitcherBar({ data }: Props) {
   return (
     <>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5" role="region" aria-label="Active training">
-        <span className="text-sm text-muted-foreground shrink-0" id="active-training-label">
-          Active training
+        <span
+          className={
+            prominent
+              ? "shrink-0 text-lg text-foreground"
+              : "shrink-0 text-sm text-muted-foreground"
+          }
+          id="active-training-label"
+        >
+          Active training:
         </span>
         {data === null ? (
           <span className="text-sm text-muted-foreground tabular-nums">…</span>
@@ -69,7 +78,11 @@ export function TrainingProgramSwitcherBar({ data }: Props) {
             >
               <SelectTrigger
                 size="sm"
-                className="h-8 w-full max-w-md min-w-[12rem] border-0 bg-transparent px-2 shadow-none focus-visible:border-transparent focus-visible:ring-0 hover:bg-muted/30"
+                className={
+                  prominent
+                    ? "h-auto min-h-10 w-full max-w-xl min-w-[12rem] border-0 bg-transparent px-2 text-lg font-bold shadow-none focus-visible:border-transparent focus-visible:ring-0 hover:bg-muted/30 *:data-[slot=select-value]:font-bold"
+                    : "h-8 w-full max-w-md min-w-[12rem] border-0 bg-transparent px-2 shadow-none focus-visible:border-transparent focus-visible:ring-0 hover:bg-muted/30"
+                }
               >
                 <SelectValue placeholder="Select program…" />
               </SelectTrigger>

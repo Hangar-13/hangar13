@@ -4,7 +4,6 @@ import "./globals.css";
 import { AppLayout } from "@/components/app-layout";
 import { AuthRefreshRecovery } from "@/components/auth-refresh-recovery";
 import { ThemeProvider } from "@/components/theme-provider";
-import { PaletteProvider } from "@/components/palette-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,13 +32,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(localStorage.getItem("hangar-palette")==="classic"){document.documentElement.setAttribute("data-palette","classic")}}catch(e){}})();`,
-          }}
-        />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -49,10 +41,8 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <PaletteProvider>
-            <AuthRefreshRecovery />
-            <AppLayout>{children}</AppLayout>
-          </PaletteProvider>
+          <AuthRefreshRecovery />
+          <AppLayout>{children}</AppLayout>
         </ThemeProvider>
       </body>
     </html>

@@ -27,6 +27,8 @@ export type ProgressData = {
   trainingHoursCompleted: number;
   trainingHoursRequired: number;
   trainingProgressPercent: number;
+  lessonsCompleted: number;
+  lessonsTotal: number;
   currentWeek: number;
   totalWeeks: number;
   expectedHours: number;
@@ -190,6 +192,8 @@ async function buildProgressData(
     trainingHoursCompleted: trainingSnap.hoursCompleted,
     trainingHoursRequired: trainingSnap.hoursRequired,
     trainingProgressPercent: trainingSnap.trainingProgressPercent,
+    lessonsCompleted: trainingSnap.completedItems,
+    lessonsTotal: trainingSnap.totalItems,
     currentWeek,
     totalWeeks,
     expectedHours,

@@ -50,9 +50,9 @@ export function LogbookProductPreview({
         className="overflow-hidden rounded-lg bg-[#F8F9FA] shadow-[0_24px_60px_rgba(18,20,23,.18)] ring-1 ring-black/10"
         aria-hidden
       >
-        <div className="flex items-center justify-between border-b border-[#1E1E38]/10 bg-[#1E1E38] px-4 py-2.5">
+        <div className="flex items-center justify-between border-b border-white/10 bg-[#121417] px-4 py-2.5">
           <p className="text-sm font-semibold text-white">
-            Hangar<span className="text-[#FFCF03]">13</span>
+            Hangar<span className="text-[#FF4D00]">13</span>
             <span className="ml-3 font-normal text-white/70">Logbook</span>
           </p>
           <p className="hidden text-xs text-white/55 sm:block">Running total: 412.5 hours</p>
@@ -61,11 +61,11 @@ export function LogbookProductPreview({
           <div className="flex flex-col gap-3 sm:flex-row">
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6b7280]" />
-              <div className="h-9 rounded-md border border-[#6C5067]/30 bg-white pl-9 text-sm leading-9 text-[#6b7280]">
+              <div className="h-9 rounded-md border border-[#121417]/15 bg-white pl-9 text-sm leading-9 text-[#515860]">
                 Search logs...
               </div>
             </div>
-            <div className="h-9 w-full rounded-md border border-[#6C5067]/30 bg-white px-3 text-sm leading-9 text-[#1E1E38] sm:w-[180px]">
+            <div className="h-9 w-full rounded-md border border-[#121417]/15 bg-white px-3 text-sm leading-9 text-[#121417] sm:w-[180px]">
               All status
             </div>
           </div>
@@ -75,9 +75,9 @@ export function LogbookProductPreview({
           <div className="overflow-x-auto rounded-md bg-white ring-1 ring-black/[0.04]">
             <table className="w-full min-w-[40rem] text-left">
               <thead>
-                <tr className="border-b border-black/10 bg-[#9CA69E]/15">
+                <tr className="border-b border-black/10 bg-[#e8eef2]">
                   {["Date", "Task", "Hours", "ATA chapter", "ACS", "Status"].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-sm font-semibold text-[#1E1E38]">
+                    <th key={h} className="px-4 py-2.5 text-sm font-semibold text-[#121417]">
                       {h}
                     </th>
                   ))}
@@ -86,13 +86,13 @@ export function LogbookProductPreview({
               <tbody>
                 {ROWS.map((row) => (
                   <tr key={row.task} className="border-b border-black/[0.06] last:border-0">
-                    <td className="px-4 py-3 text-sm text-[#1E1E38]">{row.date}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-[#1E1E38]">{row.task}</td>
+                    <td className="px-4 py-3 text-sm text-[#121417]">{row.date}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-[#121417]">{row.task}</td>
                     <td className="px-4 py-3 text-sm font-semibold tabular-nums text-[#0098C7]">
                       {row.hours}
                     </td>
                     <td className="px-4 py-3 text-sm text-[#6b7280]">{row.ata}</td>
-                    <td className="px-4 py-3 text-sm text-[#1E1E38] underline decoration-dotted">
+                    <td className="px-4 py-3 text-sm text-[#121417] underline decoration-dotted">
                       {row.acs}
                     </td>
                     <td className="px-4 py-3">
@@ -114,11 +114,11 @@ export function LogbookProductPreview({
             </table>
           </div>
           <div className="flex items-center justify-between gap-3">
-            <span className="inline-flex items-center rounded-md bg-[#FFCF03] px-3 py-2 text-sm font-medium text-[#1E1E38]">
+            <span className="inline-flex items-center rounded-md bg-[#FF4D00] px-3 py-2 text-sm font-medium text-white">
               <Plus className="mr-2 h-4 w-4" />
               Add entry
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-[#9CA69E]/30 px-4 py-2 text-sm font-medium text-[#1E1E38]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#e8eef2] px-4 py-2 text-sm font-medium text-[#121417]">
               <Clock className="h-4 w-4" />
               Running total: 412.5 hours
             </span>

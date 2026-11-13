@@ -28,6 +28,8 @@ export interface AssignedStudent {
     overall: number;
     hoursCompleted: number;
     hoursRequired: number;
+    lessonsCompleted?: number;
+    lessonsTotal?: number;
   };
   hours?: {
     total: number;
@@ -202,7 +204,7 @@ export function AssignedStudentsList({
               </div>
               <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
                 {student.progress && (
-                  <span title="Training hours progress">{student.progress.overall}%</span>
+                  <span title="Course progress">{student.progress.overall}%</span>
                 )}
                 {student.hours && <span title="Hours">{student.hours.total.toFixed(0)}h</span>}
                 {student.pendingEntries !== undefined && (
@@ -323,9 +325,11 @@ export function AssignedStudentsList({
                     />
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {student.progress.hoursRequired > 0
-                      ? `${student.progress.hoursCompleted.toFixed(1)} / ${student.progress.hoursRequired.toFixed(1)} training hours`
-                      : "No training hours defined for this program"}
+                    {student.progress.lessonsTotal
+                      ? `${student.progress.lessonsCompleted ?? 0} of ${student.progress.lessonsTotal} lessons`
+                      : student.progress.hoursRequired > 0
+                        ? `${student.progress.hoursCompleted.toFixed(1)} / ${student.progress.hoursRequired.toFixed(1)} training hours`
+                        : "No lessons in this program"}
                   </div>
                 </div>
               )}

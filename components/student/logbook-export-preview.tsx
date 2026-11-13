@@ -24,7 +24,7 @@ function PdfLayoutPreview({ report }: { report: LogbookExportReport }) {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-border/40 bg-[#1E1E38] text-white">
+              <tr className="border-b border-border/40 bg-[#121417] text-white">
                 <th className="px-2 py-1.5 font-semibold">ATA Chapter</th>
                 <th className="px-2 py-1.5 font-semibold">Logs</th>
                 <th className="px-2 py-1.5 font-semibold">Hours</th>
@@ -66,7 +66,7 @@ function PdfLayoutPreview({ report }: { report: LogbookExportReport }) {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-border/40 bg-[#1E1E38] text-white">
+                  <tr className="border-b border-border/40 bg-[#121417] text-white">
                     <th className="px-2 py-1.5 font-semibold">Date</th>
                     <th className="px-2 py-1.5 font-semibold">Task</th>
                     <th className="px-2 py-1.5 font-semibold">Hrs</th>
@@ -144,7 +144,7 @@ function TextFormatPreview({
   format: "csv" | "json";
 }) {
   return (
-    <div className="overflow-hidden rounded-md bg-[#1E1E38] ring-1 ring-black/[0.08]">
+    <div className="overflow-hidden rounded-md bg-[#121417] ring-1 ring-black/[0.08]">
       <div className="border-b border-white/10 px-3 py-1.5 text-[10px] font-medium uppercase tracking-wide text-white/60">
         {format === "csv" ? "Comma-separated values" : "JSON document"}
       </div>

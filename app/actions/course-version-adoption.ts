@@ -9,7 +9,17 @@ import {
   formatCourseVersion,
   getLatestCourseVersion,
   type CourseVersionUpdateOffer,
+  type ResolveCourseVersionContext,
 } from "@/lib/course-versions";
+import { loadTrainingLessonStates } from "@/lib/training-lesson-state";
+import { fetchLessonsForTrainingPath } from "@/lib/training-lessons";
+
+export type CourseUpdateLesson = {
+  id: string;
+  title: string;
+};
+
+export type CourseVersionUpdateMode = "all" | "unfinished" | "selected";
 
 export type CourseVersionUpdateOfferView = {
   courseId: string;
@@ -19,6 +29,8 @@ export type CourseVersionUpdateOfferView = {
   latestVersionId: string;
   releaseNotes: string | null;
   authority: "user" | "organization";
+  /** Finished lessons the student can choose to leave on the current version. */
+  completedLessons: CourseUpdateLesson[];
 };
 
 function toView(offer: CourseVersionUpdateOffer): CourseVersionUpdateOfferView {
@@ -36,7 +48,25 @@ function toView(offer: CourseVersionUpdateOffer): CourseVersionUpdateOfferView {
     latestVersionId: offer.latestVersion.id,
     releaseNotes: offer.latestVersion.release_notes,
     authority: offer.authority,
+    completedLessons: [],
   };
+}
+
+async function lessonsInCourse(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  trainingPathId: string,
+  courseId: string,
+  ctx: ResolveCourseVersionContext
+) {
+  const lessons = await fetchLessonsForTrainingPath(supabase, trainingPathId, ctx);
+  const { data: modules } = await supabase
+    .from("modules")
+    .select("id")
+    .eq("course_id", courseId);
+  const moduleIds = new Set((modules ?? []).map((row) => row.id as string));
+  return lessons.filter(
+    (lesson) => typeof lesson.module_id === "string" && moduleIds.has(lesson.module_id)
+  );
 }
 
 export async function getCourseVersionUpdatesForCurrentEnrollment(): Promise<
@@ -71,27 +101,55 @@ export async function getCourseVersionUpdatesForCurrentEnrollment(): Promise<
     .eq("id", ut.training_path_id)
     .maybeSingle();
 
+  const versionContext: ResolveCourseVersionContext = {
+    userId: user.id,
+    enrollmentSource: ut.enrollment_source as string | null,
+    pathOrganizationId: (path?.organization_id as string | null) ?? null,
+  };
+
   const offers = await findCourseVersionUpdatesForPath(
     supabase,
     ut.training_path_id,
-    {
-      userId: user.id,
-      enrollmentSource: ut.enrollment_source as string | null,
-      pathOrganizationId: (path?.organization_id as string | null) ?? null,
-    }
+    versionContext
   );
 
-  return {
-    ok: true,
-    updates: offers
-      .filter((o) => o.authority === "user")
-      .map(toView),
-  };
+  const updates: CourseVersionUpdateOfferView[] = [];
+  for (const offer of offers.filter((item) => item.authority === "user")) {
+    const view = toView(offer);
+    const courseLessons = await lessonsInCourse(
+      supabase,
+      ut.training_path_id,
+      offer.courseId,
+      versionContext
+    );
+    const states = await loadTrainingLessonStates(
+      supabase,
+      user.id,
+      utId,
+      courseLessons.map((lesson) => ({
+        id: String(lesson.id),
+        title: typeof lesson.title === "string" ? lesson.title : "Lesson",
+        number: Number(lesson.number ?? 0),
+        contentPackageId:
+          typeof lesson.content_package_id === "string" ? lesson.content_package_id : null,
+        testPackageId:
+          typeof lesson.test_package_id === "string" ? lesson.test_package_id : null,
+      }))
+    );
+    view.completedLessons = states
+      .filter((lesson) => lesson.completed)
+      .map((lesson) => ({ id: lesson.id, title: lesson.title }));
+    updates.push(view);
+  }
+
+  return { ok: true, updates };
 }
 
 export async function acceptCourseVersionUpdate(input: {
   courseId: string;
   courseVersionId: string;
+  mode: CourseVersionUpdateMode;
+  lessonIds?: string[];
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createServerSupabaseClient();
   const {
@@ -114,6 +172,118 @@ export async function acceptCourseVersionUpdate(input: {
     return { ok: false, error: "Only the latest published version can be adopted." };
   }
 
+  const { data: me } = await supabase
+    .from("users")
+    .select("current_user_training_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  const utId = me?.current_user_training_id as string | null;
+  if (!utId) return { ok: false, error: "No active training." };
+
+  const { data: ut } = await supabase
+    .from("user_trainings")
+    .select("training_path_id, enrollment_source")
+    .eq("id", utId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!ut?.training_path_id) return { ok: false, error: "No active training." };
+
+  const { data: path } = await supabase
+    .from("training_paths")
+    .select("organization_id")
+    .eq("id", ut.training_path_id)
+    .maybeSingle();
+
+  const versionContext: ResolveCourseVersionContext = {
+    userId: user.id,
+    enrollmentSource: ut.enrollment_source as string | null,
+    pathOrganizationId: (path?.organization_id as string | null) ?? null,
+  };
+
+  const offers = await findCourseVersionUpdatesForPath(
+    supabase,
+    ut.training_path_id,
+    versionContext
+  );
+  const offer = offers.find(
+    (item) =>
+      item.courseId === input.courseId &&
+      item.authority === "user" &&
+      item.latestVersion.id === input.courseVersionId
+  );
+  if (!offer) return { ok: false, error: "No course update is available." };
+
+  const courseLessons = await lessonsInCourse(
+    supabase,
+    ut.training_path_id,
+    input.courseId,
+    versionContext
+  );
+  const states = await loadTrainingLessonStates(
+    supabase,
+    user.id,
+    utId,
+    courseLessons.map((lesson) => ({
+      id: String(lesson.id),
+      title: typeof lesson.title === "string" ? lesson.title : "Lesson",
+      number: Number(lesson.number ?? 0),
+      contentPackageId:
+        typeof lesson.content_package_id === "string" ? lesson.content_package_id : null,
+      testPackageId:
+        typeof lesson.test_package_id === "string" ? lesson.test_package_id : null,
+    }))
+  );
+  const stateById = new Map(states.map((lesson) => [lesson.id, lesson]));
+  const selected = new Set(input.lessonIds ?? []);
+  const advanceIds: string[] = [];
+  const keepRows: Array<{
+    user_id: string;
+    lesson_id: string;
+    course_version_id: string;
+    kept_by_user: boolean;
+  }> = [];
+
+  for (const lesson of courseLessons) {
+    const lessonId = String(lesson.id);
+    const state = stateById.get(lessonId);
+    const completed = state?.completed ?? false;
+    const optional = state?.optional ?? false;
+    const currentVersionId =
+      typeof lesson.course_version_id === "string"
+        ? lesson.course_version_id
+        : offer.pinnedVersion.id;
+    const chosen =
+      input.mode === "all" || (input.mode === "selected" && selected.has(lessonId));
+    const advance = optional && !completed ? false : !completed || chosen;
+
+    if (advance || currentVersionId === latest.id) {
+      advanceIds.push(lessonId);
+    } else {
+      keepRows.push({
+        user_id: user.id,
+        lesson_id: lessonId,
+        course_version_id: currentVersionId,
+        kept_by_user: completed,
+      });
+    }
+  }
+
+  if (keepRows.length > 0) {
+    const { error: holdError } = await supabase
+      .from("lesson_version_holds")
+      .upsert(keepRows, { onConflict: "user_id,lesson_id" });
+    if (holdError) return { ok: false, error: holdError.message };
+  }
+
+  if (advanceIds.length > 0) {
+    const { error: clearError } = await supabase
+      .from("lesson_version_holds")
+      .delete()
+      .eq("user_id", user.id)
+      .in("lesson_id", advanceIds);
+    if (clearError) return { ok: false, error: clearError.message };
+  }
+
   const { data: existing } = await supabase
     .from("course_version_pins")
     .select("id")
@@ -133,6 +303,41 @@ export async function acceptCourseVersionUpdate(input: {
   const { error } = existing?.id
     ? await supabase.from("course_version_pins").update(payload).eq("id", existing.id)
     : await supabase.from("course_version_pins").insert(payload);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath("/dashboard/student/training");
+  revalidatePath("/dashboard/student/progress");
+  revalidatePath("/dashboard/student");
+  return { ok: true };
+}
+
+/** Drop a kept lesson so it follows the course version the student already adopted. */
+export async function releaseLessonVersionHold(
+  lessonId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Not authenticated." };
+
+  const { data: hold } = await supabase
+    .from("lesson_version_holds")
+    .select("id, kept_by_user")
+    .eq("user_id", user.id)
+    .eq("lesson_id", lessonId)
+    .maybeSingle();
+
+  if (!hold?.kept_by_user) {
+    return { ok: false, error: "This lesson is already on the current course version." };
+  }
+
+  const { error } = await supabase
+    .from("lesson_version_holds")
+    .delete()
+    .eq("id", hold.id)
+    .eq("user_id", user.id);
 
   if (error) return { ok: false, error: error.message };
 

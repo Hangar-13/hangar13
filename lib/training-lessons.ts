@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UserTrainingRow } from "@/lib/current-user-training";
 import {
+  applyLessonVersionHolds,
   fetchVersionLessonBySourceId,
   fetchVersionLessonsForCourse,
   resolveEffectiveCourseVersionsForPath,
@@ -256,5 +257,6 @@ export async function fetchLessonsForTrainingPath(
     }
   }
 
-  return ordered;
+  if (!versionContext?.userId) return ordered;
+  return applyLessonVersionHolds(supabase, versionContext.userId, ordered);
 }

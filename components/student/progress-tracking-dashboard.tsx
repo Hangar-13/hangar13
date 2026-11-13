@@ -25,9 +25,9 @@ interface ProgressTrackingDashboardProps {
 export function ProgressTrackingDashboard({ progressData, ataChapters }: ProgressTrackingDashboardProps) {
   const {
     totalHours,
-    trainingHoursCompleted,
-    trainingHoursRequired,
     trainingProgressPercent,
+    lessonsCompleted,
+    lessonsTotal,
     currentWeek,
     totalWeeks,
     expectedHours,
@@ -75,10 +75,7 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
   }, [logbookEntries, selectedChapter]);
 
   const targetHours = 5200;
-  const percentageComplete =
-    totalWeeks > 0
-      ? Math.round((currentWeek / totalWeeks) * 100)
-      : Math.round(trainingProgressPercent);
+  const percentageComplete = Math.round(trainingProgressPercent);
   const totalATAChapters = ataChapters.length;
   const ataChaptersMap = Object.fromEntries(
     ataChapters.map((c) => [c.chapter_number, `${c.chapter_number} - ${c.title}`])
@@ -108,12 +105,12 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
       <DashboardStatStrip>
         <div className="grid grid-cols-2 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-y-0 lg:divide-x lg:divide-border/30">
           <DashboardStatCell
-            value={trainingHoursRequired > 0 ? `${trainingProgressPercent}%` : "—"}
+            value={lessonsTotal > 0 ? `${trainingProgressPercent}%` : "—"}
             label="Training path"
             detail={
-              trainingHoursRequired > 0
-                ? `${trainingHoursCompleted.toFixed(1)} / ${trainingHoursRequired.toFixed(1)} h`
-                : "No lesson hours"
+              lessonsTotal > 0
+                ? `${lessonsCompleted} of ${lessonsTotal} lessons`
+                : "No lessons in this program"
             }
           />
           <DashboardStatCell

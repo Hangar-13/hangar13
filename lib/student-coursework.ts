@@ -27,6 +27,8 @@ export type CourseworkCourse = {
   id: string;
   name: string;
   versionLabel: string | null;
+  /** The course pin is newer than one or more lessons the student chose to keep. */
+  versionMixed: boolean;
   completedAt: string | null;
   modules: CourseworkModule[];
 };
@@ -204,6 +206,17 @@ export async function listStudentCoursework(
     });
   });
 
+  const { data: keptHolds } = await supabase
+    .from("lesson_version_holds")
+    .select("lesson_id")
+    .eq("user_id", enrollment.user_id)
+    .eq("kept_by_user", true);
+  const keptLessonIds = new Set(
+    (keptHolds ?? [])
+      .map((row) => row.lesson_id)
+      .filter((id): id is string => typeof id === "string")
+  );
+
   const result: (CourseworkCourse & { pathIndex: number })[] = [...drafts.values()].map(
     (draft) => {
       const lessonRows = [...draft.modules.values()].flatMap((mod) => mod.lessons);
@@ -224,6 +237,7 @@ export async function listStudentCoursework(
         versionLabel: version
           ? formatCourseVersion(version.major_version, version.minor_version)
           : null,
+        versionMixed: lessonRows.some((lesson) => keptLessonIds.has(lesson.id)),
         completedAt,
         pathIndex: draft.pathIndex,
         modules: [...draft.modules.values()]

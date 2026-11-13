@@ -1,31 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UserTrainingRow } from "@/lib/current-user-training";
+import { optionalLessonIdsForUser } from "@/lib/prior-experience-lessons";
+import { completedLessonIdSet, lessonCreditPercent } from "@/lib/training-lesson-state";
 import { fetchLessonsForEnrollment } from "@/lib/training-lessons";
-
-/** Lesson ids with at least one non-draft submission (submitted_at set). */
-export async function fetchSubmittedLessonIds(
-  supabase: SupabaseClient,
-  userTrainingId: string
-): Promise<Set<string>> {
-  const { data, error } = await supabase
-    .from("lesson_submissions")
-    .select("lesson_id")
-    .eq("user_training_id", userTrainingId)
-    .not("submitted_at", "is", null);
-
-  if (error || !data) {
-    return new Set();
-  }
-
-  return new Set(
-    data.map((r) => r.lesson_id).filter((id): id is string => typeof id === "string")
-  );
-}
 
 export type LessonProgressItem = {
   id: string;
   title?: string | null;
-  status: string;
+  /** completed = reflection submitted. optional = prior experience covers it and it was not submitted. */
+  status: "completed" | "optional" | "not_started";
+  /** True when prior experience covers this lesson, whether or not the student also finished it. */
+  optional: boolean;
   category?: string | null;
   hours_spent: number;
   /** Planned hours from lessons.hours. */
@@ -71,11 +56,6 @@ export async function getEnrollmentLessonSnapshot(
     hoursRequired = toNumberHours(p?.total_hours);
   }
 
-  const trainingProgressPercent =
-    hoursRequired > 0
-      ? Math.min(100, Math.round((hoursCompleted / hoursRequired) * 100))
-      : 0;
-
   const lessons = await fetchLessonsForEnrollment(supabase, {
     ...ut,
     user_id: utRow?.user_id as string | undefined,
@@ -86,7 +66,28 @@ export async function getEnrollmentLessonSnapshot(
         enrollmentSource: utRow.enrollment_source as string | null,
       }
     : undefined);
-  const submittedIds = await fetchSubmittedLessonIds(supabase, userTrainingId);
+  const lessonInputs = lessons.flatMap((lesson) => {
+    const id = lesson.id;
+    if (typeof id !== "string" || !id) return [];
+    return [
+      {
+        id,
+        contentPackageId:
+          typeof lesson.content_package_id === "string" ? lesson.content_package_id : null,
+        testPackageId: typeof lesson.test_package_id === "string" ? lesson.test_package_id : null,
+      },
+    ];
+  });
+  const [completedIds, optionalIds] = utRow?.user_id
+    ? await Promise.all([
+        completedLessonIdSet(supabase, utRow.user_id as string, userTrainingId, lessonInputs),
+        optionalLessonIdsForUser(
+          supabase,
+          utRow.user_id as string,
+          lessonInputs.map((lesson) => lesson.id)
+        ),
+      ])
+    : [new Set<string>(), new Set<string>()];
 
   const allAtaIds = new Set<number>();
   for (const lesson of lessons) {
@@ -109,7 +110,8 @@ export async function getEnrollmentLessonSnapshot(
 
   const itemsWithProgress: LessonProgressItem[] = lessons.map((lesson) => {
     const id = String(lesson.id);
-    const done = submittedIds.has(id);
+    const done = completedIds.has(id);
+    const optional = optionalIds.has(id);
     const planned = toNumberHours(lesson.hours);
     const rawIds = lesson.ata_chapter_ids as unknown;
     let category: string | null = null;
@@ -132,15 +134,22 @@ export async function getEnrollmentLessonSnapshot(
       id,
       title: typeof lesson.title === "string" ? lesson.title : null,
       category,
-      status: done ? "completed" : "not_started",
+      status: done ? "completed" : optional ? "optional" : "not_started",
+      optional,
       hours_planned: planned,
       hours_spent: done ? planned : 0,
     };
   });
 
   const completedItems = itemsWithProgress.filter(
-    (i) => i.status === "completed"
+    (i) => i.status === "completed" || i.status === "optional"
   ).length;
+  const trainingProgressPercent = lessonCreditPercent(
+    itemsWithProgress.map((item) => ({
+      completed: item.status === "completed",
+      optional: item.optional && item.status !== "completed",
+    }))
+  );
 
   return {
     itemsWithProgress,

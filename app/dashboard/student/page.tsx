@@ -158,6 +158,7 @@ async function getStudentData(userId: string) {
         total: 0,
       },
       currentTraining: {
+        week: 0,
         topic: "Select a training program to track weekly curriculum",
         dueDate: undefined as Date | undefined,
       },
@@ -211,13 +212,14 @@ async function getStudentData(userId: string) {
 
   const startDate = new Date(student.start_date);
 
-  const currentTrainingItem = itemsWithProgress.find(
-    (item) => item.status !== "completed"
-  );
+  const focusIndex = itemsWithProgress.findIndex((item) => item.status === "not_started");
+  const focusWeek = focusIndex >= 0 ? focusIndex + 1 : totalItems > 0 ? 1 : 0;
+  const focusItem =
+    focusIndex >= 0 ? itemsWithProgress[focusIndex] : itemsWithProgress[0];
 
   const dueDate = new Date(startDate);
-  if (currentWeek > 0) {
-    dueDate.setDate(startDate.getDate() + currentWeek * 7 - 1);
+  if (focusWeek > 0) {
+    dueDate.setDate(startDate.getDate() + focusWeek * 7 - 1);
   }
 
   let trainingPlanName: string | null = null;
@@ -250,9 +252,8 @@ async function getStudentData(userId: string) {
       total: totalWeeks,
     },
     currentTraining: {
-      topic:
-        currentTrainingItem?.title ||
-        "Safety, Ground Operations & Servicing",
+      week: focusWeek,
+      topic: focusItem?.title || "Safety, Ground Operations & Servicing",
       dueDate,
     },
     ataChapters: {
@@ -343,9 +344,9 @@ export default async function StudentDashboard() {
             <Button asChild>
               <Link href="/dashboard/student/logbook?add=true">+ Log Entry</Link>
             </Button>
-            {data.hasActiveCurriculum && data.weeks.total > 0 && data.weeks.current > 0 ? (
+            {data.hasActiveCurriculum && data.weeks.total > 0 && data.currentTraining.week > 0 ? (
               <Button asChild variant="outline">
-                <Link href={`/dashboard/student/training/submit?week=${data.weeks.current}`}>
+                <Link href={`/dashboard/student/training/submit?week=${data.currentTraining.week}`}>
                   <FileText className="mr-2 h-4 w-4" />
                   Submit Week
                 </Link>
@@ -365,8 +366,8 @@ export default async function StudentDashboard() {
             <ProgressBar
               percent={data.progress.trainingPercent}
               summary={
-                data.progress.hoursRequired > 0
-                  ? `${data.progress.hoursCompleted.toFixed(1)} / ${data.progress.hoursRequired.toFixed(1)} training hours`
+                data.progress.lessonsTotal > 0
+                  ? `${data.progress.lessonsCompleted} of ${data.progress.lessonsTotal} lessons`
                   : null
               }
               trainingProgramName={data.trainingPlanName}
@@ -389,7 +390,7 @@ export default async function StudentDashboard() {
           />
 
           <CurrentTrainingCard
-            currentWeek={data.weeks.current}
+            currentWeek={data.currentTraining.week}
             totalWeeks={data.weeks.total}
             topic={data.currentTraining.topic}
             dueDate={data.currentTraining.dueDate}
