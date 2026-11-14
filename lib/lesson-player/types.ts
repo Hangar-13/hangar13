@@ -33,7 +33,13 @@ export type LessonPlayerProgress = {
   /** Revision of the sitting shown above. Null for tests and courseware that has never been uploaded. */
   coursewareRevision: number | null;
   /** A finished sitting from an earlier courseware revision, when the current file is not finished. */
-  priorCompletion: { status: LessonPlayerStatus; coursewareRevision: number } | null;
+  priorCompletion: {
+    status: LessonPlayerStatus;
+    coursewareRevision: number;
+    timeSpentSeconds: number;
+  } | null;
+  /** Seconds in this package, including the sitting still in progress. Null when there is no package. */
+  timeSpentSeconds: number | null;
 };
 
 export type LessonPackageSummary = {
@@ -55,8 +61,13 @@ export type LessonPackageSlots = {
 /** Stored on lesson_submissions.player_completion. */
 export type LessonPlayerCompletionRecord = {
   checkedAt: string;
-  content: { status: string; score: number | null; coursewareRevision: number | null } | null;
-  test: { status: string; score: number | null } | null;
+  content: {
+    status: string;
+    score: number | null;
+    coursewareRevision: number | null;
+    timeSpentSeconds: number;
+  } | null;
+  test: { status: string; score: number | null; timeSpentSeconds: number } | null;
 };
 
 export type LessonPlayerCompletionCheck = LessonPlayerCompletionRecord & {
@@ -72,6 +83,8 @@ export type LessonPlayerLaunch = {
   launchPath: string;
   /** Opaque key so the frame reloads when the saved attempt changes. */
   resumeKey: string;
+  /** Sitting id for this open of the package. Sent back with each save. */
+  sittingId: string;
   /** Runtime values the current viewer needs. Opaque to callers. */
   initialCmi: Record<string, string>;
 };

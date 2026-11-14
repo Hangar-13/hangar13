@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { lessonPlayerStatusSatisfied } from "@/lib/lesson-player/progress";
+import {
+  lessonAttemptHasProgress,
+  lessonAttemptPercent,
+  lessonPlayerStatusSatisfied,
+} from "@/lib/lesson-player/progress";
 import { optionalLessonIdsForUser } from "@/lib/prior-experience-lessons";
 
 export type TrainingLessonInput = {
@@ -21,6 +25,19 @@ export type TrainingLessonState = {
   completed: boolean;
   /** Covered by prior experience, so it is not required. */
   optional: boolean;
+  /**
+   * Percent through the courseware the student is playing now.
+   * Null when the lesson has no courseware. 100 means the courseware is
+   * finished, even if the test or reflection is still open.
+   */
+  coursewarePercent: number | null;
+  /**
+   * Next step once the courseware is finished. "test" when a test is still open.
+   * "submit" when the courseware and test are done and the reflection is not in.
+   */
+  contentsPrompt: "test" | "submit" | null;
+  /** Courseware, test, or a submitted reflection that an update would reset. */
+  hasProgress: boolean;
 };
 
 function packageId(value: unknown): string | null {
@@ -105,6 +122,97 @@ export async function completedLessonIdSet(
   return completed;
 }
 
+async function lessonPlaySignals(
+  supabase: SupabaseClient,
+  userId: string,
+  userTrainingId: string,
+  lessons: TrainingLessonInput[]
+): Promise<{
+  coursewarePercent: Map<string, number | null>;
+  contentsPrompt: Map<string, "test" | "submit" | null>;
+  hasProgress: Set<string>;
+}> {
+  const ids = lessons.map((lesson) => lesson.id).filter((id) => id.length > 0);
+  const coursewarePercent = new Map<string, number | null>();
+  const contentsPrompt = new Map<string, "test" | "submit" | null>();
+  const hasProgress = new Set<string>();
+  if (ids.length === 0) return { coursewarePercent, contentsPrompt, hasProgress };
+
+  const [{ data: submissions }, { data: liveLessons }, { data: attempts }] = await Promise.all([
+    supabase
+      .from("lesson_submissions")
+      .select("lesson_id")
+      .eq("user_training_id", userTrainingId)
+      .not("submitted_at", "is", null),
+    supabase
+      .from("lessons")
+      .select("id, content_package_id, test_package_id")
+      .in("id", ids),
+    supabase
+      .from("lesson_player_attempts")
+      .select("lesson_id, package_id, lesson_status, score_raw, cmi")
+      .eq("user_id", userId)
+      .in("lesson_id", ids),
+  ]);
+
+  const submitted = new Set(
+    (submissions ?? [])
+      .map((row) => row.lesson_id)
+      .filter((id): id is string => typeof id === "string")
+  );
+  const liveById = new Map((liveLessons ?? []).map((row) => [row.id as string, row]));
+  const attemptByPackage = new Map(
+    (attempts ?? [])
+      .filter((row) => packageId(row.package_id) != null)
+      .map((row) => [row.package_id as string, row])
+  );
+
+  for (const lesson of lessons) {
+    const live = liveById.get(lesson.id);
+    const contentId = packageId(lesson.contentPackageId) ?? packageId(live?.content_package_id);
+    const testId = packageId(lesson.testPackageId) ?? packageId(live?.test_package_id);
+    const contentAttempt = contentId ? attemptByPackage.get(contentId) : undefined;
+    const testAttempt = testId ? attemptByPackage.get(testId) : undefined;
+
+    const percent = contentId
+      ? lessonAttemptPercent(
+          contentAttempt?.lesson_status as string | null,
+          contentAttempt?.score_raw == null ? null : Number(contentAttempt.score_raw),
+          contentAttempt?.cmi
+        )
+      : null;
+    coursewarePercent.set(lesson.id, percent);
+
+    const coursewareFinished = contentId == null || (percent != null && percent >= 100);
+    const testFinished =
+      testId == null ||
+      lessonPlayerStatusSatisfied(testAttempt?.lesson_status as string | null);
+    contentsPrompt.set(
+      lesson.id,
+      !coursewareFinished
+        ? null
+        : testId != null && !testFinished
+          ? "test"
+          : submitted.has(lesson.id)
+            ? null
+            : "submit"
+    );
+
+    const started = [contentAttempt, testAttempt].some(
+      (attempt) =>
+        attempt != null &&
+        lessonAttemptHasProgress(
+          attempt.lesson_status as string | null,
+          attempt.score_raw == null ? null : Number(attempt.score_raw),
+          attempt.cmi
+        )
+    );
+    if (started || submitted.has(lesson.id)) hasProgress.add(lesson.id);
+  }
+
+  return { coursewarePercent, contentsPrompt, hasProgress };
+}
+
 export async function loadTrainingLessonStates(
   supabase: SupabaseClient,
   userId: string,
@@ -113,13 +221,14 @@ export async function loadTrainingLessonStates(
 ): Promise<TrainingLessonState[]> {
   if (lessons.length === 0) return [];
 
-  const [completedIds, optionalIds] = await Promise.all([
+  const [completedIds, optionalIds, signals] = await Promise.all([
     completedLessonIdSet(supabase, userId, userTrainingId, lessons),
     optionalLessonIdsForUser(
       supabase,
       userId,
       lessons.map((lesson) => lesson.id)
     ),
+    lessonPlaySignals(supabase, userId, userTrainingId, lessons),
   ]);
 
   return lessons.map((lesson) => ({
@@ -128,5 +237,8 @@ export async function loadTrainingLessonStates(
     number: lesson.number,
     completed: completedIds.has(lesson.id),
     optional: optionalIds.has(lesson.id),
+    coursewarePercent: signals.coursewarePercent.get(lesson.id) ?? null,
+    contentsPrompt: signals.contentsPrompt.get(lesson.id) ?? null,
+    hasProgress: signals.hasProgress.has(lesson.id),
   }));
 }

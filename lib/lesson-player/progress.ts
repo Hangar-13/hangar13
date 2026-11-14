@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { lessonPlayerHref } from "@/lib/lesson-player/href";
+import { timeSpentSeconds } from "@/lib/lesson-player/scorm/timespan";
 import type {
   LessonPackageKind,
   LessonPlayerProgress,
@@ -60,6 +61,28 @@ function percentFor(
     return bookmark ?? 1;
   }
   return 0;
+}
+
+/** Courseware or test percent stored for one attempt. Passed work is 100. */
+export function lessonAttemptPercent(
+  status: string | null | undefined,
+  score: number | null,
+  cmi: unknown
+): number {
+  const numeric = score != null && Number.isFinite(score) ? score : null;
+  return percentFor(asStatus(status), numeric, bookmarkPercent(cmi));
+}
+
+/** True when this attempt has something to lose if the file is replaced. */
+export function lessonAttemptHasProgress(
+  status: string | null | undefined,
+  score: number | null,
+  cmi: unknown
+): boolean {
+  if (asStatus(status) !== "not_attempted") return true;
+  const bookmark = bookmarkPercent(cmi);
+  if (bookmark != null && bookmark > 0) return true;
+  return score != null && Number.isFinite(score) && score > 0;
 }
 
 function labelFor(status: LessonPlayerStatus, score: number | null): string {
@@ -153,12 +176,13 @@ export async function getLessonPlayerProgress(
           : "No lesson has been added yet.",
       coursewareRevision: null,
       priorCompletion: null,
+      timeSpentSeconds: null,
     };
   }
 
   const { data: attempt } = await supabase
     .from("lesson_player_attempts")
-    .select("id, lesson_status, score_raw, updated_at, cmi, courseware_revision")
+    .select("id, lesson_status, score_raw, updated_at, cmi, courseware_revision, session_time, total_time_seconds")
     .eq("package_id", pkg.id)
     .eq("user_id", options.userId)
     .maybeSingle();
@@ -197,7 +221,7 @@ export async function getLessonPlayerProgress(
   if (options.kind === "content") {
     const { data: earlier } = await supabase
       .from("lesson_player_attempts")
-      .select("id, lesson_status, courseware_revision, updated_at")
+      .select("id, lesson_status, courseware_revision, updated_at, session_time, total_time_seconds")
       .eq("lesson_id", options.lessonId)
       .eq("user_id", options.userId)
       .order("updated_at", { ascending: false });
@@ -210,6 +234,7 @@ export async function getLessonPlayerProgress(
       priorCompletion = {
         status: asStatus(String(prior.lesson_status ?? "")),
         coursewareRevision: Number(prior.courseware_revision),
+        timeSpentSeconds: timeSpentSeconds(prior),
       };
     }
   }
@@ -242,5 +267,6 @@ export async function getLessonPlayerProgress(
         ? Number(attempt?.courseware_revision)
         : currentRevision,
     priorCompletion,
+    timeSpentSeconds: timeSpentSeconds(attempt),
   };
 }

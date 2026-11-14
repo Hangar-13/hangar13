@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createAdminSupabaseClient } from "@/lib/supabase-admin";
 import { resolveLessonPackage } from "@/lib/lesson-player/progress";
+import { formatCmiTimespan, parseCmiTimespan } from "@/lib/lesson-player/scorm/timespan";
 import {
   contentTypeForPath,
   LESSON_PACKAGE_BUCKET,
@@ -60,12 +61,36 @@ export async function getLessonPlayerLaunch(
     .maybeSingle();
   if (!row?.launch_path) return null;
 
-  const { data: attempt } = await supabase
+  const { data: existing } = await supabase
     .from("lesson_player_attempts")
-    .select("lesson_status, lesson_location, suspend_data, score_raw, score_min, score_max, updated_at")
+    .select(
+      "lesson_status, lesson_location, suspend_data, score_raw, score_min, score_max, session_time, total_time_seconds, updated_at"
+    )
     .eq("package_id", pkg.id)
     .eq("user_id", options.userId)
     .maybeSingle();
+
+  let attempt = existing;
+  const sittingId = crypto.randomUUID();
+  const pendingSession = parseCmiTimespan(existing?.session_time as string | null);
+  if (existing) {
+    const prior = Number(existing.total_time_seconds ?? 0);
+    const total = (Number.isFinite(prior) ? prior : 0) + pendingSession;
+    const { data: folded } = await supabase
+      .from("lesson_player_attempts")
+      .update({
+        total_time_seconds: total,
+        session_time: null,
+        open_sitting_id: sittingId,
+      })
+      .eq("package_id", pkg.id)
+      .eq("user_id", options.userId)
+      .select(
+        "lesson_status, lesson_location, suspend_data, score_raw, score_min, score_max, session_time, total_time_seconds, updated_at"
+      )
+      .maybeSingle();
+    if (folded) attempt = folded;
+  }
 
   const suspend = typeof attempt?.suspend_data === "string" ? attempt.suspend_data : "";
   const status =
@@ -91,7 +116,7 @@ export async function getLessonPlayerLaunch(
     "cmi.core.entry": suspend ? "resume" : "ab-initio",
     "cmi.core.exit": "",
     "cmi.core.session_time": "",
-    "cmi.core.total_time": "0000:00:00.00",
+    "cmi.core.total_time": formatCmiTimespan(Number(attempt?.total_time_seconds ?? 0)),
   };
 
   return {
@@ -101,6 +126,7 @@ export async function getLessonPlayerLaunch(
     title: String(row.title ?? pkg.title ?? "Lesson"),
     launchPath: String(row.launch_path),
     resumeKey: `${pkg.id}:${attempt?.updated_at ?? "new"}`,
+    sittingId,
     initialCmi,
   };
 }
@@ -112,6 +138,7 @@ export async function commitLessonPlayerAttempt(
     packageId: string;
     cmi: Record<string, unknown>;
     finish: boolean;
+    sittingId?: string | null;
   }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { data: pkg } = await supabase
@@ -149,6 +176,18 @@ export async function commitLessonPlayerAttempt(
     status === "failed" ||
     status === "completed";
 
+  if (options.sittingId) {
+    const { data: open } = await supabase
+      .from("lesson_player_attempts")
+      .select("open_sitting_id")
+      .eq("package_id", options.packageId)
+      .eq("user_id", options.userId)
+      .maybeSingle();
+    if (open?.open_sitting_id && open.open_sitting_id !== options.sittingId) {
+      return { ok: true };
+    }
+  }
+
   const row = {
     package_id: options.packageId,
     lesson_id: typeof pkg.lesson_id === "string" ? pkg.lesson_id : null,
@@ -164,6 +203,7 @@ export async function commitLessonPlayerAttempt(
     exit_mode: stored["cmi.core.exit"] ?? null,
     cmi: stored,
     finished_at: terminal ? new Date().toISOString() : null,
+    ...(options.sittingId ? { open_sitting_id: options.sittingId } : {}),
   };
 
   const { error } = await supabase

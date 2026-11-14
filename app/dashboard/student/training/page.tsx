@@ -175,6 +175,8 @@ async function getStudentTrainingData(userId: string, week?: number) {
     completed: lesson.completed,
     optional: lesson.optional,
     current: index + 1 === currentWeek,
+    coursewarePercent: lesson.coursewarePercent,
+    contentsPrompt: lesson.contentsPrompt,
   }));
   const currentLesson = lessonStates[currentWeek - 1];
 

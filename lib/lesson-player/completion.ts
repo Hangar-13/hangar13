@@ -9,7 +9,12 @@ import type { LessonPlayerCompletionCheck } from "@/lib/lesson-player/types";
 function slotFromProgress(
   progress: Awaited<ReturnType<typeof getLessonPlayerProgress>>,
   options?: { includeCoursewareRevision?: boolean }
-): { status: string; score: number | null; coursewareRevision: number | null } | null {
+): {
+  status: string;
+  score: number | null;
+  coursewareRevision: number | null;
+  timeSpentSeconds: number;
+} | null {
   if (!progress.available) return null;
   const priorSatisfied =
     progress.priorCompletion != null &&
@@ -40,6 +45,11 @@ function slotFromProgress(
           ? progress.priorCompletion!.coursewareRevision
           : progress.coursewareRevision
       : null,
+    timeSpentSeconds: currentSatisfied
+      ? (progress.timeSpentSeconds ?? 0)
+      : priorSatisfied
+        ? progress.priorCompletion!.timeSpentSeconds
+        : (progress.timeSpentSeconds ?? 0),
   };
 }
 
@@ -81,7 +91,9 @@ export async function checkLessonPlayerCompletion(
     content: slotFromProgress(content, { includeCoursewareRevision: true }),
     test: (() => {
       const slot = slotFromProgress(test);
-      return slot ? { status: slot.status, score: slot.score } : null;
+      return slot
+        ? { status: slot.status, score: slot.score, timeSpentSeconds: slot.timeSpentSeconds }
+        : null;
     })(),
     readyToSubmit: blockReason == null,
     blockReason,

@@ -45,6 +45,7 @@ export default async function LessonPlayerPage({ params, searchParams }: PagePro
       packageId={launch.packageId}
       launchPath={launch.launchPath}
       resumeKey={launch.resumeKey}
+      sittingId={launch.sittingId}
       initialCmi={launch.initialCmi}
       returnPath={returnPath}
     />
