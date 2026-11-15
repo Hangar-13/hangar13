@@ -138,6 +138,12 @@ export function getNavigationSections(
       icon: TrendingUp,
       subItem: true,
     },
+    {
+      name: "Student Logs",
+      href: "/dashboard/mentor/mentees/logs",
+      icon: BookOpen,
+      subItem: true,
+    },
   ];
 
   const mentorTrainingNavigation: NavEntry[] = [

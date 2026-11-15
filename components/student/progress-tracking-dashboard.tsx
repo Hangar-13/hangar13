@@ -20,9 +20,24 @@ import {
 interface ProgressTrackingDashboardProps {
   progressData: ProgressData;
   ataChapters: AtaChapterItem[];
+  /** Course-wide lesson bar. Hidden on the all-logs view. */
+  showProgramOverview?: boolean;
+  /** Stat row under the program bar. Hidden on the all-logs view. */
+  showSummaryStats?: boolean;
+  /** Lesson-week timeline. Hidden when the page is not about one course. */
+  showMilestones?: boolean;
+  /** Rendered at the top of the course content, such as a course picker. */
+  leading?: React.ReactNode;
 }
 
-export function ProgressTrackingDashboard({ progressData, ataChapters }: ProgressTrackingDashboardProps) {
+export function ProgressTrackingDashboard({
+  progressData,
+  ataChapters,
+  showProgramOverview = true,
+  showSummaryStats = true,
+  showMilestones = true,
+  leading,
+}: ProgressTrackingDashboardProps) {
   const {
     totalHours,
     trainingProgressPercent,
@@ -83,6 +98,8 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
 
   return (
     <DashboardContentFrame>
+      {leading}
+      {showProgramOverview ? (
       <div className="space-y-2.5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -101,7 +118,9 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
         </div>
         <Progress value={percentageComplete} className="h-2" />
       </div>
+      ) : null}
 
+      {showSummaryStats ? (
       <DashboardStatStrip>
         <div className="grid grid-cols-2 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-y-0 lg:divide-x lg:divide-border/30">
           <DashboardStatCell
@@ -135,6 +154,7 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
           />
         </div>
       </DashboardStatStrip>
+      ) : null}
 
       <section className="space-y-2.5">
         <DashboardSectionLabel>OJT hours progress</DashboardSectionLabel>
@@ -277,7 +297,9 @@ export function ProgressTrackingDashboard({ progressData, ataChapters }: Progres
         </div>
       </section>
 
-      <MilestonesTimeline currentWeek={currentWeek} totalWeeks={totalWeeks} />
+      {showMilestones ? (
+        <MilestonesTimeline currentWeek={currentWeek} totalWeeks={totalWeeks} />
+      ) : null}
 
       {selectedEntry && (
         <AddEntryModal

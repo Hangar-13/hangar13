@@ -14,37 +14,19 @@ export function effectiveMentorIdFromEnrollmentRow(
   return fromProfile ?? row.mentor_id ?? null;
 }
 
-/** Active enrollments where this user is the assigned mentor (profile or per-row). */
+/** Active enrollments belonging to this mentor's students. The roster is the profile mentor, not one row per course. */
 export async function fetchActiveEnrollmentIdsForMentor(
   supabase: SupabaseClient,
   mentorUserId: string
 ): Promise<string[]> {
-  const { data: byUt } = await supabase
+  const traineeUserIds = await fetchTraineeUserIdsForMentor(supabase, mentorUserId);
+  if (traineeUserIds.length === 0) return [];
+  const { data } = await supabase
     .from("user_trainings")
     .select("id")
-    .eq("mentor_id", mentorUserId)
+    .in("user_id", traineeUserIds)
     .eq("status", "active");
-
-  const { data: trainees } = await supabase
-    .from("users")
-    .select("id")
-    .eq("mentor_id", mentorUserId);
-
-  const traineeUserIds = (trainees ?? []).map((t) => t.id);
-  let byProfile: { id: string }[] | null = null;
-  if (traineeUserIds.length > 0) {
-    const { data } = await supabase
-      .from("user_trainings")
-      .select("id")
-      .in("user_id", traineeUserIds)
-      .eq("status", "active");
-    byProfile = data;
-  }
-
-  const ids = new Set<string>();
-  for (const r of byUt ?? []) ids.add(r.id);
-  for (const r of byProfile ?? []) ids.add(r.id);
-  return [...ids];
+  return [...new Set((data ?? []).map((row) => row.id as string))];
 }
 
 export async function mentorHasAccessToEnrollment(
@@ -63,24 +45,13 @@ export async function mentorHasAccessToEnrollment(
   return mentorHasAccessToTrainee(supabase, mentorUserId, row.user_id);
 }
 
-/** Trainee user ids this mentor may see logbook for (profile assignment and/or enrollment assignment). */
+/** Students assigned to this mentor on their profile. One id per person, with or without a course. */
 export async function fetchTraineeUserIdsForMentor(
   supabase: SupabaseClient,
   mentorUserId: string
 ): Promise<string[]> {
-  const ids = new Set<string>();
-
   const { data: byProfile } = await supabase.from("users").select("id").eq("mentor_id", mentorUserId);
-  for (const r of byProfile ?? []) ids.add(r.id);
-
-  const { data: byUt } = await supabase
-    .from("user_trainings")
-    .select("user_id")
-    .eq("mentor_id", mentorUserId)
-    .eq("status", "active");
-  for (const r of byUt ?? []) ids.add(r.user_id);
-
-  return [...ids];
+  return [...new Set((byProfile ?? []).map((row) => row.id as string))];
 }
 
 export async function traineeUserIdsFromEnrollmentIds(

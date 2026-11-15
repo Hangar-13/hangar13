@@ -9,6 +9,7 @@ import type { AtaChapter } from "@/app/actions/ata-chapters";
 import type {
   PriorOjtAssessmentRow,
   PriorOjtClaimRow,
+  PriorOjtExperienceLineInput,
   PriorOjtProposedEntryRow,
 } from "@/app/actions/prior-ojt";
 import {
@@ -43,6 +44,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  experienceDraftFromLines,
+  parseExperienceNumbers,
+  PriorOjtExperienceFields,
+  type ExperienceLineDraft,
+} from "@/components/student/prior-ojt/prior-ojt-experience-fields";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +61,7 @@ type Props = {
   initialAssessment: PriorOjtAssessmentRow | null;
   initialClaims: PriorOjtClaimRow[];
   initialProposedEntries: PriorOjtProposedEntryRow[];
+  initialExperienceLines: PriorOjtExperienceLineInput[];
   defaultFullName: string;
   defaultEmail: string;
 };
@@ -84,6 +92,7 @@ export function PriorOjtWizard({
   initialAssessment,
   initialClaims,
   initialProposedEntries,
+  initialExperienceLines,
   defaultFullName,
   defaultEmail,
 }: Props) {
@@ -102,6 +111,19 @@ export function PriorOjtWizard({
     )
   );
   const [summary, setSummary] = useState(initialAssessment?.summary ?? "");
+  const [experienceYears, setExperienceYears] = useState(
+    initialAssessment?.mechanic_experience_years == null
+      ? ""
+      : String(initialAssessment.mechanic_experience_years)
+  );
+  const [experienceMonths, setExperienceMonths] = useState(
+    initialAssessment?.mechanic_experience_months == null
+      ? ""
+      : String(initialAssessment.mechanic_experience_months)
+  );
+  const [experienceLines, setExperienceLines] = useState<ExperienceLineDraft[]>(() =>
+    experienceDraftFromLines(initialExperienceLines)
+  );
   const [selectedDomains, setSelectedDomains] = useState<AcsDomain[]>(
     initialAssessment?.selected_domains ?? []
   );
@@ -248,12 +270,28 @@ export function PriorOjtWizard({
         setError("Name and email are required.");
         return;
       }
+      const totals = parseExperienceNumbers(experienceYears, experienceMonths);
+      if ("error" in totals) {
+        setError(totals.error);
+        return;
+      }
+      const experience = {
+        years: totals.years,
+        months: totals.months,
+        lines: experienceLines.map(({ start, end, airframes, engines }) => ({
+          start,
+          end,
+          airframes,
+          engines,
+        })),
+      };
       if (assessmentId) {
         const result = await updatePriorOjtIntro(assessmentId, {
           fullName,
           email,
           backgrounds,
           summary,
+          experience,
         });
         if (result.error) {
           setError(result.error);
@@ -265,6 +303,7 @@ export function PriorOjtWizard({
           email,
           backgrounds,
           summary,
+          experience,
         });
         if (result.error || !result.assessmentId) {
           setError(result.error ?? "Failed to start assessment.");
@@ -551,10 +590,16 @@ export function PriorOjtWizard({
             email={email}
             backgrounds={backgrounds}
             summary={summary}
+            experienceYears={experienceYears}
+            experienceMonths={experienceMonths}
+            experienceLines={experienceLines}
             onFullName={setFullName}
             onEmail={setEmail}
             onToggleBackground={toggleBackground}
             onSummary={setSummary}
+            onExperienceYears={setExperienceYears}
+            onExperienceMonths={setExperienceMonths}
+            onExperienceLines={setExperienceLines}
           />
         ) : null}
 
@@ -693,19 +738,31 @@ function IntroStep({
   email,
   backgrounds,
   summary,
+  experienceYears,
+  experienceMonths,
+  experienceLines,
   onFullName,
   onEmail,
   onToggleBackground,
   onSummary,
+  onExperienceYears,
+  onExperienceMonths,
+  onExperienceLines,
 }: {
   fullName: string;
   email: string;
   backgrounds: PriorOjtBackground[];
   summary: string;
+  experienceYears: string;
+  experienceMonths: string;
+  experienceLines: ExperienceLineDraft[];
   onFullName: (v: string) => void;
   onEmail: (v: string) => void;
   onToggleBackground: (v: PriorOjtBackground) => void;
   onSummary: (v: string) => void;
+  onExperienceYears: (v: string) => void;
+  onExperienceMonths: (v: string) => void;
+  onExperienceLines: (lines: ExperienceLineDraft[]) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -773,6 +830,14 @@ function IntroStep({
             rows={4}
           />
         </div>
+        <PriorOjtExperienceFields
+          years={experienceYears}
+          months={experienceMonths}
+          lines={experienceLines}
+          onYears={onExperienceYears}
+          onMonths={onExperienceMonths}
+          onLines={onExperienceLines}
+        />
       </div>
     </div>
   );
@@ -1117,7 +1182,7 @@ function ProposedEntryCard({
   onAcceptOne: (entryId: string) => void;
 }) {
   const [description, setDescription] = useState(entry.description);
-  const [hours, setHours] = useState(String(entry.hours_worked));
+  const [hours, setHours] = useState(entry.hours_worked > 0 ? String(entry.hours_worked) : "");
   const removed = entry.status === "removed";
   const accepted = entry.status === "accepted";
   const codeLabels = entry.acs_code_ids
@@ -1171,17 +1236,24 @@ function ProposedEntryCard({
             <Label>Hours</Label>
             <Input
               type="number"
-              min={0.25}
+              min={0}
               step={0.25}
+              placeholder="Optional"
               disabled={removed || pending}
               value={hours}
               onChange={(e) => setHours(e.target.value)}
               onBlur={() => {
-                const n = Number(hours);
-                if (Number.isFinite(n) && n > 0 && n !== entry.hours_worked) {
+                const trimmed = hours.trim();
+                if (!trimmed) {
+                  if (entry.hours_worked !== 0) onPatch(entry.id, { hoursWorked: 0 });
+                  setHours("");
+                  return;
+                }
+                const n = Number(trimmed);
+                if (Number.isFinite(n) && n >= 0 && n !== entry.hours_worked) {
                   onPatch(entry.id, { hoursWorked: n });
                 } else {
-                  setHours(String(entry.hours_worked));
+                  setHours(entry.hours_worked > 0 ? String(entry.hours_worked) : "");
                 }
               }}
             />

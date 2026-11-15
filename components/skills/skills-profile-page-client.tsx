@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { SkillsProfileData, SkillsProfileExperienceRow } from "@/lib/skills-profile";
-import { filterExperienceEntries, formatSkillsHours } from "@/lib/skills-profile";
+import { filterExperienceEntries, formatPriorExperienceSpan, formatPriorExperienceTotal, formatSkillsHours } from "@/lib/skills-profile";
 import { externalCertificationTypeLabel } from "@/lib/external-certification";
 import { formatUiDate } from "@/lib/format-ui-date";
 import { getUserInitials } from "@/lib/user-initials";
@@ -148,7 +148,11 @@ function LogEntryList({
                   {entry.description}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {formatUiDate(entry.entry_date)} · {formatSkillsHours(Number(entry.hours_worked) || 0)}h ·{" "}
+                  {formatUiDate(entry.entry_date)}
+                  {entry.source === "prior_exp" && !(Number(entry.hours_worked) > 0)
+                    ? ""
+                    : ` · ${formatSkillsHours(Number(entry.hours_worked) || 0)}h`}
+                  {" · "}
                   {entry.status}
                 </p>
                 {showAircraft && entry.aircraft?.trim() ? (
@@ -621,6 +625,7 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
 
         <DashboardContentFrame className="space-y-0">
           <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-10">
+            <div className="space-y-8">
             <CollapsibleSection
               title="OJT experience"
               defaultOpen
@@ -660,6 +665,59 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
                 </ul>
               )}
             </CollapsibleSection>
+
+            {profile.priorMechanicExperience ? (
+              <CollapsibleSection
+                title="Prior mechanic experience"
+                defaultOpen
+                titleClassName={titleClass}
+                icon={<Wrench className="h-4 w-4" />}
+              >
+                <p className="text-sm">
+                  Total experience as an aviation mechanic:{" "}
+                  <span className="font-medium">
+                    {formatPriorExperienceTotal(
+                      profile.priorMechanicExperience.years,
+                      profile.priorMechanicExperience.months
+                    )}
+                  </span>
+                </p>
+                {profile.priorMechanicExperience.lines.length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    No airframe or engine periods were recorded.
+                  </p>
+                ) : (
+                  <div className="mt-4 overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          <th className="py-2 pr-3">Dates</th>
+                          <th className="py-2 pr-3">Airframe</th>
+                          <th className="py-2">Engine</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {profile.priorMechanicExperience.lines.map((line, index) => (
+                          <tr
+                            key={`${line.startYear}-${line.startMonth}-${index}`}
+                            className="border-b last:border-b-0"
+                          >
+                            <td className="py-2 pr-3 align-top">{formatPriorExperienceSpan(line)}</td>
+                            <td className="py-2 pr-3 align-top">
+                              {line.airframes.length > 0 ? line.airframes.join(", ") : "—"}
+                            </td>
+                            <td className="py-2 align-top">
+                              {line.engines.length > 0 ? line.engines.join(", ") : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CollapsibleSection>
+            ) : null}
+            </div>
 
             <div className="space-y-8">
               <CollapsibleSection

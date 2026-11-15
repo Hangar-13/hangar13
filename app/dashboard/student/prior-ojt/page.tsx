@@ -55,6 +55,7 @@ export default async function PriorOjtExperiencePage() {
           initialAssessment={active.assessment}
           initialClaims={active.claims}
           initialProposedEntries={active.proposedEntries}
+          initialExperienceLines={active.experienceLines}
           defaultFullName={profile?.full_name?.trim() || ""}
           defaultEmail={profile?.email?.trim() || user.email || ""}
         />

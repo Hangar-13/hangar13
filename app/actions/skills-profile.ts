@@ -10,6 +10,7 @@ import {
   aggregateAtaExperience,
   aggregateEngineExperience,
   aggregatePropellerExperience,
+  parsePriorMechanicExperience,
   type SkillsProfileData,
   type SkillsProfileLogbookEntry,
 } from "@/lib/skills-profile";
@@ -49,6 +50,7 @@ export async function getSkillsProfileForUser(
   const [
     { data: profile, error: profileError },
     { data: logbookRows, error: logbookError },
+    { data: priorExperience },
     { data: activeEnrollments },
     certificationAwards,
     externalCertifications,
@@ -64,6 +66,9 @@ export async function getSkillsProfileForUser(
       .eq("id", targetUserId)
       .maybeSingle(),
     supabase.rpc("list_logbook_entries_for_skills_profile", {
+      p_owner_user_id: targetUserId,
+    }),
+    supabase.rpc("prior_ojt_experience_for_skills_profile", {
       p_owner_user_id: targetUserId,
     }),
     supabase
@@ -145,6 +150,7 @@ export async function getSkillsProfileForUser(
       propellerExperience: aggregatePropellerExperience(logbookEntries),
       ataExperience: aggregateAtaExperience(logbookEntries, ataChapterItems),
       logbookEntries,
+      priorMechanicExperience: parsePriorMechanicExperience(priorExperience),
     },
   };
 }

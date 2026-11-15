@@ -1,59 +1,51 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
-import { ProgressTrackingDashboard } from "@/components/student/progress-tracking-dashboard";
-import { StudentProgressHeader } from "@/components/mentor/student-progress-header";
 import { getAtaChapters } from "@/app/actions/ata-chapters";
 import { getProgressDataForStudent } from "@/app/actions/progress";
-import { fetchActiveEnrollmentIdsForMentor, mentorHasAccessToEnrollment } from "@/lib/mentor-enrollments";
+import { StudentProgressHeader } from "@/components/mentor/student-progress-header";
+import { CourseProgressSelect } from "@/components/mentor/course-progress-select";
+import { ProgressTrackingDashboard } from "@/components/student/progress-tracking-dashboard";
+import { fetchTraineeUserIdsForMentor, mentorHasAccessToTrainee } from "@/lib/mentor-enrollments";
+import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
+import { Progress } from "@/components/ui/progress";
 import {
-  DashboardContentFrame,
   DashboardPageShell,
+  DashboardSectionLabel,
 } from "@/components/dashboard/page-shell";
 
 async function getMentorStudents(mentorId: string) {
   const supabase = await createServerSupabaseClient();
+  const userIds = await fetchTraineeUserIdsForMentor(supabase, mentorId);
+  if (userIds.length === 0) return [];
 
-  const enrollmentIds = await fetchActiveEnrollmentIdsForMentor(supabase, mentorId);
-  if (enrollmentIds.length === 0) {
-    return [];
-  }
-
-  const { data: students, error } = await supabase
-    .from("user_trainings")
-    .select("id, user_id")
-    .in("id", enrollmentIds)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
-
-  if (error || !students?.length) {
-    return [];
-  }
-
-  const userIds = students.map((a) => a.user_id);
   const { data: userRows } = await supabase
     .from("users")
-    .select("id, full_name")
+    .select("id, full_name, current_user_training_id")
     .in("id", userIds);
 
-  const profileMap = Object.fromEntries(
-    (userRows ?? []).map((p) => [p.id, p.full_name])
-  );
-
-  return students.map((a) => ({
-    id: a.id,
-    full_name: profileMap[a.user_id] ?? null,
-  }));
+  return (userRows ?? [])
+    .map((profile) => ({
+      id: profile.id as string,
+      full_name: (profile.full_name as string | null) ?? null,
+      currentTrainingId: (profile.current_user_training_id as string | null) ?? null,
+    }))
+    .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 }
 
-interface PageProps {
-  searchParams: Promise<{ student?: string }>;
+function pathName(value: unknown): string {
+  const row = Array.isArray(value) ? value[0] : value;
+  if (row && typeof row === "object" && "name" in row && typeof row.name === "string") {
+    return row.name.trim() || "Course";
+  }
+  return "Course";
 }
 
 export default async function MentorStudentProgressPage({
   searchParams,
-}: PageProps) {
+}: {
+  searchParams: Promise<{ student?: string; course?: string }>;
+}) {
   const supabase = await createServerSupabaseClient();
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -62,7 +54,7 @@ export default async function MentorStudentProgressPage({
     redirect("/auth/login");
   }
 
-  const { student: studentIdParam } = await searchParams;
+  const { student: studentIdParam, course: courseIdParam } = await searchParams;
   const students = await getMentorStudents(user.id);
 
   if (students.length === 0) {
@@ -78,48 +70,122 @@ export default async function MentorStudentProgressPage({
     );
   }
 
-  const studentId =
-    studentIdParam && students.some((a) => a.id === studentIdParam)
+  let studentId =
+    studentIdParam && students.some((student) => student.id === studentIdParam)
       ? studentIdParam
-      : students[0].id;
-
-  if (!studentIdParam || studentIdParam !== studentId) {
-    redirect(`/dashboard/mentor/mentees/progress?student=${studentId}`);
+      : null;
+  if (!studentId && studentIdParam) {
+    const { data: enrollment } = await supabase
+      .from("user_trainings")
+      .select("user_id")
+      .eq("id", studentIdParam)
+      .maybeSingle();
+    const ownerId = enrollment?.user_id as string | undefined;
+    if (ownerId && students.some((student) => student.id === ownerId)) studentId = ownerId;
   }
+  studentId = studentId ?? students[0].id;
 
-  const { data: student, error: studentError } = await supabase
-    .from("user_trainings")
-    .select("*")
-    .eq("id", studentId)
-    .single();
-
-  if (studentError || !student || !(await mentorHasAccessToEnrollment(supabase, user.id, studentId))) {
+  if (!(await mentorHasAccessToTrainee(supabase, user.id, studentId))) {
     redirect("/dashboard/mentor/mentees");
   }
 
-  const [progressData, ataChapters] = await Promise.all([
-    getProgressDataForStudent(student),
-    getAtaChapters(),
-  ]);
+  const { data: enrollmentRows } = await supabase
+    .from("user_trainings")
+    .select("id, user_id, training_path_id, start_date, status, enrollment_source, training_paths(name)")
+    .eq("user_id", studentId)
+    .eq("status", "active")
+    .order("start_date", { ascending: false });
+
+  const courses = (enrollmentRows ?? []).map((row) => ({
+    id: row.id as string,
+    name: pathName(row.training_paths),
+    training_path_id: row.training_path_id as string,
+    start_date: row.start_date as string,
+    enrollment_source: (row.enrollment_source as string | null) ?? null,
+    user_id: studentId,
+  }));
+
+  const selectedStudent = students.find((student) => student.id === studentId);
+  const preferredId =
+    selectedStudent?.currentTrainingId &&
+    courses.some((course) => course.id === selectedStudent.currentTrainingId)
+      ? selectedStudent.currentTrainingId
+      : courses[0]?.id ?? null;
+  const courseId =
+    courseIdParam && courses.some((course) => course.id === courseIdParam)
+      ? courseIdParam
+      : preferredId;
+
+  if (!studentIdParam || studentIdParam !== studentId || (courseId && courseIdParam !== courseId)) {
+    const params = new URLSearchParams({ student: studentId });
+    if (courseId) params.set("course", courseId);
+    redirect(`/dashboard/mentor/mentees/progress?${params.toString()}`);
+  }
+
+  let completedLessons = 0;
+  let totalLessons = 0;
+  for (const course of courses) {
+    const snapshot = await getEnrollmentLessonSnapshot(supabase, course.id, course);
+    completedLessons += snapshot.completedItems;
+    totalLessons += snapshot.totalItems;
+  }
+  const overallPercent = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+  const selectedCourse = courses.find((course) => course.id === courseId) ?? null;
+  const [progressData, ataChapters] = selectedCourse
+    ? await Promise.all([
+        getProgressDataForStudent(selectedCourse),
+        getAtaChapters(),
+      ])
+    : [null, [] as Awaited<ReturnType<typeof getAtaChapters>>];
 
   return (
     <DashboardPageShell>
       <div className="space-y-1">
-        <StudentProgressHeader students={students} currentStudentId={studentId} />
+        <StudentProgressHeader
+          students={students}
+          currentStudentId={studentId}
+          clearParams={["course"]}
+        />
         <p className="text-base text-muted-foreground">
-          Track progress through the 30-month program
+          Overall lesson progress across every course, then one course at a time.
         </p>
       </div>
 
-      <DashboardContentFrame>
+      <div className="space-y-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <DashboardSectionLabel>Overall progress</DashboardSectionLabel>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {courses.length === 0
+                ? "Not enrolled in a course yet"
+                : `${completedLessons} of ${totalLessons} lessons across ${courses.length} ${courses.length === 1 ? "course" : "courses"}`}
+            </p>
+          </div>
+          <span className="shrink-0 text-2xl font-bold tabular-nums text-primary">
+            {overallPercent}%
+          </span>
+        </div>
+        <Progress value={overallPercent} className="h-2" />
+      </div>
+
+      {selectedCourse && progressData ? (
         <ProgressTrackingDashboard
           progressData={progressData}
-          ataChapters={ataChapters.map((c) => ({
-            chapter_number: c.chapter_number,
-            title: c.title,
+          ataChapters={ataChapters.map((chapter) => ({
+            chapter_number: chapter.chapter_number,
+            title: chapter.title,
           }))}
+          showProgramOverview={false}
+          leading={
+            <CourseProgressSelect courses={courses} currentCourseId={selectedCourse.id} />
+          }
         />
-      </DashboardContentFrame>
+      ) : (
+        <p className="text-base text-muted-foreground">
+          {selectedStudent?.full_name?.trim() || "This student"} is not enrolled in a course yet.
+        </p>
+      )}
     </DashboardPageShell>
   );
 }

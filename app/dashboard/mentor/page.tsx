@@ -84,6 +84,27 @@ async function getMentorData(userId: string) {
     studentsWithProfiles = await buildStudentCards(supabase, canonicalEnrollments, now, targetHours);
   }
 
+  const enrolledUserIds = new Set(studentsWithProfiles.map((student) => student.userId));
+  const unenrolledUserIds = traineeUserIds.filter((id) => !enrolledUserIds.has(id));
+  if (unenrolledUserIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from("users")
+      .select("id, email, full_name, avatar_url")
+      .in("id", unenrolledUserIds);
+    studentsWithProfiles = [
+      ...studentsWithProfiles,
+      ...(profiles ?? []).map((profile) => ({
+        id: profile.id,
+        user_id: profile.id,
+        userId: profile.id,
+        enrollmentId: null,
+        start_date: "",
+        status: "unenrolled",
+        users: profile,
+      })),
+    ];
+  }
+
   let logbookEntries: any[] = [];
   if (traineeUserIds.length > 0) {
     const { data: entries } = await supabase
@@ -157,7 +178,7 @@ async function buildStudentCards(
 
       return {
         ...student,
-        id: student.id,
+        id: student.user_id,
         userId: student.user_id,
         enrollmentId: student.id,
         users: profile,

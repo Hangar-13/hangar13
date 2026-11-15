@@ -63,9 +63,8 @@ export function AssignedStudentsList({
   const router = useRouter();
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
-  const handleCardClick = (enrollmentId: string | null) => {
-    if (!enrollmentId) return;
-    router.push(`/dashboard/mentor/student/${enrollmentId}`);
+  const handleCardClick = (userId: string) => {
+    router.push(`/dashboard/mentor/student/${userId}`);
   };
 
   const handleUnassign = async (
@@ -167,14 +166,9 @@ export function AssignedStudentsList({
       <div className="divide-y divide-border/50 rounded-md ring-1 ring-black/[0.04]">
         {students.map((student) => (
           <div
-            key={student.id}
-            className={cn(
-              "px-3 py-2.5 transition-colors",
-              student.enrollmentId
-                ? "cursor-pointer hover:bg-muted/40"
-                : "cursor-default"
-            )}
-            onClick={() => handleCardClick(student.enrollmentId)}
+            key={student.userId}
+            className="cursor-pointer px-3 py-2.5 transition-colors hover:bg-muted/40"
+            onClick={() => handleCardClick(student.userId)}
           >
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0">
@@ -255,9 +249,9 @@ export function AssignedStudentsList({
     <div className="divide-y divide-border/60">
       {students.map((student) => (
         <div
-          key={student.id}
-          className={cn(rowBase, !student.enrollmentId && "cursor-default hover:bg-transparent")}
-          onClick={() => handleCardClick(student.enrollmentId)}
+          key={student.userId}
+          className={rowBase}
+          onClick={() => handleCardClick(student.userId)}
         >
           <div className="space-y-4">
             <div className="flex items-start gap-4">

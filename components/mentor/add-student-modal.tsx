@@ -73,11 +73,13 @@ export function AddStudentModal({
       }
 
       const rows = (data ?? []) as Candidate[];
-      // Exclude self and students this mentor already mentors — there's nothing
-      // to add for those.
-      const filtered = rows.filter(
-        (r) => r.user_id !== currentMentorId && r.mentor_id !== currentMentorId
-      );
+      const seen = new Set<string>();
+      // One row per person. Exclude self and students this mentor already mentors.
+      const filtered = rows.filter((r) => {
+        if (!r.user_id || seen.has(r.user_id)) return false;
+        seen.add(r.user_id);
+        return r.user_id !== currentMentorId && r.mentor_id !== currentMentorId;
+      });
       setCandidates(filtered);
     } catch (err) {
       console.error("Error fetching student candidates:", err);

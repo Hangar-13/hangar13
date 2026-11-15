@@ -263,7 +263,7 @@ export function generateProposedEntriesFromClaims(args: {
     const evidenceList = [...row.evidence]
       .map((e) => PRIOR_OJT_EVIDENCE_LABELS[e])
       .join(", ");
-    const hoursWorked = Math.max(1, Number((row.codeIds.length * 0.5).toFixed(2)));
+    const hoursWorked = 0;
 
     return {
       entryDate: today,

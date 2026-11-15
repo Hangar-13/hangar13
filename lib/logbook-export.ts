@@ -19,6 +19,7 @@ export type LogbookExportEntry = {
   id: string;
   entry_date: string;
   hours_worked: number;
+  source?: "manual" | "prior_exp" | "coursework";
   description: string;
   status: "draft" | "submitted" | "approved" | "rejected";
   category?: string | null;

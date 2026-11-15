@@ -27,40 +27,48 @@ export default async function ManagerStudentsPage() {
     redirect("/dashboard/manager");
   }
 
-  const { data: paths } = await supabase
-    .from("training_paths")
-    .select("id, name")
-    .in("organization_id", orgIds);
+  const { data: members } = await supabase
+    .from("user_organizations")
+    .select("user_id")
+    .in("organization_id", orgIds)
+    .eq("role", "student");
 
-  const pathName = new Map((paths ?? []).map((path) => [path.id as string, path.name as string]));
-  const pathIds = [...pathName.keys()];
-
-  const { data: enrollments } =
-    pathIds.length === 0
-      ? { data: [] }
-      : await supabase
-          .from("user_trainings")
-          .select("id, user_id, training_path_id, status")
-          .in("training_path_id", pathIds)
-          .order("start_date", { ascending: false });
-
-  const userIds = [...new Set((enrollments ?? []).map((row) => row.user_id as string))];
+  const userIds = [...new Set((members ?? []).map((row) => row.user_id as string))];
   const { data: profiles } =
     userIds.length === 0
       ? { data: [] }
       : await supabase.from("users").select("id, full_name, email").in("id", userIds);
-  const profileById = new Map((profiles ?? []).map((profile) => [profile.id as string, profile]));
 
-  const rows = (enrollments ?? []).map((row) => {
-    const profile = profileById.get(row.user_id as string);
-    return {
-      id: row.id as string,
-      name: profile?.full_name?.trim() || profile?.email || "Learner",
-      email: profile?.email as string | null,
-      path: pathName.get(row.training_path_id as string) ?? "Training path",
-      status: row.status as string | null,
-    };
-  });
+  const { data: enrollments } =
+    userIds.length === 0
+      ? { data: [] }
+      : await supabase
+          .from("user_trainings")
+          .select("user_id")
+          .in("user_id", userIds)
+          .eq("status", "active");
+  const courseCount = new Map<string, number>();
+  for (const row of enrollments ?? []) {
+    const userId = row.user_id as string;
+    courseCount.set(userId, (courseCount.get(userId) ?? 0) + 1);
+  }
+
+  const rows = (profiles ?? [])
+    .map((profile) => {
+      const count = courseCount.get(profile.id as string) ?? 0;
+      return {
+        id: profile.id as string,
+        name: profile.full_name?.trim() || profile.email || "Learner",
+        email: profile.email as string | null,
+        detail:
+          count === 0
+            ? "Not enrolled"
+            : count === 1
+              ? "1 course"
+              : `${count} courses`,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <DashboardPageShell>
@@ -73,7 +81,7 @@ export default async function ManagerStudentsPage() {
 
       <DashboardContentFrame>
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No students enrolled yet.</p>
+          <p className="text-sm text-muted-foreground">No students in this organization yet.</p>
         ) : (
           <DashboardTableShell>
             <ul className="divide-y divide-border/25">
@@ -88,13 +96,8 @@ export default async function ManagerStudentsPage() {
                       {row.email && row.name !== row.email ? (
                         <span className="block text-xs text-muted-foreground">{row.email}</span>
                       ) : null}
-                      <span className="mt-1 block text-xs text-muted-foreground">{row.path}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{row.detail}</span>
                     </span>
-                    {row.status ? (
-                      <span className="shrink-0 text-xs capitalize text-muted-foreground">
-                        {row.status}
-                      </span>
-                    ) : null}
                   </Link>
                 </li>
               ))}

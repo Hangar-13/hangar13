@@ -180,6 +180,7 @@ interface AddEntryModalProps {
     id: string;
     entry_date: string;
     hours_worked: number;
+    source?: "manual" | "prior_exp" | "coursework";
     description: string;
     skills_practiced?: string[] | null;
     status: string;
@@ -752,6 +753,8 @@ export function AddEntryModal({
   const totalHours = useMemo(() => {
     return calculateHours(startTime, endTime);
   }, [startTime, endTime]);
+  const priorExperience = entry?.source === "prior_exp";
+  const [priorHours, setPriorHours] = useState("");
 
   // Reset form when entry changes or modal opens/closes
   useEffect(() => {
@@ -768,6 +771,11 @@ export function AddEntryModal({
       };
 
       const addl = parseLogbookAdditionalInformation(entry.additional_information);
+      setPriorHours(
+        entry.source === "prior_exp" && Number(entry.hours_worked) > 0
+          ? String(entry.hours_worked)
+          : ""
+      );
       reset({
         entryDate: entry.entry_date,
         startTime: defaultStartTime,
@@ -963,7 +971,14 @@ export function AddEntryModal({
             entryDate: data.entryDate,
             startTime: data.startTime,
             endTime: data.endTime,
-            hoursWorked: totalHours,
+            hoursWorked: priorExperience
+              ? (() => {
+                  const n = Number(priorHours);
+                  return priorHours.trim() && Number.isFinite(n) && n > 0
+                    ? Math.round(n * 100) / 100
+                    : 0;
+                })()
+              : totalHours,
             taskDescription: data.taskDescription,
             ataChapter: data.ataChapter,
             certified: data.certified,
@@ -1128,7 +1143,21 @@ export function AddEntryModal({
             </div>
           </div>
 
-          {/* Time Inputs */}
+          {priorExperience ? (
+          <div className="space-y-2">
+            <Label htmlFor="priorHours">Hours</Label>
+            <Input
+              id="priorHours"
+              type="number"
+              min={0}
+              step={0.25}
+              placeholder="Optional"
+              value={priorHours}
+              onChange={(event) => setPriorHours(event.target.value)}
+              disabled={fieldLocked}
+            />
+          </div>
+          ) : (
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startTime">Start Time</Label>
@@ -1183,6 +1212,7 @@ export function AddEntryModal({
               </div>
             </div>
           </div>
+          )}
 
           {/* ATA Chapter — searchable when editing; plain select when read-only */}
           <div className="space-y-2">

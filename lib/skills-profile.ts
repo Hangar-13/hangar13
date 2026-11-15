@@ -52,6 +52,91 @@ export type SkillsProfileExperienceRow = {
   entries: SkillsProfileLogbookEntry[];
 };
 
+export type SkillsProfilePriorExperienceLine = {
+  startYear: number;
+  startMonth: number;
+  endYear: number;
+  endMonth: number;
+  airframes: string[];
+  engines: string[];
+};
+
+export type SkillsProfilePriorExperience = {
+  years: number;
+  months: number;
+  lines: SkillsProfilePriorExperienceLine[];
+};
+
+const PRIOR_EXPERIENCE_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+export function parsePriorMechanicExperience(value: unknown): SkillsProfilePriorExperience | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as { years?: unknown; months?: unknown; lines?: unknown };
+  const years = Number(record.years ?? 0);
+  const months = Number(record.months ?? 0);
+  if (!Number.isFinite(years) || !Number.isFinite(months)) return null;
+  const lines = Array.isArray(record.lines)
+    ? record.lines.flatMap((line) => {
+        if (!line || typeof line !== "object") return [];
+        const row = line as Record<string, unknown>;
+        const startMonth = Number(row.startMonth);
+        const endMonth = Number(row.endMonth);
+        const startYear = Number(row.startYear);
+        const endYear = Number(row.endYear);
+        if (
+          !Number.isInteger(startMonth) ||
+          startMonth < 1 ||
+          startMonth > 12 ||
+          !Number.isInteger(endMonth) ||
+          endMonth < 1 ||
+          endMonth > 12
+        ) {
+          return [];
+        }
+        return [
+          {
+            startYear,
+            startMonth,
+            endYear,
+            endMonth,
+            airframes: stringList(row.airframes),
+            engines: stringList(row.engines),
+          },
+        ];
+      })
+    : [];
+  return { years, months, lines };
+}
+
+export function formatPriorExperienceSpan(line: SkillsProfilePriorExperienceLine): string {
+  const start = `${PRIOR_EXPERIENCE_MONTHS[line.startMonth - 1] ?? ""} ${line.startYear}`;
+  const end = `${PRIOR_EXPERIENCE_MONTHS[line.endMonth - 1] ?? ""} ${line.endYear}`;
+  return `${start} – ${end}`;
+}
+
+export function formatPriorExperienceTotal(years: number, months: number): string {
+  const yearLabel = years === 1 ? "year" : "years";
+  const monthLabel = months === 1 ? "month" : "months";
+  return `${years} ${yearLabel}, ${months} ${monthLabel}`;
+}
+
 export type SkillsProfileData = {
   user: SkillsProfileUser;
   viewerIsOwner: boolean;
@@ -65,6 +150,7 @@ export type SkillsProfileData = {
   propellerExperience: SkillsProfileExperienceRow[];
   ataExperience: SkillsProfileExperienceRow[];
   logbookEntries: SkillsProfileLogbookEntry[];
+  priorMechanicExperience: SkillsProfilePriorExperience | null;
 };
 
 const UNSPECIFIED_AIRCRAFT = "(unspecified aircraft)";
