@@ -83,7 +83,7 @@ export default async function ManagerStudentsPage() {
         {rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No students in this organization yet.</p>
         ) : (
-          <DashboardTableShell>
+          <DashboardTableShell dataTour="manager-student-list">
             <ul className="divide-y divide-border/25">
               {rows.map((row) => (
                 <li key={row.id}>

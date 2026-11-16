@@ -381,6 +381,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
         {/* Week navigation */}
         <nav
           aria-label="Week navigation"
+          data-tour="training-weeks"
           className="flex items-center justify-between"
         >
           {prevWeek ? (
@@ -419,7 +420,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
           )}
         </nav>
           </div>
-          <Button asChild className="shrink-0 bg-primary text-primary-foreground">
+          <Button asChild className="shrink-0 bg-primary text-primary-foreground" data-tour="training-submit">
             <Link href={`/dashboard/student/training/submit?week=${data.currentWeek}`}>
               <FileText className="mr-2 h-4 w-4" />
               Submit Week
@@ -518,6 +519,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
             <LessonMarkdownBody markdown={w.practical_application ?? ""} />
           </CollapsibleSection>
 
+          <div data-tour="training-discussion">
           <CollapsibleSection
             variant="section"
             title="Questions for Mentor Discussion"
@@ -539,6 +541,7 @@ export default async function TrainingPage({ searchParams }: PageProps) {
             <p className="text-sm text-muted-foreground">No discussion questions defined for this week.</p>
           )}
           </CollapsibleSection>
+          </div>
 
           <CollapsibleSection
             variant="section"

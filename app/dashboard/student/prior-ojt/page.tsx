@@ -8,6 +8,7 @@ import {
   getPriorOjtCatalog,
 } from "@/app/actions/prior-ojt";
 import { PriorOjtWizard } from "@/components/student/prior-ojt/prior-ojt-wizard";
+import { getUserResume } from "@/app/actions/user-resume";
 
 export default async function PriorOjtExperiencePage() {
   const supabase = await createServerSupabaseClient();
@@ -19,11 +20,12 @@ export default async function PriorOjtExperiencePage() {
     redirect("/auth/login");
   }
 
-  const [{ data: profile }, catalog, ataChapters, active] = await Promise.all([
+  const [{ data: profile }, catalog, ataChapters, active, resumeResult] = await Promise.all([
     supabase.from("users").select("full_name, email").eq("id", user.id).maybeSingle(),
     getPriorOjtCatalog(),
     getAtaChapters(),
     getActivePriorOjtAssessment(),
+    getUserResume(),
   ]);
 
   return (
@@ -58,6 +60,7 @@ export default async function PriorOjtExperiencePage() {
           initialExperienceLines={active.experienceLines}
           defaultFullName={profile?.full_name?.trim() || ""}
           defaultEmail={profile?.email?.trim() || user.email || ""}
+          initialResume={resumeResult.resume}
         />
       )}
     </DashboardPageShell>

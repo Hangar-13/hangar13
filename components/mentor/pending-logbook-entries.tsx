@@ -396,7 +396,7 @@ export function PendingLogbookEntries({
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4" data-tour="mentor-log-filters">
         <div className="flex items-center gap-2">
           <Label htmlFor="status-filter" className="text-sm whitespace-nowrap">Status</Label>
           <Select
@@ -427,7 +427,7 @@ export function PendingLogbookEntries({
       </div>
 
       {/* Entries List */}
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="mentor-log-list">
         {filteredEntries.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             No logbook entries found matching the filters.

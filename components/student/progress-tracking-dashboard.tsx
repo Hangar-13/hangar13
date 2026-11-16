@@ -100,7 +100,7 @@ export function ProgressTrackingDashboard({
     <DashboardContentFrame>
       {leading}
       {showProgramOverview ? (
-      <div className="space-y-2.5">
+      <div className="space-y-2.5" data-tour="progress-program">
         <div className="flex items-start justify-between gap-3">
           <div>
             <DashboardSectionLabel>Overall program progress</DashboardSectionLabel>
@@ -188,7 +188,7 @@ export function ProgressTrackingDashboard({
         </div>
       </section>
 
-      <section className="space-y-5">
+      <section className="space-y-5" data-tour="progress-coverage">
         <DashboardSectionLabel>Log coverage</DashboardSectionLabel>
         <AtaChapterCoverage
           ataChapterHours={ataChapterHours}

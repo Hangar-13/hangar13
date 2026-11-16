@@ -101,6 +101,7 @@ export function CertificationGoalSelector({ currentCertification, readOnly, butt
         variant="outline"
         size="sm"
         className="shrink-0"
+        data-tour="cert-goal"
         onClick={openModal}
         disabled={isPending}
       >

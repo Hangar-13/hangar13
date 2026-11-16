@@ -358,7 +358,7 @@ export function serializeLogbookExportCsv(report: LogbookExportReport): string {
   rows.push("report_mode", csvEscape(report.reportMode));
   rows.push("title", csvEscape(report.title));
   rows.push("student_name", csvEscape(report.studentName));
-  rows.push("generated_at", csvEscape(report.generatedAt));
+  rows.push("generated_at", csvEscape(formatUiDate(report.generatedAt)));
   rows.push("total_logs", csvEscape(report.totals.logCount));
   rows.push("total_hours", csvEscape(report.totals.totalHours));
   rows.push("");
@@ -382,7 +382,7 @@ export function serializeLogbookExportCsv(report: LogbookExportReport): string {
     for (const entry of report.detailedEntries) {
       rows.push(
         [
-          csvEscape(entry.date),
+          csvEscape(formatUiDate(entry.date)),
           csvEscape(entry.description),
           csvEscape(entry.hours),
           csvEscape(entry.ataChapters.join("; ")),

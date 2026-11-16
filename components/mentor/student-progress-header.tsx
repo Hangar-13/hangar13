@@ -42,7 +42,7 @@ export function StudentProgressHeader({
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" data-tour="mentor-student-switch">
       <span className="text-2xl font-bold tracking-tight">{heading}</span>
       <Select
         value={currentStudentId}

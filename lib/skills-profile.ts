@@ -1,4 +1,6 @@
 import type { Certification } from "@/lib/certification";
+import { formatUiMonthYear } from "@/lib/format-ui-date";
+import type { UserResume } from "@/lib/user-resume";
 import type { CertificationAward } from "@/app/actions/user-credentials";
 import type { ExternalCertificationDocument } from "@/lib/external-certification";
 import type { ExternalCertificationType } from "@/lib/external-certification";
@@ -67,21 +69,6 @@ export type SkillsProfilePriorExperience = {
   lines: SkillsProfilePriorExperienceLine[];
 };
 
-const PRIOR_EXPERIENCE_MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
@@ -126,8 +113,8 @@ export function parsePriorMechanicExperience(value: unknown): SkillsProfilePrior
 }
 
 export function formatPriorExperienceSpan(line: SkillsProfilePriorExperienceLine): string {
-  const start = `${PRIOR_EXPERIENCE_MONTHS[line.startMonth - 1] ?? ""} ${line.startYear}`;
-  const end = `${PRIOR_EXPERIENCE_MONTHS[line.endMonth - 1] ?? ""} ${line.endYear}`;
+  const start = formatUiMonthYear(line.startYear, line.startMonth);
+  const end = formatUiMonthYear(line.endYear, line.endMonth);
   return `${start} – ${end}`;
 }
 
@@ -151,6 +138,7 @@ export type SkillsProfileData = {
   ataExperience: SkillsProfileExperienceRow[];
   logbookEntries: SkillsProfileLogbookEntry[];
   priorMechanicExperience: SkillsProfilePriorExperience | null;
+  resume: UserResume | null;
 };
 
 const UNSPECIFIED_AIRCRAFT = "(unspecified aircraft)";

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { createLogbookEntry } from "@/app/actions/logbook";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AviationDateInput } from "@/components/ui/aviation-date-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -53,6 +54,7 @@ export function LogbookEntryForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     setValue,
     watch,
@@ -142,11 +144,18 @@ export function LogbookEntryForm() {
                 <Calendar className="h-4 w-4" />
                 Date
               </Label>
-              <Input
-                id="entryDate"
-                type="date"
-                {...register("entryDate")}
-                aria-invalid={errors.entryDate ? "true" : "false"}
+              <Controller
+                name="entryDate"
+                control={control}
+                render={({ field }) => (
+                  <AviationDateInput
+                    id="entryDate"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    aria-invalid={errors.entryDate ? true : undefined}
+                  />
+                )}
               />
               {errors.entryDate && (
                 <p className="text-sm text-destructive">

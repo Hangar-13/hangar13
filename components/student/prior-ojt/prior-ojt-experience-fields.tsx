@@ -14,18 +14,18 @@ import {
 import type { PriorOjtExperienceLineInput } from "@/app/actions/prior-ojt";
 
 const MONTHS = [
-  ["01", "January"],
-  ["02", "February"],
-  ["03", "March"],
-  ["04", "April"],
+  ["01", "Jan"],
+  ["02", "Feb"],
+  ["03", "Mar"],
+  ["04", "Apr"],
   ["05", "May"],
-  ["06", "June"],
-  ["07", "July"],
-  ["08", "August"],
-  ["09", "September"],
-  ["10", "October"],
-  ["11", "November"],
-  ["12", "December"],
+  ["06", "Jun"],
+  ["07", "Jul"],
+  ["08", "Aug"],
+  ["09", "Sep"],
+  ["10", "Oct"],
+  ["11", "Nov"],
+  ["12", "Dec"],
 ] as const;
 
 const YEARS = Array.from({ length: new Date().getFullYear() - 1940 + 1 }, (_, index) =>

@@ -723,14 +723,10 @@ export async function getLogbookEntryStudentViewMeta(
     return { error: "Entry not found." };
   }
 
-  if (entry.user_id !== user.id) {
-    return { error: "Access denied." };
-  }
-
   const { data: studentUser } = await supabase
     .from("users")
     .select("full_name, mentor_id")
-    .eq("id", user.id)
+    .eq("id", entry.user_id)
     .maybeSingle();
 
   const mentorUserId = studentUser?.mentor_id ?? null;
@@ -756,7 +752,7 @@ export async function getLogbookEntryStudentViewMeta(
 
   const studentName =
     (studentUser?.full_name && studentUser.full_name.trim()) ||
-    user.email ||
+    (entry.user_id === user.id ? user.email : null) ||
     "Student";
 
   return {

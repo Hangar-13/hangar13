@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { formatUiDateTime } from "@/lib/format-ui-date";
 import { getBrowserSupabaseClient } from "@/lib/supabase-browser";
 import {
   getLessonDiscussion,
@@ -43,11 +44,7 @@ function formatMessageTime(iso: string): string {
       minute: "2-digit",
     });
   }
-  return (
-    date.toLocaleDateString(undefined, { month: "short", day: "numeric" }) +
-    " " +
-    date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
-  );
+  return formatUiDateTime(iso);
 }
 
 interface LessonDiscussionProps {

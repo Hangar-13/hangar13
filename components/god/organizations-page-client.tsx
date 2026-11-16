@@ -22,7 +22,7 @@ export function OrganizationsPageClient({ initialOrgs }: OrganizationsPageClient
     <DashboardPageShell>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Organizations</h1>
-        <Button onClick={() => setCreateOpen(true)} className="w-fit gap-1.5" type="button">
+        <Button data-tour="god-add-org" onClick={() => setCreateOpen(true)} className="w-fit gap-1.5" type="button">
           <Plus className="h-4 w-4" />
           Add New Org
         </Button>

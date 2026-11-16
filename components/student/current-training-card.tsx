@@ -17,7 +17,7 @@ export function CurrentTrainingCard({
   dueDate,
 }: CurrentTrainingCardProps) {
   return (
-    <DashboardAccentBlock>
+    <DashboardAccentBlock dataTour="student-current-week">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-foreground/70">

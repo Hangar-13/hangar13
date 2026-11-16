@@ -341,11 +341,11 @@ export default async function StudentDashboard() {
         </div>
         {showFullDashboard ? (
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
-            <Button asChild>
+            <Button asChild data-tour="student-log-entry">
               <Link href="/dashboard/student/logbook?add=true">+ Log Entry</Link>
             </Button>
             {data.hasActiveCurriculum && data.weeks.total > 0 && data.currentTraining.week > 0 ? (
-              <Button asChild variant="outline">
+              <Button asChild variant="outline" data-tour="student-submit-week">
                 <Link href={`/dashboard/student/training/submit?week=${data.currentTraining.week}`}>
                   <FileText className="mr-2 h-4 w-4" />
                   Submit Week

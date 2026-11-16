@@ -15,6 +15,7 @@ import {
   type SkillsProfileLogbookEntry,
 } from "@/lib/skills-profile";
 import type { Certification } from "@/lib/certification";
+import { getUserResume } from "@/app/actions/user-resume";
 
 export type SkillsProfileResult =
   | { error: string }
@@ -57,6 +58,7 @@ export async function getSkillsProfileForUser(
     manualCompletions,
     trainingsData,
     ataChapters,
+    resumeResult,
   ] = await Promise.all([
     supabase
       .from("users")
@@ -82,6 +84,7 @@ export async function getSkillsProfileForUser(
     getTrainingCompletionsForUser(targetUserId),
     getMyTrainingsPageData(targetUserId),
     getAtaChapters(),
+    getUserResume(targetUserId),
   ]);
 
   if (profileError || !profile) {
@@ -151,6 +154,7 @@ export async function getSkillsProfileForUser(
       ataExperience: aggregateAtaExperience(logbookEntries, ataChapterItems),
       logbookEntries,
       priorMechanicExperience: parsePriorMechanicExperience(priorExperience),
+      resume: resumeResult.resume,
     },
   };
 }

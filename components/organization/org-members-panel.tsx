@@ -850,6 +850,7 @@ export function OrgMembersPanel({ members, mode, organizationId }: OrgMembersPan
             type="button"
             variant="outline"
             size="sm"
+            data-tour="org-add-member"
             onClick={addDraftRow}
             disabled={pending}
           >

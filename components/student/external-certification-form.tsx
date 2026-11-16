@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AviationDateInput } from "@/components/ui/aviation-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -68,6 +69,7 @@ export function ExternalCertificationForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     setValue,
     watch,
@@ -267,7 +269,19 @@ export function ExternalCertificationForm() {
 
           <div className="space-y-2">
             <Label htmlFor="awardedOn">Date awarded</Label>
-            <Input id="awardedOn" type="date" {...register("awardedOn")} />
+            <Controller
+              name="awardedOn"
+              control={control}
+              render={({ field }) => (
+                <AviationDateInput
+                  id="awardedOn"
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  aria-invalid={errors.awardedOn ? true : undefined}
+                />
+              )}
+            />
             {errors.awardedOn ? (
               <p className="text-sm text-destructive">
                 {errors.awardedOn.message}
@@ -277,7 +291,18 @@ export function ExternalCertificationForm() {
 
           <div className="space-y-2">
             <Label htmlFor="expiresOn">Expiration date (optional)</Label>
-            <Input id="expiresOn" type="date" {...register("expiresOn")} />
+            <Controller
+              name="expiresOn"
+              control={control}
+              render={({ field }) => (
+                <AviationDateInput
+                  id="expiresOn"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                />
+              )}
+            />
             {errors.expiresOn ? (
               <p className="text-sm text-destructive">
                 {errors.expiresOn.message}

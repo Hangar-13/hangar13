@@ -150,7 +150,7 @@ export function CertificationDashboardClient({
             View skills profile
           </Link>
         </Button>
-        <Button type="button" variant="outline" onClick={() => setExportOpen(true)}>
+        <Button type="button" variant="outline" data-tour="cert-export" onClick={() => setExportOpen(true)}>
           <FileDown className="mr-2 h-4 w-4" />
           Print Report / Export Data
         </Button>

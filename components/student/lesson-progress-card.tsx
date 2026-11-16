@@ -102,7 +102,12 @@ export function LessonProgressCard({
 
         <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:min-w-[200px]">
           {progress.playHref ? (
-            <Button asChild size="lg" className="w-full gap-2">
+            <Button
+              asChild
+              size="lg"
+              className="w-full gap-2"
+              data-tour={progress.kind === "lesson" ? "training-start-lesson" : undefined}
+            >
               <Link href={progress.playHref}>
                 <PlayCircle className="h-5 w-5 shrink-0" />
                 {actionLabel(progress)}

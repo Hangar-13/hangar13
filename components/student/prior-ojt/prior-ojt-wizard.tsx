@@ -42,6 +42,7 @@ import {
 } from "@/lib/prior-ojt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AviationDateInput } from "@/components/ui/aviation-date-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -51,6 +52,8 @@ import {
   type ExperienceLineDraft,
 } from "@/components/student/prior-ojt/prior-ojt-experience-fields";
 import { Progress } from "@/components/ui/progress";
+import { UserResumeField } from "@/components/student/user-resume-field";
+import type { UserResume } from "@/lib/user-resume";
 import { cn } from "@/lib/utils";
 
 type WizardPhase = "intro" | "sections" | "subjects" | "complete" | "review";
@@ -64,6 +67,7 @@ type Props = {
   initialExperienceLines: PriorOjtExperienceLineInput[];
   defaultFullName: string;
   defaultEmail: string;
+  initialResume: UserResume | null;
 };
 
 function claimsToState(claims: PriorOjtClaimRow[]): PriorOjtClaimState {
@@ -95,6 +99,7 @@ export function PriorOjtWizard({
   initialExperienceLines,
   defaultFullName,
   defaultEmail,
+  initialResume,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -402,11 +407,7 @@ export function PriorOjtWizard({
 
   function handleChapterContinue() {
     if (!currentChapter) return;
-    const hasExp = chapterHasExperience[currentChapter.key];
-    if (hasExp === null || hasExp === undefined) {
-      setError("Choose Yes or No, skip before continuing.");
-      return;
-    }
+    const hasExp = chapterHasExperience[currentChapter.key] ?? true;
     run(async () => {
       await advanceFromChapter({
         hasExperience: hasExp,
@@ -600,6 +601,7 @@ export function PriorOjtWizard({
             onExperienceYears={setExperienceYears}
             onExperienceMonths={setExperienceMonths}
             onExperienceLines={setExperienceLines}
+            initialResume={initialResume}
           />
         ) : null}
 
@@ -616,7 +618,7 @@ export function PriorOjtWizard({
             chapter={currentChapter}
             chapterIndex={chapterIndex}
             chapterTotal={activeChapters.length}
-            hasExperience={chapterHasExperience[currentChapter.key] ?? null}
+            hasExperience={chapterHasExperience[currentChapter.key] ?? true}
             claimState={claimState}
             onHasExperience={(value) =>
               setChapterHasExperience((prev) => ({
@@ -748,6 +750,7 @@ function IntroStep({
   onExperienceYears,
   onExperienceMonths,
   onExperienceLines,
+  initialResume,
 }: {
   fullName: string;
   email: string;
@@ -763,11 +766,12 @@ function IntroStep({
   onExperienceYears: (v: string) => void;
   onExperienceMonths: (v: string) => void;
   onExperienceLines: (lines: ExperienceLineDraft[]) => void;
+  initialResume: UserResume | null;
 }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744]">
+        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744] dark:text-slate-50">
           Let&apos;s assess your prior experience
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -830,6 +834,10 @@ function IntroStep({
             rows={4}
           />
         </div>
+        <UserResumeField
+          initialResume={initialResume}
+          emptyHint="PDF or Word, up to 10MB. This also appears on your skills profile."
+        />
         <PriorOjtExperienceFields
           years={experienceYears}
           months={experienceMonths}
@@ -872,7 +880,7 @@ function SectionsStep({
         <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Step 1
         </p>
-        <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#0f2744]">
+        <h2 className="mt-2 text-2xl font-bold tracking-tight text-[#0f2744] dark:text-slate-50">
           Which areas have you worked in?
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -977,7 +985,7 @@ function ChapterStep({
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744]">
+        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744] dark:text-slate-50">
           ATA {chapter.chapterNumber} — {chapter.title}
         </h2>
         {chapter.description ? (
@@ -1112,7 +1120,7 @@ function CompleteStep({
         <CheckCircle2 className="h-8 w-8" />
       </div>
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744]">
+        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744] dark:text-slate-50">
           Assessment complete
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -1225,11 +1233,10 @@ function ProposedEntryCard({
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Date</Label>
-            <Input
-              type="date"
+            <AviationDateInput
               disabled={removed || pending}
               value={entry.entry_date}
-              onChange={(e) => onPatch(entry.id, { entryDate: e.target.value })}
+              onChange={(next) => onPatch(entry.id, { entryDate: next })}
             />
           </div>
           <div className="space-y-1.5">
@@ -1376,7 +1383,7 @@ function ReviewStep({
   if (entries.length === 0) {
     return (
       <div className="space-y-3 text-center">
-        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744]">
+        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744] dark:text-slate-50">
           No log entries to create
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -1390,7 +1397,7 @@ function ReviewStep({
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744]">
+        <h2 className="text-2xl font-bold tracking-tight text-[#0f2744] dark:text-slate-50">
           Review draft log entries
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">

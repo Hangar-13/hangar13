@@ -84,7 +84,7 @@ export function GodUsersPageClient({
       <h1 className="text-2xl font-bold tracking-tight">Manage Users</h1>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-        <div className="relative flex-1 min-w-0">
+        <div className="relative flex-1 min-w-0" data-tour="god-user-search">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-8"

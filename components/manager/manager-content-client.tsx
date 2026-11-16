@@ -138,6 +138,7 @@ export function ManagerContentClient({ lists }: { lists: ManagerContentLists }) 
           type="button"
           variant="outline"
           className="w-full sm:w-auto"
+          data-tour="manager-paths"
           onClick={() => setPathOpen(true)}
         >
           <Plus className="size-4" aria-hidden />
@@ -203,6 +204,7 @@ export function ManagerContentClient({ lists }: { lists: ManagerContentLists }) 
           type="button"
           variant="outline"
           className="w-full sm:w-auto"
+          data-tour="manager-courses"
           onClick={() => setCourseOpen(true)}
         >
           <Plus className="size-4" aria-hidden />

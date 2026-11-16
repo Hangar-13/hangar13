@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import Link from "next/link";
 import { saveMarketingLandingContent } from "@/app/actions/marketing-content";
 import { Button } from "@/components/ui/button";
+import { formatUiDateTime } from "@/lib/format-ui-date";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -384,10 +385,10 @@ export function LandingContentEditor({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
           {updatedAt
-            ? `Last saved ${new Date(updatedAt).toLocaleString()}`
+            ? `Last saved ${formatUiDateTime(updatedAt)}`
             : "Not saved to the database yet — defaults are showing until you save."}
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" data-tour="god-landing-save">
           <Button type="button" variant="outline" asChild>
             <Link href="/marketing/preview" target="_blank">
               Preview

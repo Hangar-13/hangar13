@@ -21,6 +21,7 @@ import { approveLogbookEntry, rejectLogbookEntry } from "@/app/actions/logbook-a
 import { getAcsCodesByChapter } from "@/app/actions/acs-codes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AviationDateInput } from "@/components/ui/aviation-date-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -39,7 +40,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Check, Plus, Clock, Calendar, Save, Pencil, CheckCircle2, XCircle } from "lucide-react";
+import { Check, Plus, Clock, Save, Pencil, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatUiDateTime } from "@/lib/format-ui-date";
 import {
@@ -510,7 +511,7 @@ export function AddEntryModal({
 
   // Load browse-mode labels for status badges
   useEffect(() => {
-    if (!isOpen || !entry || !isStudentBrowse) {
+    if (!isOpen || !entry || (!isStudentBrowse && !mentorMode)) {
       setViewMeta(null);
       setViewMetaLoading(false);
       return;
@@ -529,7 +530,7 @@ export function AddEntryModal({
         setViewMeta(null);
         setViewMetaLoading(false);
       });
-  }, [isOpen, entry?.id, isStudentBrowse]);
+  }, [isOpen, entry?.id, isStudentBrowse, mentorMode]);
 
   // Reset ACS toggle when opening or switching between entries (load then turns it on if the entry has codes)
   useEffect(() => {
@@ -1038,7 +1039,7 @@ export function AddEntryModal({
           <DialogTrigger asChild>{trigger}</DialogTrigger>
         ) : (
           <DialogTrigger asChild>
-            <Button>
+            <Button data-tour="logbook-add">
               <Plus className="mr-2 h-4 w-4" />
               Add Entry
             </Button>
@@ -1099,17 +1100,21 @@ export function AddEntryModal({
               >
                 Date
               </Label>
-              <div className="relative min-w-0 flex-1">
-                <Input
-                  id="entryDate"
-                  type="date"
-                  {...register("entryDate")}
-                  aria-invalid={errors.entryDate ? "true" : "false"}
-                  className="h-9 pr-10"
-                  disabled={fieldLocked}
-                />
-                <Calendar className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              </div>
+              <Controller
+                name="entryDate"
+                control={control}
+                render={({ field }) => (
+                  <AviationDateInput
+                    id="entryDate"
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    disabled={fieldLocked}
+                    aria-invalid={errors.entryDate ? true : undefined}
+                    className="min-w-0 flex-1"
+                  />
+                )}
+              />
             </div>
             {errors.entryDate && (
               <p className="text-sm text-destructive pl-[calc(8rem+0.75rem)]">
@@ -1161,17 +1166,13 @@ export function AddEntryModal({
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startTime">Start Time</Label>
-              <div className="relative">
-                <Input
-                  id="startTime"
-                  type="time"
-                  {...register("startTime")}
-                  aria-invalid={errors.startTime ? "true" : "false"}
-                  className="pr-10"
-                  disabled={fieldLocked}
-                />
-                <Clock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              </div>
+              <Input
+                id="startTime"
+                type="time"
+                {...register("startTime")}
+                aria-invalid={errors.startTime ? "true" : "false"}
+                disabled={fieldLocked}
+              />
               {errors.startTime && (
                 <p className="text-sm text-destructive">
                   {errors.startTime.message}
@@ -1181,17 +1182,13 @@ export function AddEntryModal({
 
             <div className="space-y-2">
               <Label htmlFor="endTime">End Time</Label>
-              <div className="relative">
-                <Input
-                  id="endTime"
-                  type="time"
-                  {...register("endTime")}
-                  aria-invalid={errors.endTime ? "true" : "false"}
-                  className="pr-10"
-                  disabled={fieldLocked}
-                />
-                <Clock className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              </div>
+              <Input
+                id="endTime"
+                type="time"
+                {...register("endTime")}
+                aria-invalid={errors.endTime ? "true" : "false"}
+                disabled={fieldLocked}
+              />
               {errors.endTime && (
                 <p className="text-sm text-destructive">
                   {errors.endTime.message}
@@ -1526,7 +1523,12 @@ export function AddEntryModal({
           {anyOptionalFieldVisible ? (
             <div className="space-y-4">
               <hr className="border-border" />
-              <h3 className="text-sm font-semibold text-foreground">Optional</h3>
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground">Optional</h3>
+                <p className="text-xs text-muted-foreground">
+                  If you add information here, you will be able to filter your entries by it.
+                </p>
+              </div>
               <div className="space-y-3">
                 {showOptionalLogPage ? (
                   <div className="space-y-1">
@@ -1966,6 +1968,13 @@ export function AddEntryModal({
                   ) : null}
                 </div>
               )}
+              <p className="text-xs text-muted-foreground">
+                By checking the box below, you confirm the work described was performed and the hours are
+                accurate, and the mentor supervised the work (directly or indirectly). If mentor signing is
+                on, we notify your mentor (for directory users) or record an automatic signature (external
+                mentors), depending on your mentor profile. With signing off, no mentor is notified and there
+                is no signature line.
+              </p>
             </div>
           )}
 
@@ -2040,12 +2049,6 @@ export function AddEntryModal({
                   <Label htmlFor="certified" className="font-normal cursor-pointer">
                     I certify this information is accurate
                   </Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    By checking this box, you confirm the work described was performed and the hours are
-                    accurate. If mentor signing is on, we notify your mentor (for directory users) or
-                    record an automatic signature (external mentors), depending on your mentor profile.
-                    With signing off, no mentor is notified and there is no signature line.
-                  </p>
                 </div>
               </div>
               {errors.certified && (
@@ -2055,6 +2058,41 @@ export function AddEntryModal({
               )}
             </div>
           )}
+
+          {mentorMode && entry ? (
+            <div className="space-y-1.5 rounded-md border border-border bg-muted/30 px-3 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Signature
+              </p>
+              {viewMetaLoading ? (
+                <div className="h-5 w-48 max-w-full animate-pulse rounded bg-muted/60" aria-hidden />
+              ) : (
+                <>
+                  <p className="text-sm text-foreground">
+                    {viewMeta?.signatureText
+                      ? viewMeta.signatureText
+                      : entry.status === "approved" && viewMeta?.approverName && viewMeta.approvedAt
+                        ? `Signed by ${viewMeta.approverName} on ${formatBadgeDate(viewMeta.approvedAt)}`
+                        : entry.status === "approved" && viewMeta?.approvedAt
+                          ? `Signed on ${formatBadgeDate(viewMeta.approvedAt)}`
+                          : entry.status === "approved"
+                            ? "Signed"
+                            : entry.status === "submitted"
+                              ? "Pending signature"
+                              : "No signature on this entry"}
+                  </p>
+                  {entry.status === "approved" && viewMeta?.signatureText && viewMeta.approverName ? (
+                    <p className="text-sm text-muted-foreground">
+                      Approved by {viewMeta.approverName}
+                      {viewMeta.approvedAt
+                        ? ` on ${formatBadgeDate(viewMeta.approvedAt)}`
+                        : ""}
+                    </p>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ) : null}
 
           {entry?.reject_reason && (
             <div className="space-y-2 rounded-md border-2 border-red-500 bg-red-50 dark:bg-red-950/30 p-4">

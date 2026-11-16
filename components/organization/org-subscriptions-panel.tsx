@@ -10,6 +10,7 @@ import {
 import type { OrgEntitlementRow } from "@/lib/org-dashboard-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AviationDateInput } from "@/components/ui/aviation-date-input";
 import { DashboardTableShell } from "@/components/dashboard/page-shell";
 
 function formatDate(iso: string | null) {
@@ -78,11 +79,10 @@ function EntitlementRowForm({
         />
       </td>
       <td className="p-3">
-        <Input
-          type="date"
-          className="h-9 w-[160px]"
+        <AviationDateInput
+          className="w-[11.5rem]"
           value={expires}
-          onChange={(e) => setExpires(e.target.value)}
+          onChange={setExpires}
           disabled={pending}
         />
       </td>

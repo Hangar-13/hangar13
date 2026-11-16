@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AviationDateInput } from "@/components/ui/aviation-date-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -198,20 +199,18 @@ export function LogbookExportModal({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="logbook-export-date-from">Date from</Label>
-              <Input
+              <AviationDateInput
                 id="logbook-export-date-from"
-                type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={setDateFrom}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="logbook-export-date-to">Date to</Label>
-              <Input
+              <AviationDateInput
                 id="logbook-export-date-to"
-                type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={setDateTo}
               />
             </div>
           </div>

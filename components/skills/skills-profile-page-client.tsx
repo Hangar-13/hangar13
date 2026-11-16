@@ -12,6 +12,7 @@ import { parseLogbookAdditionalInformation } from "@/lib/logbook-additional-info
 import { downloadSkillsProfilePdf } from "@/lib/skills-profile-export";
 import { buildSkillsProfileCredentialStatus } from "@/lib/skills-profile-credential-status";
 import { DashboardContentFrame } from "@/components/dashboard/page-shell";
+import { UserResumeField } from "@/components/student/user-resume-field";
 import { CollapsibleSection } from "@/components/student/collapsible-section";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ import {
   ChevronRight,
   Cog,
   FileDown,
+  FileText,
   Plane,
   Plus,
   Wrench,
@@ -465,7 +467,7 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
         <h1 className="text-2xl font-bold tracking-tight">Skills profile</h1>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {profile.viewerIsOwner ? (
-            <Button type="button" variant="outline" size="sm" asChild>
+            <Button type="button" variant="outline" size="sm" asChild data-tour="skills-prior-ojt">
               <Link href="/dashboard/student/prior-ojt">
                 <Wrench className="mr-2 h-4 w-4" />
                 Prior OJT Experience
@@ -476,6 +478,7 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
             type="button"
             variant="outline"
             size="sm"
+            data-tour="skills-export"
             onClick={() => downloadSkillsProfilePdf(profile)}
           >
             <FileDown className="mr-2 h-4 w-4" />
@@ -502,6 +505,21 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
                       </p>
                     ))}
                   </div>
+                ) : null}
+                {profile.viewerIsOwner ? (
+                  <div className="pt-3">
+                    <UserResumeField initialResume={profile.resume} />
+                  </div>
+                ) : profile.resume ? (
+                  <a
+                    href={profile.resume.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 pt-2 text-sm font-medium text-primary underline underline-offset-4"
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    Resume: {profile.resume.fileName}
+                  </a>
                 ) : null}
                 {!profile.viewerIsOwner ? (
                   <p className="pt-1 text-xs text-muted-foreground">Read-only view</p>
@@ -626,6 +644,7 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
         <DashboardContentFrame className="space-y-0">
           <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-10">
             <div className="space-y-8">
+            <div data-tour="skills-ojt">
             <CollapsibleSection
               title="OJT experience"
               defaultOpen
@@ -665,6 +684,7 @@ export function SkillsProfilePageClient({ profile, backHref, backLabel }: Props)
                 </ul>
               )}
             </CollapsibleSection>
+            </div>
 
             {profile.priorMechanicExperience ? (
               <CollapsibleSection

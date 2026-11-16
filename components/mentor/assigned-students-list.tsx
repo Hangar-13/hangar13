@@ -246,7 +246,7 @@ export function AssignedStudentsList({
   }
 
   return (
-    <div className="divide-y divide-border/60">
+    <div className="divide-y divide-border/60" data-tour="mentor-student-list">
       {students.map((student) => (
         <div
           key={student.userId}

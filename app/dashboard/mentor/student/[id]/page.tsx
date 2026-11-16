@@ -513,7 +513,7 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
           </div>
         </DashboardStatStrip>
 
-        <section className="space-y-4 border-t border-border/40 pt-6">
+        <section className="space-y-4 border-t border-border/40 pt-6" data-tour="mentor-student-coursework">
           <DashboardSectionLabel>Coursework</DashboardSectionLabel>
           <StudentCoursework
             courses={coursework}
@@ -530,7 +530,7 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
           />
         </section>
 
-        <section className="space-y-4 border-t border-border/40 pt-6">
+        <section className="space-y-4 border-t border-border/40 pt-6" data-tour="mentor-student-logs">
           <StudentEntriesList
             entries={entries || []}
             entriesByStatus={
