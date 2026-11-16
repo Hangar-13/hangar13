@@ -106,7 +106,7 @@ export function LessonProgressCard({
               asChild
               size="lg"
               className="w-full gap-2"
-              data-tour={progress.kind === "lesson" ? "training-start-lesson" : undefined}
+              data-tour={progress.kind === "content" ? "training-start-lesson" : undefined}
             >
               <Link href={progress.playHref}>
                 <PlayCircle className="h-5 w-5 shrink-0" />
