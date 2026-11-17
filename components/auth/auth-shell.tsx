@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Hangar13Mark } from "@/components/brand/hangar13-mark";
+import { cn } from "@/lib/utils";
 
 export const authInputClassName =
   "h-11 rounded-none border-[#121417]/20 bg-white text-[#121417] shadow-none focus-visible:border-[#0055FF] focus-visible:ring-[#0055FF]/25";
@@ -9,7 +10,13 @@ export const authInputClassName =
 export const authButtonClassName =
   "h-11 rounded-none bg-[#FF4D00] text-sm font-semibold text-white hover:bg-[#e64500]";
 
-export function AuthShell({ children }: { children: ReactNode }) {
+export function AuthShell({
+  children,
+  contentClassName = "max-w-[26rem]",
+}: {
+  children: ReactNode;
+  contentClassName?: string;
+}) {
   return (
     <div
       className="flex min-h-screen bg-[#F4F7F9] text-[#121417]"
@@ -44,7 +51,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <Hangar13Mark href="/" size="md" />
         </div>
         <div className="flex flex-1 items-center justify-center px-5 py-12">
-          <div className="w-full max-w-[26rem]">{children}</div>
+          <div className={cn("w-full", contentClassName)}>{children}</div>
         </div>
       </div>
     </div>
