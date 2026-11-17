@@ -178,22 +178,12 @@ async function organizationId(supabase) {
   return hangar.id;
 }
 
-async function trainingTarget(supabase) {
-  const paths = await must(
-    await supabase.from("training_paths").select("id, name").order("name"),
-    "training paths"
-  );
-  const preferred =
-    paths.find((path) => /refresher/i.test(path.name)) ??
-    paths.find((path) => /certification/i.test(path.name)) ??
-    paths[0];
-  if (!preferred) throw new Error("No training path exists.");
-
+async function lessonsForPath(supabase, path) {
   const items = await must(
     await supabase
       .from("training_path_items")
       .select("course_id, module_id, lesson_id, sort_order")
-      .eq("training_path_id", preferred.id)
+      .eq("training_path_id", path.id)
       .order("sort_order"),
     "path items"
   );
@@ -238,8 +228,29 @@ async function trainingTarget(supabase) {
     seen.add(lesson.id);
     return true;
   });
-  if (ordered.length === 0) throw new Error(`${preferred.name} has no lessons.`);
-  return { path: preferred, lessons: ordered };
+  return ordered;
+}
+
+async function trainingTarget(supabase) {
+  const paths = await must(
+    await supabase.from("training_paths").select("id, name").order("name"),
+    "training paths"
+  );
+  if (paths.length === 0) throw new Error("No training path exists.");
+
+  const preferred = [
+    ...paths.filter((path) => /refresher/i.test(path.name)),
+    ...paths.filter((path) => /certification/i.test(path.name)),
+    ...paths,
+  ];
+  const seen = new Set();
+  for (const path of preferred) {
+    if (seen.has(path.id)) continue;
+    seen.add(path.id);
+    const lessons = await lessonsForPath(supabase, path);
+    if (lessons.length > 0) return { path, lessons };
+  }
+  throw new Error("No training path has lessons.");
 }
 
 async function courseIdForLesson(supabase, lesson) {

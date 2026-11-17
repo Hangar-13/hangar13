@@ -24,7 +24,7 @@ export default async function FindTrainingPage() {
   const orgIds = await listUserOrganizationIds(supabase, user.id);
   const orFilter = discoverableTrainingPathsOrFilter(orgIds);
 
-  const [{ data: plans, error: plansError }, { data: enrollments }, profile] =
+  const [{ data: plans, error: plansError }, { data: enrollments }, profile, { data: certificate }] =
     await Promise.all([
       supabase
         .from("training_paths")
@@ -36,6 +36,11 @@ export default async function FindTrainingPage() {
         .order("name", { ascending: true }),
       supabase.from("user_trainings").select("training_path_id").eq("user_id", user.id),
       fetchSessionUserProfile(supabase),
+      supabase
+        .from("users")
+        .select("mechanic_certificate_type")
+        .eq("id", user.id)
+        .maybeSingle(),
     ]);
 
   if (plansError) {
@@ -69,6 +74,7 @@ export default async function FindTrainingPage() {
             }))}
             enrolledPlanIds={enrolledPlanIds}
             viewerIsApprentice={profile?.is_apprentice === true}
+            viewerHoldsFullAp={certificate?.mechanic_certificate_type === "A&P"}
           />
         </DashboardContentFrame>
       )}

@@ -33,7 +33,9 @@ export async function purchaseTrainingPlan(
         .maybeSingle(),
       supabase
         .from("users")
-        .select("role, is_apprentice, apprenticeship_started_on")
+        .select(
+          "role, is_apprentice, apprenticeship_started_on, mechanic_certificate_type"
+        )
         .eq("id", user.id)
         .maybeSingle(),
       listUserOrganizationIds(supabase, user.id),
@@ -72,8 +74,9 @@ export async function purchaseTrainingPlan(
     return { error: "You are already enrolled in this program." };
   }
 
+  const holdsFullAp = me?.mechanic_certificate_type === "A&P";
   const becomingApprentice =
-    path.is_apprentice_program === true && me?.is_apprentice !== true;
+    path.is_apprentice_program === true && me?.is_apprentice !== true && !holdsFullAp;
   const apprenticeshipStartedOn = becomingApprentice
     ? monthInputToDate(options?.apprenticeshipStartedOn ?? "")
     : null;
@@ -134,6 +137,7 @@ export async function purchaseTrainingPlan(
       .update({
         is_apprentice: true,
         apprenticeship_started_on: apprenticeshipStartedOn,
+        certification_declared_at: new Date().toISOString(),
       })
       .eq("id", user.id);
     if (apprenticeError) {

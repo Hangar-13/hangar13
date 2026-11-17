@@ -31,6 +31,7 @@ import { getCertificationStatus } from "@/app/actions/apprenticeship-status";
 import { loadApprenticeshipProgress } from "@/lib/apprenticeship-progress";
 import { getPriorOjtDashboardProgress } from "@/app/actions/prior-ojt";
 import { PriorOjtDashboardSection } from "@/components/student/prior-ojt-dashboard-section";
+import { CertificationStatusSection } from "@/components/user/certification-status-section";
 import { FindTrainingDashboardSection } from "@/components/student/find-training-dashboard-section";
 
 function ataChaptersTouchedFromLogbook(
@@ -316,6 +317,10 @@ export default async function StudentDashboard() {
 
   const priorOjtProgress = "error" in priorOjt ? null : priorOjt;
   const showPriorOjtSection = Boolean(priorOjtProgress?.showSection);
+  const certificationStatus = "error" in certification ? null : certification;
+  const showCertificationOnHome = Boolean(
+    certificationStatus && (!certificationStatus.declared || showPriorOjtSection)
+  );
   const showFindTrainingSection = !data.hasActiveCurriculum;
   const showFullDashboard = !showPriorOjtSection;
 
@@ -366,11 +371,17 @@ export default async function StudentDashboard() {
         ) : null}
       </div>
 
-      {showPriorOjtSection && priorOjtProgress ? (
-        <PriorOjtDashboardSection
-          progress={priorOjtProgress}
-          certification={"error" in certification ? null : certification}
+      {"error" in certification ? (
+        <p className="text-sm text-destructive">{certification.error}</p>
+      ) : showCertificationOnHome && certificationStatus ? (
+        <CertificationStatusSection
+          status={certificationStatus}
+          emphasized={!certificationStatus.declared}
         />
+      ) : null}
+
+      {showPriorOjtSection && priorOjtProgress ? (
+        <PriorOjtDashboardSection progress={priorOjtProgress} />
       ) : null}
 
       {showFullDashboard ? (

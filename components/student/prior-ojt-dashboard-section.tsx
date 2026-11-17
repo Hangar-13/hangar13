@@ -6,17 +6,14 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, Wrench } from "lucide-react";
 import { skipPriorOjtExperience } from "@/app/actions/prior-ojt";
 import type { PriorOjtDashboardProgress } from "@/app/actions/prior-ojt";
-import type { CertificationStatus } from "@/app/actions/apprenticeship-status";
-import { CertificationStatusSection } from "@/components/user/certification-status-section";
 import { Button } from "@/components/ui/button";
 import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 
 type Props = {
   progress: PriorOjtDashboardProgress;
-  certification: CertificationStatus | null;
 };
 
-export function PriorOjtDashboardSection({ progress, certification }: Props) {
+export function PriorOjtDashboardSection({ progress }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -90,13 +87,6 @@ export function PriorOjtDashboardSection({ progress, certification }: Props) {
         <p className="text-sm text-destructive" role="alert">
           {error}
         </p>
-      ) : null}
-
-      {certification ? (
-        <CertificationStatusSection
-          status={certification}
-          prompt="Are you an apprentice or a certified mechanic?"
-        />
       ) : null}
     </section>
   );

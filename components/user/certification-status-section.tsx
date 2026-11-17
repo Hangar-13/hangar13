@@ -2,225 +2,225 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  saveApprenticeStatus,
-  saveMechanicCertificate,
-  type CertificationStatus,
-} from "@/app/actions/apprenticeship-status";
+import { saveCertificationStatus, type CertificationStatus } from "@/app/actions/apprenticeship-status";
 import { useAppNavigation } from "@/components/app-navigation-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 import { dateToMonthInput } from "@/lib/apprenticeship-months";
 import { sanitizeMechanicCertificateNumberInput } from "@/lib/mechanic-certificate-number";
+import {
+  certificateAllowsApprentice,
+  MECHANIC_CERTIFICATE_TYPE_LABELS,
+  MECHANIC_CERTIFICATE_TYPES,
+  type MechanicCertificateType,
+} from "@/lib/mechanic-certificate-type";
 
-type BreakDraft = { startedOn: string; endedOn: string };
+type CertificateChoice = MechanicCertificateType | "none" | "";
+type ApprenticeChoice = "yes" | "no" | "";
 
-function draftsFromStatus(status: CertificationStatus): BreakDraft[] {
-  return status.breaks.map((item) => ({
-    startedOn: dateToMonthInput(item.startedOn),
-    endedOn: dateToMonthInput(item.endedOn),
-  }));
+function certificateChoiceFromStatus(status: CertificationStatus): CertificateChoice {
+  return status.mechanicCertificateType ?? (status.declared ? "none" : "");
 }
 
 export function CertificationStatusSection({
   status,
-  heading = "Certification status",
-  prompt = "Are you an apprentice or a certified mechanic?",
+  emphasized = false,
 }: {
   status: CertificationStatus;
-  heading?: string;
-  prompt?: string;
+  emphasized?: boolean;
 }) {
   const router = useRouter();
   const { refreshSessionUser } = useAppNavigation();
-  const [mode, setMode] = useState<"view" | "certificate" | "apprentice">(
-    status.mechanicCertificateNumber || status.isApprentice ? "view" : "view"
+  const [editing, setEditing] = useState(!status.declared);
+  const [certificateChoice, setCertificateChoice] = useState<CertificateChoice>(
+    certificateChoiceFromStatus(status)
   );
-  const [certificate, setCertificate] = useState(status.mechanicCertificateNumber ?? "");
+  const [certificateNumber, setCertificateNumber] = useState(
+    status.mechanicCertificateNumber ?? ""
+  );
+  const [apprenticeChoice, setApprenticeChoice] = useState<ApprenticeChoice>(
+    status.declared ? (status.isApprentice ? "yes" : "no") : ""
+  );
   const [startedOn, setStartedOn] = useState(dateToMonthInput(status.apprenticeshipStartedOn));
-  const [breaks, setBreaks] = useState<BreakDraft[]>(draftsFromStatus(status));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function saveCertificate() {
-    setError(null);
-    startTransition(async () => {
-      const result = await saveMechanicCertificate(certificate);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      await refreshSessionUser();
-      setMode("view");
-      router.refresh();
-    });
-  }
+  const certificateType: MechanicCertificateType | null =
+    certificateChoice && certificateChoice !== "none" ? certificateChoice : null;
+  const showApprentice = certificateChoice !== "" && certificateAllowsApprentice(certificateType);
+  const showNumber = certificateType != null;
+  const showStart = showApprentice && apprenticeChoice === "yes";
 
-  function saveApprentice() {
+  function save() {
     setError(null);
+    if (!certificateChoice) {
+      setError("Select a certificate, or choose no certificate.");
+      return;
+    }
+    if (showApprentice && !apprenticeChoice) {
+      setError("Select whether you are an apprentice.");
+      return;
+    }
     startTransition(async () => {
-      const result = await saveApprenticeStatus({
-        startedOn,
-        breaks: breaks
-          .filter((item) => item.startedOn.trim())
-          .map((item) => ({
-            startedOn: item.startedOn,
-            endedOn: item.endedOn.trim() ? item.endedOn : null,
-          })),
+      const result = await saveCertificationStatus({
+        certificateType,
+        certificateNumber,
+        isApprentice: showApprentice && apprenticeChoice === "yes",
+        startedOn: showStart ? startedOn : null,
       });
       if (!result.ok) {
         setError(result.error);
         return;
       }
       await refreshSessionUser();
-      setMode("view");
+      setEditing(false);
       router.refresh();
     });
   }
 
-  return (
-    <section className="space-y-3">
-      <div className="space-y-1">
-        <DashboardSectionLabel>{heading}</DashboardSectionLabel>
-        {!status.mechanicCertificateNumber && !status.isApprentice ? (
-          <p className="text-sm text-muted-foreground">{prompt}</p>
-        ) : null}
+  const form = (
+    <div className="space-y-4 max-w-md">
+      <div className="space-y-1.5">
+        <Label htmlFor="certificate-choice">Certificate</Label>
+        <Select
+          value={certificateChoice || undefined}
+          onValueChange={(value) => {
+            const next = value as CertificateChoice;
+            setCertificateChoice(next);
+            if (next === "A&P") setApprenticeChoice("");
+          }}
+        >
+          <SelectTrigger id="certificate-choice" className="w-full">
+            <SelectValue placeholder="Select a certificate" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">No certificate</SelectItem>
+            {MECHANIC_CERTIFICATE_TYPES.map((type) => (
+              <SelectItem key={type} value={type}>
+                {MECHANIC_CERTIFICATE_TYPE_LABELS[type]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
-      {status.mechanicCertificateNumber && mode === "view" ? (
-        <p className="text-sm font-medium">A&amp;P {status.mechanicCertificateNumber}</p>
+      {showNumber ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="mechanic-certificate-number">Certificate number</Label>
+          <Input
+            id="mechanic-certificate-number"
+            inputMode="numeric"
+            value={certificateNumber}
+            onChange={(event) =>
+              setCertificateNumber(sanitizeMechanicCertificateNumberInput(event.target.value))
+            }
+            placeholder="7 digits"
+          />
+        </div>
       ) : null}
 
-      {status.isApprentice && mode === "view" ? (
-        <div className="space-y-3">
-          {status.mechanicCertificateNumber ? null : (
-            <p className="text-sm font-medium">Apprentice</p>
-          )}
-          <p className="text-sm text-muted-foreground">
-            Started {dateToMonthInput(status.apprenticeshipStartedOn) || "—"}
+      {showApprentice ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="apprentice-choice">Are you an apprentice?</Label>
+          <Select
+            value={apprenticeChoice || undefined}
+            onValueChange={(value) => setApprenticeChoice(value as ApprenticeChoice)}
+          >
+            <SelectTrigger id="apprentice-choice" className="w-full">
+              <SelectValue placeholder="Select yes or no" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="yes">Yes</SelectItem>
+              <SelectItem value="no">No</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
+      {showStart ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="apprenticeship-started-on">Apprenticeship start month</Label>
+          <Input
+            id="apprenticeship-started-on"
+            type="month"
+            value={startedOn}
+            onChange={(event) => setStartedOn(event.target.value)}
+          />
+        </div>
+      ) : null}
+
+      <div className="flex gap-2">
+        <Button type="button" disabled={pending} onClick={save}>
+          {pending ? "Saving…" : "Save"}
+        </Button>
+        {status.declared ? (
+          <Button type="button" variant="ghost" disabled={pending} onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  const summary = (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">
+        {status.mechanicCertificateType
+          ? `${MECHANIC_CERTIFICATE_TYPE_LABELS[status.mechanicCertificateType]}${
+              status.mechanicCertificateNumber ? ` ${status.mechanicCertificateNumber}` : ""
+            }`
+          : "No certificate"}
+      </p>
+      {certificateAllowsApprentice(status.mechanicCertificateType) ? (
+        <p className="text-sm text-muted-foreground">
+          {status.isApprentice
+            ? `Apprentice · started ${dateToMonthInput(status.apprenticeshipStartedOn) || "—"}`
+            : "Not an apprentice"}
+        </p>
+      ) : null}
+      <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
+        Edit
+      </Button>
+    </div>
+  );
+
+  const body = editing ? form : summary;
+
+  if (emphasized && !status.declared) {
+    return (
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <DashboardSectionLabel>Certification status</DashboardSectionLabel>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Tell us which certificate you hold, if any. If it is not an A&amp;P, also say
+            whether you are an apprentice.
           </p>
-          <Button type="button" variant="outline" size="sm" onClick={() => setMode("apprentice")}>
-            Edit start and breaks
-          </Button>
         </div>
-      ) : null}
-
-      {!status.mechanicCertificateNumber && !status.isApprentice && mode === "view" ? (
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={() => setMode("certificate")}>
-            Enter Your Certificate
-          </Button>
-          <Button type="button" variant="outline" onClick={() => setMode("apprentice")}>
-            I am an Apprentice
-          </Button>
-        </div>
-      ) : null}
-
-      {mode === "certificate" ? (
-        <div className="space-y-3 max-w-sm">
-          <div className="space-y-1.5">
-            <Label htmlFor="mechanic-certificate-number">A&amp;P certificate number</Label>
-            <Input
-              id="mechanic-certificate-number"
-              inputMode="numeric"
-              value={certificate}
-              onChange={(event) =>
-                setCertificate(sanitizeMechanicCertificateNumberInput(event.target.value))
-              }
-              placeholder="7 digits"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" disabled={pending} onClick={saveCertificate}>
-              {pending ? "Saving…" : "Save certificate"}
-            </Button>
-            <Button type="button" variant="ghost" disabled={pending} onClick={() => setMode("view")}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      {mode === "apprentice" ? (
-        <div className="space-y-4 max-w-lg">
-          <div className="space-y-1.5">
-            <Label htmlFor="apprenticeship-started-on">Apprenticeship start month</Label>
-            <Input
-              id="apprenticeship-started-on"
-              type="month"
-              value={startedOn}
-              onChange={(event) => setStartedOn(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Breaks</p>
-            <p className="text-sm text-muted-foreground">
-              Add any stretch of months you left the industry. Those months do not count.
-              Leave the end month empty if the break is still going.
+        <div className="rounded-md bg-primary/10 px-5 py-6 sm:px-7 sm:py-8">
+          {body}
+          {error ? (
+            <p className="mt-3 text-sm text-destructive" role="alert">
+              {error}
             </p>
-            {breaks.map((item, index) => (
-              <div key={index} className="flex flex-wrap items-end gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor={`break-start-${index}`}>From</Label>
-                  <Input
-                    id={`break-start-${index}`}
-                    type="month"
-                    value={item.startedOn}
-                    onChange={(event) =>
-                      setBreaks((rows) =>
-                        rows.map((row, i) =>
-                          i === index ? { ...row, startedOn: event.target.value } : row
-                        )
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor={`break-end-${index}`}>Through</Label>
-                  <Input
-                    id={`break-end-${index}`}
-                    type="month"
-                    value={item.endedOn}
-                    onChange={(event) =>
-                      setBreaks((rows) =>
-                        rows.map((row, i) =>
-                          i === index ? { ...row, endedOn: event.target.value } : row
-                        )
-                      )
-                    }
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setBreaks((rows) => rows.filter((_, i) => i !== index))}
-                >
-                  Remove
-                </Button>
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setBreaks((rows) => [...rows, { startedOn: "", endedOn: "" }])}
-            >
-              Add a break
-            </Button>
-          </div>
-          <div className="flex gap-2">
-            <Button type="button" disabled={pending} onClick={saveApprentice}>
-              {pending ? "Saving…" : "Save apprenticeship"}
-            </Button>
-            <Button type="button" variant="ghost" disabled={pending} onClick={() => setMode("view")}>
-              Cancel
-            </Button>
-          </div>
+          ) : null}
         </div>
-      ) : null}
+      </section>
+    );
+  }
 
+  return (
+    <section className="space-y-3">
+      <DashboardSectionLabel>Certification status</DashboardSectionLabel>
+      {body}
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
