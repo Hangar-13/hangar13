@@ -20,6 +20,8 @@ interface StudentProgressHeaderProps {
   /** Page to push when changing student (preserves ?student=) */
   basePath?: string;
   heading?: string;
+  /** Query keys to drop when the student changes, such as a course id. */
+  clearParams?: string[];
 }
 
 export function StudentProgressHeader({
@@ -27,18 +29,20 @@ export function StudentProgressHeader({
   currentStudentId,
   basePath = "/dashboard/mentor/mentees/progress",
   heading = "Progress for",
+  clearParams = [],
 }: StudentProgressHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const handleStudentChange = (newId: string) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
+    for (const key of clearParams) params.delete(key);
     params.set("student", newId);
     router.push(`${basePath}?${params.toString()}`);
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" data-tour="mentor-student-switch">
       <span className="text-2xl font-bold tracking-tight">{heading}</span>
       <Select
         value={currentStudentId}

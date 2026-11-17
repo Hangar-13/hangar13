@@ -5,7 +5,7 @@ import { DashboardSectionLabel } from "@/components/dashboard/page-shell";
 
 export function FindTrainingDashboardSection() {
   return (
-    <section className="space-y-4">
+    <section className="space-y-4" data-tour="student-find-training">
       <div className="space-y-1">
         <DashboardSectionLabel>Training</DashboardSectionLabel>
         <p className="max-w-2xl text-sm text-muted-foreground">

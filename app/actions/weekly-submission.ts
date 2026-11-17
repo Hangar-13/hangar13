@@ -6,7 +6,94 @@ import { resolveLessonIdForProgramWeek } from "@/lib/training-lessons";
 import { resolveCourseVersionForLessonSubmission } from "@/lib/course-versions";
 import { noActiveTrainingServerError } from "@/lib/training-enrollment-messages";
 import { checkLessonPlayerCompletion } from "@/lib/lesson-player";
+import type { LessonPlayerCompletionCheck } from "@/lib/lesson-player/types";
+import { createLogbookEntry } from "@/app/actions/logbook";
 import { revalidatePath } from "next/cache";
+
+function courseworkHours(completion: LessonPlayerCompletionCheck): number {
+  const contentSeconds = completion.content?.timeSpentSeconds ?? 0;
+  const testSeconds = completion.test?.timeSpentSeconds ?? 0;
+  const seconds = Math.max(0, contentSeconds) + Math.max(0, testSeconds);
+  if (seconds <= 0) return 0;
+  const hours = Math.round((seconds / 3600) * 100) / 100;
+  return hours > 0 ? hours : 0.01;
+}
+
+async function recordCourseworkLogEntry(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  args: {
+    userId: string;
+    submissionId: string;
+    existingLogbookEntryId: string | null;
+    lessonId: string;
+    lessonTitle: string;
+    hours: number;
+  }
+): Promise<{ error?: string }> {
+  const today = new Date().toISOString().slice(0, 10);
+  if (args.existingLogbookEntryId) {
+    const { data: existing } = await supabase
+      .from("logbook_entries")
+      .select("id, status")
+      .eq("id", args.existingLogbookEntryId)
+      .eq("user_id", args.userId)
+      .maybeSingle();
+    if (existing && (existing.status === "draft" || existing.status === "rejected")) {
+      const { error } = await supabase
+        .from("logbook_entries")
+        .update({
+          hours_worked: args.hours,
+          entry_date: today,
+          source: "coursework",
+        })
+        .eq("id", existing.id);
+      if (error) return { error: error.message };
+      revalidatePath("/dashboard/student/logbook");
+      return {};
+    }
+    if (existing) return {};
+  }
+
+  const { data: lesson } = await supabase
+    .from("lessons")
+    .select("title, ata_chapter_ids")
+    .eq("id", args.lessonId)
+    .maybeSingle();
+  const title = String(lesson?.title ?? args.lessonTitle).trim() || args.lessonTitle;
+  const ataIds = Array.isArray(lesson?.ata_chapter_ids)
+    ? (lesson.ata_chapter_ids as number[])
+    : [];
+  let ataChapterNumbers: string[] = [];
+  if (ataIds.length > 0) {
+    const { data: chapters } = await supabase
+      .from("ata_chapter")
+      .select("id, chapter_number")
+      .in("id", ataIds);
+    const byId = new Map((chapters ?? []).map((row) => [row.id as number, String(row.chapter_number)]));
+    ataChapterNumbers = ataIds.map((id) => byId.get(id)).filter((value): value is string => !!value);
+  }
+
+  const created = await createLogbookEntry({
+    entryDate: today,
+    startTime: "08:00",
+    endTime: "09:00",
+    hoursWorked: args.hours,
+    source: "coursework",
+    taskDescription: title,
+    ataChapter: ataChapterNumbers[0] ?? "",
+    ataChapterNumbers,
+    certified: false,
+  });
+  if ("error" in created && created.error) return { error: created.error };
+  const logbookEntryId = created.data?.id;
+  if (!logbookEntryId) return { error: "Failed to create the coursework log entry." };
+
+  const { error } = await supabase
+    .from("lesson_submissions")
+    .update({ logbook_entry_id: logbookEntryId })
+    .eq("id", args.submissionId);
+  return error ? { error: error.message } : {};
+}
 
 export async function submitWeeklyReflection(formData: {
   weekNumber: number;
@@ -134,6 +221,25 @@ export async function submitWeeklyReflection(formData: {
     if (filesError) {
       console.error("Failed to save file records:", filesError);
     }
+  }
+
+  const { data: lessonRow } = await supabase
+    .from("lessons")
+    .select("title")
+    .eq("id", lessonId)
+    .maybeSingle();
+  const logResult = await recordCourseworkLogEntry(supabase, {
+    userId: user.id,
+    submissionId: submission.id,
+    existingLogbookEntryId: (submission.logbook_entry_id as string | null) ?? null,
+    lessonId,
+    lessonTitle: String(lessonRow?.title ?? `Week ${formData.weekNumber}`),
+    hours: courseworkHours(playerCompletion),
+  });
+  if (logResult.error) {
+    return {
+      error: `Your reflection was saved, but the log entry could not be created: ${logResult.error}`,
+    };
   }
 
   revalidatePath("/dashboard/student/training");

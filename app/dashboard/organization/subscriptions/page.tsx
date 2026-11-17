@@ -53,7 +53,7 @@ export default async function OrganizationSubscriptionsPage() {
           <div className="space-y-8">
             <OrgSubscriptionsPanel rows={rows} />
             {courseVersionSections.length > 0 ? (
-              <section className="space-y-4">
+              <section className="space-y-4" data-tour="org-course-versions">
                 <div>
                   <h2 className="text-lg font-semibold">Course versions</h2>
                   <p className="text-sm text-muted-foreground mt-1">

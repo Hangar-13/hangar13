@@ -302,7 +302,7 @@ export function serializeCertificationExportCsv(report: CertificationExportRepor
   rows.push("report_mode", csvEscape(report.reportMode));
   rows.push("title", csvEscape(report.title));
   rows.push("student_name", csvEscape(report.studentName));
-  rows.push("generated_at", csvEscape(report.generatedAt));
+  rows.push("generated_at", csvEscape(formatUiDate(report.generatedAt)));
   rows.push(
     "overall_progress",
     csvEscape(
@@ -336,7 +336,7 @@ export function serializeCertificationExportCsv(report: CertificationExportRepor
               "",
               "",
               csvEscape(code.signoff?.signerFullName),
-              csvEscape(code.signoff?.signedAt),
+              csvEscape(code.signoff?.signedAt ? formatUiDateTime(code.signoff.signedAt) : ""),
             ].join(",")
           );
         } else {
@@ -348,12 +348,12 @@ export function serializeCertificationExportCsv(report: CertificationExportRepor
                 csvEscape(section.codesCoveredCount),
                 csvEscape(code.code),
                 csvEscape(code.description),
-                csvEscape(log.date),
+                csvEscape(formatUiDate(log.date)),
                 csvEscape(log.description),
                 csvEscape(log.hours),
                 csvEscape(log.status),
                 csvEscape(code.signoff?.signerFullName),
-                csvEscape(code.signoff?.signedAt),
+                csvEscape(code.signoff?.signedAt ? formatUiDateTime(code.signoff.signedAt) : ""),
               ].join(",")
             );
           }
@@ -374,7 +374,7 @@ export function serializeCertificationExportCsv(report: CertificationExportRepor
             csvEscape(code.code),
             csvEscape(code.description),
             csvEscape(code.signoff?.signerFullName),
-            csvEscape(code.signoff?.signedAt),
+            csvEscape(code.signoff?.signedAt ? formatUiDateTime(code.signoff.signedAt) : ""),
           ].join(",")
         );
       }

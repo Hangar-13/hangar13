@@ -97,7 +97,8 @@ async function buildProgressData(
   studentRecord: ProgressData["student"],
   userId: string,
   enrollmentIds: string[],
-  trainingSnap: LessonSnapshot
+  trainingSnap: LessonSnapshot,
+  options?: { logbookScope?: "enrollment" | "all" }
 ): Promise<ProgressData> {
   let logbookEntries: ProgressData["logbookEntries"] = [];
   const { data, error: logbookFetchErr } = await queryLogbookEntriesForOwner(
@@ -108,6 +109,18 @@ async function buildProgressData(
     console.error("buildProgressData logbook_entries:", logbookFetchErr.message);
   }
   logbookEntries = (data ?? []) as ProgressData["logbookEntries"];
+
+  if (options?.logbookScope === "enrollment" && studentRecord.id) {
+    const { data: links } = await supabase
+      .from("lesson_submissions")
+      .select("logbook_entry_id")
+      .eq("user_training_id", studentRecord.id)
+      .not("logbook_entry_id", "is", null);
+    const courseEntryIds = new Set(
+      (links ?? []).map((row) => row.logbook_entry_id as string)
+    );
+    logbookEntries = logbookEntries.filter((entry) => courseEntryIds.has(entry.id));
+  }
 
   const totalHours =
     logbookEntries.reduce((sum, entry) => sum + Number(entry.hours_worked || 0), 0) || 0;
@@ -225,7 +238,9 @@ export async function getProgressDataForStudent(
     training_path_id: student.training_path_id,
   });
 
-  return buildProgressData(supabase, student, student.user_id, [student.id], trainingSnap);
+  return buildProgressData(supabase, student, student.user_id, [student.id], trainingSnap, {
+    logbookScope: "enrollment",
+  });
 }
 
 /**

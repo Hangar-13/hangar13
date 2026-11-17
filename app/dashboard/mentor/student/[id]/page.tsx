@@ -30,50 +30,76 @@ import { computeProgramLessonWeek } from "@/lib/training-program-week";
 import { LessonDiscussion } from "@/components/discussion/lesson-discussion";
 import { getLessonDiscussion } from "@/app/actions/lesson-discussion";
 
-async function getStudentData(studentId: string, mentorId: string) {
+async function resolveTraineeUserId(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  id: string
+): Promise<string | null> {
+  const { data: profile } = await supabase.from("users").select("id").eq("id", id).maybeSingle();
+  if (profile?.id) return profile.id as string;
+  const { data: enrollment } = await supabase
+    .from("user_trainings")
+    .select("user_id")
+    .eq("id", id)
+    .maybeSingle();
+  return (enrollment?.user_id as string | undefined) ?? null;
+}
+
+async function getStudentData(studentUserId: string, mentorId: string) {
   const supabase = await createServerSupabaseClient();
 
-  // Avoid users(...) embed here: RLS on users can fail when assignment is profile-only
-  // (users.mentor_id) but enrollment.mentor_id is null, which can empty the whole row.
-  const { data: student, error: studentError } = await supabase
-    .from("user_trainings")
-    .select("*")
-    .eq("id", studentId)
-    .maybeSingle();
-
-  if (studentError || !student) {
-    return null;
-  }
-
-  // Verify the mentor has permission to view this student
-  const allowed = await mentorHasAccessToTrainee(supabase, mentorId, student.user_id);
+  const allowed = await mentorHasAccessToTrainee(supabase, mentorId, studentUserId);
   if (!allowed) {
-    const { data: path } = await supabase
-      .from("training_paths")
+    const { data: memberships } = await supabase
+      .from("user_organizations")
       .select("organization_id")
-      .eq("id", student.training_path_id)
-      .maybeSingle();
-    const organizationId = path?.organization_id as string | null | undefined;
-    const manager =
-      organizationId != null &&
-      (await hasOrgRoleAtLeast(supabase, mentorId, organizationId, "manager"));
+      .eq("user_id", studentUserId);
+    let manager = false;
+    for (const membership of memberships ?? []) {
+      const organizationId = membership.organization_id as string | null;
+      if (
+        organizationId &&
+        (await hasOrgRoleAtLeast(supabase, mentorId, organizationId, "manager"))
+      ) {
+        manager = true;
+        break;
+      }
+    }
     if (!manager) {
       return { unauthorized: true };
     }
   }
 
+  const { data: activeEnrollments } = await supabase
+    .from("user_trainings")
+    .select("*")
+    .eq("user_id", studentUserId)
+    .eq("status", "active")
+    .order("created_at", { ascending: false });
+  const { data: pointer } = await supabase
+    .from("users")
+    .select("current_user_training_id")
+    .eq("id", studentUserId)
+    .maybeSingle();
+  const preferredId = pointer?.current_user_training_id as string | null | undefined;
+  const student =
+    (activeEnrollments ?? []).find((row) => row.id === preferredId) ??
+    activeEnrollments?.[0] ??
+    null;
+
   // Get student profile
   const { data: profile } = await supabase
     .from("users")
     .select("id, email, full_name, avatar_url")
-    .eq("id", student.user_id)
+    .eq("id", studentUserId)
     .single();
+
+  if (!profile) return null;
 
   // Get all logbook entries for this student
   const { data: entries, error: entriesError } = await supabase
     .from("logbook_entries")
     .select("*")
-    .eq("user_id", student.user_id)
+    .eq("user_id", studentUserId)
     .order("entry_date", { ascending: false });
 
   // Categorize entries by status
@@ -95,11 +121,11 @@ async function getStudentData(studentId: string, mentorId: string) {
   ) || 0;
 
   // Calculate current week (weeks since start date)
-  const startDate = new Date(student.start_date);
-  const daysSinceStart = Math.floor(
-    (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
-  const currentWeek = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
+  const startDate = student?.start_date ? new Date(student.start_date) : null;
+  const daysSinceStart = startDate
+    ? Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+  const currentWeek = startDate ? Math.max(1, Math.floor(daysSinceStart / 7) + 1) : 0;
 
   // Calculate expected hours (assuming 40 hours per week average)
   const expectedHoursPerWeek = 40;
@@ -116,27 +142,37 @@ async function getStudentData(studentId: string, mentorId: string) {
     progressStatus = "ahead";
   }
 
-  const {
-    hoursCompleted,
-    hoursRequired,
-    trainingProgressPercent,
-    completedItems,
-    totalItems,
-  } = await getEnrollmentLessonSnapshot(supabase, student.id, student);
+  const snapshot = student
+    ? await getEnrollmentLessonSnapshot(supabase, student.id, student)
+    : {
+        hoursCompleted: 0,
+        hoursRequired: 0,
+        trainingProgressPercent: 0,
+        completedItems: 0,
+        totalItems: 0,
+      };
 
   return {
     student: {
-      ...student,
+      id: studentUserId,
+      user_id: studentUserId,
+      enrollmentId: (student?.id as string | undefined) ?? null,
+      mentor_id: (student?.mentor_id as string | null | undefined) ?? null,
+      start_date: (student?.start_date as string | undefined) ?? null,
+      end_date: (student?.end_date as string | null | undefined) ?? null,
+      status: (student?.status as string | undefined) ?? "unenrolled",
+      training_path_id: (student?.training_path_id as string | undefined) ?? null,
+      enrollment_source: (student?.enrollment_source as string | null | undefined) ?? null,
       profile,
     },
     entries: entries || [],
     entriesByStatus,
     progress: {
-      overall: trainingProgressPercent,
-      hoursCompleted,
-      hoursRequired,
-      lessonsCompleted: completedItems,
-      lessonsTotal: totalItems,
+      overall: snapshot.trainingProgressPercent,
+      hoursCompleted: snapshot.hoursCompleted,
+      hoursRequired: snapshot.hoursRequired,
+      lessonsCompleted: snapshot.completedItems,
+      lessonsTotal: snapshot.totalItems,
     },
     hours: {
       total: totalHours,
@@ -242,24 +278,35 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
     redirect("/auth/login");
   }
 
-  const data = await getStudentData(id, user.id);
+  const studentUserId = await resolveTraineeUserId(supabase, id);
+  if (!studentUserId) {
+    notFound();
+  }
+  if (studentUserId !== id) {
+    const query = new URLSearchParams();
+    if (sp.week) query.set("week", sp.week);
+    if (sp.question) query.set("question", sp.question);
+    const suffix = query.size > 0 ? `?${query.toString()}` : "";
+    redirect(`/dashboard/mentor/student/${studentUserId}${suffix}`);
+  }
+
+  const data = await getStudentData(studentUserId, user.id);
 
   if (!data) {
     notFound();
   }
 
-  if ((data as any).unauthorized) {
+  if ("unauthorized" in data) {
     redirect("/dashboard/mentor");
   }
 
   const { student, entries, entriesByStatus, progress, hours, weeks, progressStatus, pendingEntries } = data;
 
-  const studentUserId = student.profile?.id;
   const [ataChapters, acsCodesByEntry, trainingCompletions, certificationAwards] = await Promise.all([
     getAtaChapters(),
     entries && entries.length > 0 ? getAcsCodesByEntry(entries.map((e: { id: string }) => e.id)) : Promise.resolve({}),
-    studentUserId ? getTrainingCompletionsForUser(studentUserId) : Promise.resolve([]),
-    studentUserId ? getCertificationAwardsForUser(studentUserId) : Promise.resolve([]),
+    getTrainingCompletionsForUser(student.user_id),
+    getCertificationAwardsForUser(student.user_id),
   ]);
   const profile = student.profile;
 
@@ -268,23 +315,38 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
     sp.question != null && /^\d+$/.test(sp.question)
       ? parseInt(sp.question, 10)
       : null;
-  const coursework = await listStudentCoursework(supabase, {
-    id: student.id,
-    user_id: student.user_id,
-    training_path_id: student.training_path_id,
-    enrollment_source: student.enrollment_source,
-  });
-  const discussionData = await getStudentDiscussionData(
-    {
-      id: student.id,
-      user_id: student.user_id,
-      mentor_id: student.mentor_id,
-      start_date: student.start_date,
-      training_path_id: student.training_path_id,
-      enrollment_source: student.enrollment_source,
-    },
-    weekParam
+  const { data: courseworkEnrollments } = await supabase
+    .from("user_trainings")
+    .select("id, user_id, training_path_id, enrollment_source")
+    .eq("user_id", student.user_id)
+    .eq("status", "active");
+  const courseworkLists = await Promise.all(
+    (courseworkEnrollments ?? [])
+      .filter((row) => row.training_path_id)
+      .map((row) =>
+        listStudentCoursework(supabase, {
+          id: row.id as string,
+          user_id: row.user_id as string,
+          training_path_id: row.training_path_id as string,
+          enrollment_source: (row.enrollment_source as string | null) ?? null,
+        })
+      )
   );
+  const coursework = courseworkLists.flat();
+  const discussionData =
+    student.enrollmentId && student.training_path_id && student.start_date
+      ? await getStudentDiscussionData(
+          {
+            id: student.enrollmentId,
+            user_id: student.user_id,
+            mentor_id: student.mentor_id,
+            start_date: student.start_date,
+            training_path_id: student.training_path_id,
+            enrollment_source: student.enrollment_source,
+          },
+          weekParam
+        )
+      : null;
 
   const discPrevWeek =
     discussionData && discussionData.currentWeek > 1
@@ -343,19 +405,25 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
                   <span>{profile?.email}</span>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>Started {formatUiDate(student.start_date)}</span>
-                  </div>
+                  {student.start_date ? (
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>Started {formatUiDate(student.start_date)}</span>
+                    </div>
+                  ) : (
+                    <span>Not enrolled in a course</span>
+                  )}
                   {student.end_date && (
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
                       <span>Ended {formatUiDate(student.end_date)}</span>
                     </div>
                   )}
-                  <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs">
-                    {student.status}
-                  </span>
+                  {student.start_date ? (
+                    <span className="px-2 py-1 rounded-full bg-primary/10 text-primary text-xs">
+                      {student.status}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -385,9 +453,14 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
                 </Button>
               </Link>
             ) : null}
-            <Link href={`/dashboard/mentor/mentees/progress?student=${student.id}`}>
+            <Link href={`/dashboard/mentor/mentees/progress?student=${student.user_id}`}>
               <Button variant="outline" size="sm">
                 Student Progress
+              </Button>
+            </Link>
+            <Link href={`/dashboard/mentor/mentees/logs?student=${student.user_id}`}>
+              <Button variant="outline" size="sm">
+                Student Logs
               </Button>
             </Link>
           </div>
@@ -415,7 +488,7 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
             <DashboardStatCell
               value={`Week ${weeks?.current ?? 0}`}
               label="Current week"
-              detail={`Started ${formatUiDate(student.start_date)}`}
+              detail={student.start_date ? `Started ${formatUiDate(student.start_date)}` : "No course yet"}
             />
             <div className="min-w-0 space-y-2 px-4 first:pl-0 last:pr-0 sm:px-5">
               <DashboardStatCell
@@ -440,7 +513,7 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
           </div>
         </DashboardStatStrip>
 
-        <section className="space-y-4 border-t border-border/40 pt-6">
+        <section className="space-y-4 border-t border-border/40 pt-6" data-tour="mentor-student-coursework">
           <DashboardSectionLabel>Coursework</DashboardSectionLabel>
           <StudentCoursework
             courses={coursework}
@@ -457,7 +530,7 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
           />
         </section>
 
-        <section className="space-y-4 border-t border-border/40 pt-6">
+        <section className="space-y-4 border-t border-border/40 pt-6" data-tour="mentor-student-logs">
           <StudentEntriesList
             entries={entries || []}
             entriesByStatus={
@@ -488,7 +561,7 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
               <div className="flex items-center gap-3 text-sm">
                 {discPrevWeek ? (
                   <Link
-                    href={`/dashboard/mentor/student/${student.id}?week=${discPrevWeek}`}
+                    href={`/dashboard/mentor/student/${student.user_id}?week=${discPrevWeek}`}
                     className="flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -509,7 +582,7 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
                 </span>
                 {discNextWeek ? (
                   <Link
-                    href={`/dashboard/mentor/student/${student.id}?week=${discNextWeek}`}
+                    href={`/dashboard/mentor/student/${student.user_id}?week=${discNextWeek}`}
                     className="flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
                   >
                     <span className="hidden sm:inline">Next</span>
@@ -532,7 +605,7 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
 
             {discussionData.lessonId ? (
               <LessonDiscussion
-                userTrainingId={student.id}
+                userTrainingId={student.enrollmentId ?? ""}
                 lessonId={discussionData.lessonId}
                 questions={discussionData.questions}
                 programWeek={discussionData.currentWeek}

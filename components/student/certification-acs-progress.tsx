@@ -119,7 +119,7 @@ export function CertificationAcsProgress({
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6" data-tour="cert-progress">
         <CertificationAcsProgressBars stats={progressStats} />
         <div className="space-y-5 border-t border-border/60 pt-5">
         <div className="space-y-3">

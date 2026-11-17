@@ -7,6 +7,7 @@ import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
 import { Sidebar } from "@/components/sidebar";
 import { TopNav } from "@/components/top-nav";
 import { isMarketingPath } from "@/lib/marketing/is-marketing-path";
+import { PageTour } from "@/components/page-tour";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -26,6 +27,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <MobileNavDrawer />
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <TopNav />
+            <PageTour key={pathname ?? ""} />
             {isLessonViewer ? (
               <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 {children}

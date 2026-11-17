@@ -30,6 +30,21 @@ export type PriorOjtAssessmentRow = {
   updated_at: string;
   completed_at: string | null;
   accepted_at: string | null;
+  mechanic_experience_years: number | null;
+  mechanic_experience_months: number | null;
+};
+
+export type PriorOjtExperienceLineInput = {
+  start: string;
+  end: string;
+  airframes: string[];
+  engines: string[];
+};
+
+export type PriorOjtExperienceInput = {
+  years: number;
+  months: number;
+  lines: PriorOjtExperienceLineInput[];
 };
 
 export type PriorOjtClaimRow = {
@@ -105,11 +120,18 @@ export async function getActivePriorOjtAssessment(): Promise<{
   assessment: PriorOjtAssessmentRow | null;
   claims: PriorOjtClaimRow[];
   proposedEntries: PriorOjtProposedEntryRow[];
+  experienceLines: PriorOjtExperienceLineInput[];
   error?: string;
 }> {
   const auth = await requireUser();
   if (auth.error || !auth.user) {
-    return { assessment: null, claims: [], proposedEntries: [], error: auth.error };
+    return {
+      assessment: null,
+      claims: [],
+      proposedEntries: [],
+      experienceLines: [],
+      error: auth.error,
+    };
   }
 
   const { data: assessment, error } = await auth.supabase
@@ -126,15 +148,16 @@ export async function getActivePriorOjtAssessment(): Promise<{
       assessment: null,
       claims: [],
       proposedEntries: [],
+      experienceLines: [],
       error: error.message,
     };
   }
 
   if (!assessment) {
-    return { assessment: null, claims: [], proposedEntries: [] };
+    return { assessment: null, claims: [], proposedEntries: [], experienceLines: [] };
   }
 
-  const [claimsRes, proposedRes] = await Promise.all([
+  const [claimsRes, proposedRes, linesRes] = await Promise.all([
     auth.supabase
       .from("prior_ojt_claims")
       .select("id, assessment_id, acs_code_id, evidence_types")
@@ -142,6 +165,11 @@ export async function getActivePriorOjtAssessment(): Promise<{
     auth.supabase
       .from("prior_ojt_proposed_entries")
       .select("*")
+      .eq("assessment_id", assessment.id)
+      .order("sort_order", { ascending: true }),
+    auth.supabase
+      .from("prior_ojt_experience_lines")
+      .select("start_year, start_month, end_year, end_month, airframes, engines, sort_order")
       .eq("assessment_id", assessment.id)
       .order("sort_order", { ascending: true }),
   ]);
@@ -155,6 +183,143 @@ export async function getActivePriorOjtAssessment(): Promise<{
       evidence_types: normalizeEvidence((row.evidence_types as string[]) ?? []),
     })),
     proposedEntries: (proposedRes.data ?? []).map(mapProposedEntry),
+    experienceLines: (linesRes.data ?? []).map((row) =>
+      mapExperienceLine(row as Record<string, unknown>)
+    ),
+  };
+}
+
+function monthValue(value: string): { year: number; month: number } | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isInteger(year) || year < 1940 || year > 2100) return null;
+  if (!Number.isInteger(month) || month < 1 || month > 12) return null;
+  return { year, month };
+}
+
+function cleanLabels(values: string[]): string[] {
+  const seen = new Set<string>();
+  const labels: string[] = [];
+  for (const value of values) {
+    const label = value.trim();
+    if (!label || label.length > 200) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    labels.push(label);
+  }
+  return labels;
+}
+
+function validateExperience(input: PriorOjtExperienceInput):
+  | { error: string }
+  | {
+      years: number;
+      months: number;
+      lines: Array<{
+        start_year: number;
+        start_month: number;
+        end_year: number;
+        end_month: number;
+        airframes: string[];
+        engines: string[];
+      }>;
+    } {
+  if (!Number.isInteger(input.years) || input.years < 0 || input.years > 80) {
+    return { error: "Enter total years as a whole number from 0 to 80." };
+  }
+  if (!Number.isInteger(input.months) || input.months < 0 || input.months > 11) {
+    return { error: "Enter leftover months as a whole number from 0 to 11." };
+  }
+  const lines = [];
+  for (const [index, line] of input.lines.entries()) {
+    const start = monthValue(line.start);
+    const end = monthValue(line.end);
+    if (!start || !end) {
+      return { error: `Line ${index + 1} needs a month and year for both From and To.` };
+    }
+    if (end.year * 12 + end.month < start.year * 12 + start.month) {
+      return { error: `Line ${index + 1} ends before it starts.` };
+    }
+    const airframes = cleanLabels(line.airframes);
+    const engines = cleanLabels(line.engines);
+    if (airframes.length + engines.length === 0) {
+      return { error: `Line ${index + 1} needs at least one airframe or engine.` };
+    }
+    lines.push({
+      start_year: start.year,
+      start_month: start.month,
+      end_year: end.year,
+      end_month: end.month,
+      airframes,
+      engines,
+    });
+  }
+  return { years: input.years, months: input.months, lines };
+}
+
+async function saveExperience(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  assessmentId: string,
+  input: PriorOjtExperienceInput
+): Promise<{ error?: string }> {
+  const parsed = validateExperience(input);
+  if ("error" in parsed) return { error: parsed.error };
+
+  const { error: updateError } = await supabase
+    .from("prior_ojt_assessments")
+    .update({
+      mechanic_experience_years: parsed.years,
+      mechanic_experience_months: parsed.months,
+    })
+    .eq("id", assessmentId);
+  if (updateError) return { error: updateError.message };
+
+  const { error: deleteError } = await supabase
+    .from("prior_ojt_experience_lines")
+    .delete()
+    .eq("assessment_id", assessmentId);
+  if (deleteError) return { error: deleteError.message };
+
+  if (parsed.lines.length > 0) {
+    const { error: insertError } = await supabase.from("prior_ojt_experience_lines").insert(
+      parsed.lines.map((line, index) => ({
+        assessment_id: assessmentId,
+        sort_order: index,
+        ...line,
+      }))
+    );
+    if (insertError) return { error: insertError.message };
+  }
+
+  for (const line of parsed.lines) {
+    for (const label of line.airframes) {
+      await supabase.rpc("ensure_logbook_equipment_catalog_label", {
+        p_kind: "aircraft",
+        p_label: label,
+      });
+    }
+    for (const label of line.engines) {
+      await supabase.rpc("ensure_logbook_equipment_catalog_label", {
+        p_kind: "engine",
+        p_label: label,
+      });
+    }
+  }
+
+  return {};
+}
+
+function mapExperienceLine(row: Record<string, unknown>): PriorOjtExperienceLineInput {
+  const month = (year: number, value: number) =>
+    `${year}-${String(value).padStart(2, "0")}`;
+  return {
+    start: month(Number(row.start_year), Number(row.start_month)),
+    end: month(Number(row.end_year), Number(row.end_month)),
+    airframes: Array.isArray(row.airframes) ? row.airframes.map(String) : [],
+    engines: Array.isArray(row.engines) ? row.engines.map(String) : [],
   };
 }
 
@@ -187,6 +352,7 @@ export async function startPriorOjtAssessment(input: {
   email: string;
   backgrounds: string[];
   summary?: string;
+  experience: PriorOjtExperienceInput;
 }): Promise<{ assessmentId?: string; error?: string }> {
   const auth = await requireUser();
   if (auth.error || !auth.user) return { error: auth.error };
@@ -195,6 +361,8 @@ export async function startPriorOjtAssessment(input: {
   const email = input.email.trim();
   if (!fullName) return { error: "Full name is required." };
   if (!email) return { error: "Email is required." };
+  const experience = validateExperience(input.experience);
+  if ("error" in experience) return { error: experience.error };
 
   const { data, error } = await auth.supabase
     .from("prior_ojt_assessments")
@@ -206,6 +374,8 @@ export async function startPriorOjtAssessment(input: {
       summary: input.summary?.trim() || null,
       selected_domains: [],
       status: "in_progress",
+      mechanic_experience_years: experience.years,
+      mechanic_experience_months: experience.months,
     })
     .select("id")
     .single();
@@ -213,6 +383,9 @@ export async function startPriorOjtAssessment(input: {
   if (error || !data) {
     return { error: error?.message ?? "Failed to start assessment." };
   }
+
+  const saved = await saveExperience(auth.supabase, data.id as string, input.experience);
+  if (saved.error) return { error: saved.error };
 
   return { assessmentId: data.id as string };
 }
@@ -224,6 +397,7 @@ export async function updatePriorOjtIntro(
     email: string;
     backgrounds: string[];
     summary?: string;
+    experience: PriorOjtExperienceInput;
   }
 ): Promise<{ error?: string }> {
   const auth = await requireUser();
@@ -242,8 +416,9 @@ export async function updatePriorOjtIntro(
       summary: input.summary?.trim() || null,
     })
     .eq("id", assessmentId);
+  if (error) return { error: error.message };
 
-  return error ? { error: error.message } : {};
+  return saveExperience(auth.supabase, assessmentId, input.experience);
 }
 
 export async function updatePriorOjtSelectedDomains(
@@ -441,8 +616,14 @@ export async function updatePriorOjtProposedEntry(
   const update: Record<string, unknown> = {};
   if (patch.entryDate !== undefined) update.entry_date = patch.entryDate;
   if (patch.hoursWorked !== undefined) {
-    if (!(patch.hoursWorked > 0)) return { error: "Hours must be greater than 0." };
-    update.hours_worked = patch.hoursWorked;
+    if (
+      !Number.isFinite(patch.hoursWorked) ||
+      patch.hoursWorked < 0 ||
+      patch.hoursWorked > 9999.99
+    ) {
+      return { error: "Hours must be between 0 and 9999.99." };
+    }
+    update.hours_worked = Math.round(patch.hoursWorked * 100) / 100;
   }
   if (patch.description !== undefined) {
     const desc = patch.description.trim();
@@ -483,6 +664,7 @@ async function acceptOneProposedEntry(
     startTime: "08:00",
     endTime: "09:00",
     hoursWorked: entry.hours_worked,
+    source: "prior_exp",
     taskDescription: entry.description,
     ataChapter: entry.ata_chapter_number,
     certified: false,

@@ -266,7 +266,7 @@ export function PendingLessonSubmissions({
             {pendingCount} weekly submission{pendingCount === 1 ? "" : "s"}{" "}
             awaiting your review
           </p>
-          <Button type="button" size="lg" className="shrink-0 gap-2" onClick={openBulkReview}>
+          <Button type="button" size="lg" className="shrink-0 gap-2" data-tour="mentor-review-all" onClick={openBulkReview}>
             <CheckCircle2 className="h-4 w-4" />
             Review all
           </Button>
@@ -410,7 +410,7 @@ export function PendingLessonSubmissions({
       </div>
 
       {/* Submissions list */}
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="mentor-submission-list">
         {filteredSubmissions.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">
             No submissions found matching the filters.

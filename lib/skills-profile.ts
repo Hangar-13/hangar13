@@ -1,4 +1,6 @@
 import type { Certification } from "@/lib/certification";
+import { formatUiMonthYear } from "@/lib/format-ui-date";
+import type { UserResume } from "@/lib/user-resume";
 import type { CertificationAward } from "@/app/actions/user-credentials";
 import type { ExternalCertificationDocument } from "@/lib/external-certification";
 import type { ExternalCertificationType } from "@/lib/external-certification";
@@ -52,6 +54,76 @@ export type SkillsProfileExperienceRow = {
   entries: SkillsProfileLogbookEntry[];
 };
 
+export type SkillsProfilePriorExperienceLine = {
+  startYear: number;
+  startMonth: number;
+  endYear: number;
+  endMonth: number;
+  airframes: string[];
+  engines: string[];
+};
+
+export type SkillsProfilePriorExperience = {
+  years: number;
+  months: number;
+  lines: SkillsProfilePriorExperienceLine[];
+};
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+export function parsePriorMechanicExperience(value: unknown): SkillsProfilePriorExperience | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as { years?: unknown; months?: unknown; lines?: unknown };
+  const years = Number(record.years ?? 0);
+  const months = Number(record.months ?? 0);
+  if (!Number.isFinite(years) || !Number.isFinite(months)) return null;
+  const lines = Array.isArray(record.lines)
+    ? record.lines.flatMap((line) => {
+        if (!line || typeof line !== "object") return [];
+        const row = line as Record<string, unknown>;
+        const startMonth = Number(row.startMonth);
+        const endMonth = Number(row.endMonth);
+        const startYear = Number(row.startYear);
+        const endYear = Number(row.endYear);
+        if (
+          !Number.isInteger(startMonth) ||
+          startMonth < 1 ||
+          startMonth > 12 ||
+          !Number.isInteger(endMonth) ||
+          endMonth < 1 ||
+          endMonth > 12
+        ) {
+          return [];
+        }
+        return [
+          {
+            startYear,
+            startMonth,
+            endYear,
+            endMonth,
+            airframes: stringList(row.airframes),
+            engines: stringList(row.engines),
+          },
+        ];
+      })
+    : [];
+  return { years, months, lines };
+}
+
+export function formatPriorExperienceSpan(line: SkillsProfilePriorExperienceLine): string {
+  const start = formatUiMonthYear(line.startYear, line.startMonth);
+  const end = formatUiMonthYear(line.endYear, line.endMonth);
+  return `${start} – ${end}`;
+}
+
+export function formatPriorExperienceTotal(years: number, months: number): string {
+  const yearLabel = years === 1 ? "year" : "years";
+  const monthLabel = months === 1 ? "month" : "months";
+  return `${years} ${yearLabel}, ${months} ${monthLabel}`;
+}
+
 export type SkillsProfileData = {
   user: SkillsProfileUser;
   viewerIsOwner: boolean;
@@ -65,6 +137,8 @@ export type SkillsProfileData = {
   propellerExperience: SkillsProfileExperienceRow[];
   ataExperience: SkillsProfileExperienceRow[];
   logbookEntries: SkillsProfileLogbookEntry[];
+  priorMechanicExperience: SkillsProfilePriorExperience | null;
+  resume: UserResume | null;
 };
 
 const UNSPECIFIED_AIRCRAFT = "(unspecified aircraft)";

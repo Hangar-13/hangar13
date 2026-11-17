@@ -56,6 +56,8 @@ export async function middleware(request: NextRequest) {
   const isPublicPath =
     request.nextUrl.pathname === "/" ||
     request.nextUrl.pathname === "/join" ||
+    request.nextUrl.pathname === "/docs" ||
+    request.nextUrl.pathname.startsWith("/docs/") ||
     isAuthPage;
 
   const isApiRoute = request.nextUrl.pathname.startsWith("/api/");
@@ -153,6 +155,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|mp4|webm|pdf|docx?|pptx?|xlsx?|csv|txt|rtf|zip)$).*)",
   ],
 };

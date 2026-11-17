@@ -7,7 +7,7 @@ import { getProgressDataForStudent } from "@/app/actions/progress";
 import { getCertificationAwardsForUser } from "@/app/actions/user-credentials";
 import { getCurrentUserTrainingContext } from "@/lib/current-user-training";
 import { getAcsCertificationProgressStats } from "@/app/actions/acs-certification-progress";
-import { fetchActiveEnrollmentIdsForMentor, mentorHasAccessToEnrollment } from "@/lib/mentor-enrollments";
+import { fetchTraineeUserIdsForMentor, mentorHasAccessToTrainee } from "@/lib/mentor-enrollments";
 import {
   DashboardContentFrame,
   DashboardPageShell,
@@ -15,35 +15,20 @@ import {
 
 async function getMentorStudents(mentorId: string) {
   const supabase = await createServerSupabaseClient();
+  const userIds = await fetchTraineeUserIdsForMentor(supabase, mentorId);
+  if (userIds.length === 0) return [];
 
-  const enrollmentIds = await fetchActiveEnrollmentIdsForMentor(supabase, mentorId);
-  if (enrollmentIds.length === 0) {
-    return [];
-  }
-
-  const { data: students, error } = await supabase
-    .from("user_trainings")
-    .select("id, user_id")
-    .in("id", enrollmentIds)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
-
-  if (error || !students?.length) {
-    return [];
-  }
-
-  const userIds = students.map((a) => a.user_id);
   const { data: userRows } = await supabase
     .from("users")
     .select("id, full_name")
     .in("id", userIds);
 
-  const profileMap = Object.fromEntries((userRows ?? []).map((p) => [p.id, p.full_name]));
-
-  return students.map((a) => ({
-    id: a.id,
-    full_name: profileMap[a.user_id] ?? null,
-  }));
+  return (userRows ?? [])
+    .map((profile) => ({
+      id: profile.id as string,
+      full_name: (profile.full_name as string | null) ?? null,
+    }))
+    .sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 }
 
 interface PageProps {
@@ -78,26 +63,48 @@ export default async function MentorStudentCertificationPage({ searchParams }: P
     );
   }
 
-  const studentId =
-    studentIdParam && students.some((a) => a.id === studentIdParam)
-      ? studentIdParam
-      : students[0].id;
+  let studentId =
+    studentIdParam && students.some((a) => a.id === studentIdParam) ? studentIdParam : null;
+  if (!studentId && studentIdParam) {
+    const { data: enrollment } = await supabase
+      .from("user_trainings")
+      .select("user_id")
+      .eq("id", studentIdParam)
+      .maybeSingle();
+    const ownerId = enrollment?.user_id as string | undefined;
+    if (ownerId && students.some((a) => a.id === ownerId)) studentId = ownerId;
+  }
+  studentId = studentId ?? students[0].id;
 
   if (!studentIdParam || studentIdParam !== studentId) {
     redirect(`/dashboard/mentor/mentees/certification?student=${studentId}`);
   }
 
-  const { data: student, error: studentError } = await supabase
-    .from("user_trainings")
-    .select("*")
-    .eq("id", studentId)
-    .single();
-
-  if (studentError || !student || !(await mentorHasAccessToEnrollment(supabase, user.id, studentId))) {
+  if (!(await mentorHasAccessToTrainee(supabase, user.id, studentId))) {
     redirect("/dashboard/mentor/mentees");
   }
 
-  const ctx = await getCurrentUserTrainingContext(supabase, student.user_id);
+  const ctx = await getCurrentUserTrainingContext(supabase, studentId);
+  const student = ctx.userTraining;
+
+  if (!student) {
+    const selectedStudent = students.find((s) => s.id === studentId);
+    return (
+      <DashboardPageShell>
+        <div className="space-y-1">
+          <StudentProgressHeader
+            students={students}
+            currentStudentId={studentId}
+            basePath="/dashboard/mentor/mentees/certification"
+            heading="Certification for"
+          />
+          <p className="text-base text-muted-foreground">
+            {selectedStudent?.full_name?.trim() || "This student"} is not enrolled in a course yet.
+          </p>
+        </div>
+      </DashboardPageShell>
+    );
+  }
 
   const [progressData, ataChapters, certificationAwards, acsProgressStats] = await Promise.all([
     getProgressDataForStudent(student),

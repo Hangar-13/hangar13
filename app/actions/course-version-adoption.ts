@@ -19,7 +19,7 @@ export type CourseUpdateLesson = {
   title: string;
 };
 
-export type CourseVersionUpdateMode = "all" | "unfinished" | "selected";
+export type CourseVersionUpdateMode = "all" | "keep-progress" | "selected";
 
 export type CourseVersionUpdateOfferView = {
   courseId: string;
@@ -29,8 +29,8 @@ export type CourseVersionUpdateOfferView = {
   latestVersionId: string;
   releaseNotes: string | null;
   authority: "user" | "organization";
-  /** Finished lessons the student can choose to leave on the current version. */
-  completedLessons: CourseUpdateLesson[];
+  /** Lessons with progress. Updating them resets that progress. */
+  lessonsWithProgress: CourseUpdateLesson[];
 };
 
 function toView(offer: CourseVersionUpdateOffer): CourseVersionUpdateOfferView {
@@ -48,7 +48,7 @@ function toView(offer: CourseVersionUpdateOffer): CourseVersionUpdateOfferView {
     latestVersionId: offer.latestVersion.id,
     releaseNotes: offer.latestVersion.release_notes,
     authority: offer.authority,
-    completedLessons: [],
+    lessonsWithProgress: [],
   };
 }
 
@@ -136,8 +136,8 @@ export async function getCourseVersionUpdatesForCurrentEnrollment(): Promise<
           typeof lesson.test_package_id === "string" ? lesson.test_package_id : null,
       }))
     );
-    view.completedLessons = states
-      .filter((lesson) => lesson.completed)
+    view.lessonsWithProgress = states
+      .filter((lesson) => lesson.hasProgress)
       .map((lesson) => ({ id: lesson.id, title: lesson.title }));
     updates.push(view);
   }
@@ -246,7 +246,7 @@ export async function acceptCourseVersionUpdate(input: {
   for (const lesson of courseLessons) {
     const lessonId = String(lesson.id);
     const state = stateById.get(lessonId);
-    const completed = state?.completed ?? false;
+    const hasProgress = state?.hasProgress ?? false;
     const optional = state?.optional ?? false;
     const currentVersionId =
       typeof lesson.course_version_id === "string"
@@ -254,7 +254,7 @@ export async function acceptCourseVersionUpdate(input: {
         : offer.pinnedVersion.id;
     const chosen =
       input.mode === "all" || (input.mode === "selected" && selected.has(lessonId));
-    const advance = optional && !completed ? false : !completed || chosen;
+    const advance = optional && !hasProgress ? false : !hasProgress || chosen;
 
     if (advance || currentVersionId === latest.id) {
       advanceIds.push(lessonId);
@@ -263,7 +263,7 @@ export async function acceptCourseVersionUpdate(input: {
         user_id: user.id,
         lesson_id: lessonId,
         course_version_id: currentVersionId,
-        kept_by_user: completed,
+        kept_by_user: hasProgress,
       });
     }
   }

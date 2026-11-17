@@ -49,7 +49,7 @@ export function MyTrainingsClient({
         </p>
       ) : null}
 
-      <section className="space-y-3">
+      <section className="space-y-3" data-tour="credentials-current">
         <DashboardSectionLabel>In-progress programs</DashboardSectionLabel>
         {inProgress.length === 0 ? (
           <p className="text-sm text-muted-foreground">

@@ -2,12 +2,14 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { useLessonViewerChrome } from "@/components/lesson-viewer-chrome";
+import { formatCmiTimespan, parseCmiTimespan } from "@/lib/lesson-player/scorm/timespan";
 
 type Props = {
   title: string;
   packageId: string;
   launchPath: string;
   resumeKey: string;
+  sittingId: string;
   initialCmi: Record<string, string>;
   returnPath: string;
 };
@@ -139,6 +141,18 @@ function withProgress(
   return next;
 }
 
+function withSessionTime(
+  frame: HTMLIFrameElement | null,
+  cmi: Record<string, string>,
+  startedAt: number
+): Record<string, string> {
+  const next = withProgress(frame, cmi);
+  if (parseCmiTimespan(next["cmi.core.session_time"]) > 0) return next;
+  const elapsedSeconds = Math.max(0, (performance.now() - startedAt) / 1000);
+  next["cmi.core.session_time"] = formatCmiTimespan(elapsedSeconds);
+  return next;
+}
+
 /**
  * The package footer pins Back and Next to opposite edges. Group them in the
  * center and add Exit lesson on the far left. Packages without this footer
@@ -208,6 +222,7 @@ function contentUrl(packageId: string, launchPath: string): string {
 
 async function persist(
   packageId: string,
+  sittingId: string,
   cmi: Record<string, string>,
   finish: boolean
 ): Promise<void> {
@@ -216,7 +231,7 @@ async function persist(
     credentials: "same-origin",
     keepalive: true,
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ packageId, cmi, finish }),
+    body: JSON.stringify({ packageId, sittingId, cmi, finish }),
   });
   if (!response.ok) {
     throw new Error("Could not save lesson progress.");
@@ -232,12 +247,14 @@ export function LessonPlayerFrame({
   packageId,
   launchPath,
   resumeKey,
+  sittingId,
   initialCmi,
   returnPath,
 }: Props) {
   const { setTitle } = useLessonViewerChrome();
   const frameRef = useRef<HTMLIFrameElement | null>(null);
   const cmiRef = useRef<Record<string, string>>({});
+  const startedAtRef = useRef(0);
   const [src, setSrc] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -249,6 +266,7 @@ export function LessonPlayerFrame({
   useLayoutEffect(() => {
     const cmi = { ...initialCmi };
     cmiRef.current = cmi;
+    startedAtRef.current = performance.now();
     const api: Scorm12Api = {
       LMSInitialize() {
         return "true";
@@ -261,14 +279,14 @@ export function LessonPlayerFrame({
         return "true";
       },
       LMSCommit() {
-        void persist(packageId, withProgress(frameRef.current, cmi), false).then(
+        void persist(packageId, sittingId, withSessionTime(frameRef.current, cmi, startedAtRef.current), false).then(
           () => setSaveError(null),
           () => setSaveError("Progress could not be saved. Stay on this page and try again.")
         );
         return "true";
       },
       LMSFinish() {
-        void persist(packageId, withProgress(frameRef.current, cmi), true).then(
+        void persist(packageId, sittingId, withSessionTime(frameRef.current, cmi, startedAtRef.current), true).then(
           () => setSaveError(null),
           () => setSaveError("Progress could not be saved. Stay on this page and try again.")
         );
@@ -292,7 +310,7 @@ export function LessonPlayerFrame({
     return () => {
       if (win.API === api) delete win.API;
     };
-  }, [packageId, launchPath, resumeKey, initialCmi]);
+  }, [packageId, launchPath, resumeKey, sittingId, initialCmi]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -315,7 +333,8 @@ export function LessonPlayerFrame({
               try {
                 await persist(
                   packageId,
-                  withProgress(frameRef.current, cmiRef.current),
+                  sittingId,
+                  withSessionTime(frameRef.current, cmiRef.current, startedAtRef.current),
                   false
                 );
                 setSaveError(null);

@@ -178,3 +178,9 @@
   line-height: 2rem;
   color: #515860;
 }
+
+[data-tour-active="true"] {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 8px;
+}

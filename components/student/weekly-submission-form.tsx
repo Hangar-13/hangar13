@@ -237,6 +237,7 @@ export function WeeklySubmissionForm({
             Reflect on your learning this week and how it connected to your hands-on work in the hangar...
           </p>
           <Textarea
+            data-tour="submit-reflection"
             id="reflection"
             value={reflectionText}
             onChange={(e) => {

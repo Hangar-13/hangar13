@@ -95,13 +95,17 @@ async function maybeSyncLogbookPendingAcs(
   }
 }
 
+export type LogbookEntrySource = "manual" | "prior_exp" | "coursework";
+
 export async function createLogbookEntry(formData: {
   entryDate: string;
   startTime: string;
   endTime: string;
   hoursWorked: number;
+  source?: LogbookEntrySource;
   taskDescription: string;
   ataChapter: string;
+  ataChapterNumbers?: string[];
   certified: boolean;
   selectedAcsCodeIds?: number[];
   logPageNumber?: number | null;
@@ -138,19 +142,31 @@ export async function createLogbookEntry(formData: {
     return { error: mentorErr.error };
   }
 
-  // Fetch ATA chapter label from database
-  const { data: ataChapter } = await supabase
-    .from("ata_chapter")
-    .select("chapter_number, title")
-    .eq("chapter_number", formData.ataChapter)
-    .maybeSingle();
+  const chapterNumbers = (
+    formData.ataChapterNumbers?.length
+      ? formData.ataChapterNumbers
+      : formData.ataChapter
+        ? [formData.ataChapter]
+        : []
+  )
+    .map((value) => value.trim())
+    .filter(Boolean);
+  let skillsPracticed: string[] | null = null;
+  if (chapterNumbers.length > 0) {
+    const { data: ataChapters } = await supabase
+      .from("ata_chapter")
+      .select("chapter_number, title")
+      .in("chapter_number", chapterNumbers);
+    const byNumber = new Map(
+      (ataChapters ?? []).map((row) => [String(row.chapter_number), row])
+    );
+    skillsPracticed = chapterNumbers.map((number) => {
+      const row = byNumber.get(number);
+      const label = row ? `${row.chapter_number} - ${row.title}` : number;
+      return `ATA: ${label}`;
+    });
+  }
 
-  const ataLabel = ataChapter
-    ? `${ataChapter.chapter_number} - ${ataChapter.title}`
-    : formData.ataChapter;
-
-  // Store ATA chapter info in skills_practiced array for now (we can add a dedicated column later)
-  // Store description, and status based on certification
   const status = formData.certified ? "submitted" : "draft";
 
   const nowIso = new Date().toISOString();
@@ -171,8 +187,9 @@ export async function createLogbookEntry(formData: {
       user_id: user.id,
       entry_date: formData.entryDate,
       hours_worked: formData.hoursWorked,
+      source: formData.source ?? "manual",
       description: formData.taskDescription,
-      skills_practiced: [`ATA: ${ataLabel}`], // Store ATA chapter in skills_practiced for now
+      skills_practiced: skillsPracticed,
       status: status,
       log_page_number: logPage,
       aircraft,
@@ -247,7 +264,7 @@ export async function updateLogbookEntry(
   // Verify the entry belongs to this student and is draft or rejected
   const { data: existingEntry, error: fetchError } = await supabase
     .from("logbook_entries")
-    .select("user_id, status")
+    .select("user_id, status, source")
     .eq("id", entryId)
     .single();
 
@@ -706,14 +723,10 @@ export async function getLogbookEntryStudentViewMeta(
     return { error: "Entry not found." };
   }
 
-  if (entry.user_id !== user.id) {
-    return { error: "Access denied." };
-  }
-
   const { data: studentUser } = await supabase
     .from("users")
     .select("full_name, mentor_id")
-    .eq("id", user.id)
+    .eq("id", entry.user_id)
     .maybeSingle();
 
   const mentorUserId = studentUser?.mentor_id ?? null;
@@ -739,7 +752,7 @@ export async function getLogbookEntryStudentViewMeta(
 
   const studentName =
     (studentUser?.full_name && studentUser.full_name.trim()) ||
-    user.email ||
+    (entry.user_id === user.id ? user.email : null) ||
     "Student";
 
   return {

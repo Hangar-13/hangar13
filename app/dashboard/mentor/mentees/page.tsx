@@ -106,7 +106,7 @@ async function getMentees(userId: string): Promise<{ mentees: AssignedStudent[] 
 
       return {
         ...student,
-        id: student.id,
+        id: student.user_id,
         userId: student.user_id,
         enrollmentId: student.id,
         users: profile,

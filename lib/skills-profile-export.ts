@@ -56,6 +56,14 @@ export function downloadSkillsProfilePdf(data: SkillsProfileData) {
     y += 14;
   }
 
+  if (data.resume) {
+    doc.text(`Resume: ${data.resume.fileName}`, margin, y);
+    y += 14;
+    const urlLines = doc.splitTextToSize(data.resume.fileUrl, pageWidth - margin * 2);
+    doc.text(urlLines, margin, y);
+    y += 14 * urlLines.length;
+  }
+
   doc.text(
     `${formatSkillsHours(data.totalOjtHours)} total OJT hours · Generated ${formatUiDate(new Date().toISOString())}`,
     margin,

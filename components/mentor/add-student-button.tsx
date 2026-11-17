@@ -32,7 +32,7 @@ export function AddStudentButton({
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
+      <Button data-tour="mentor-add-student" onClick={() => setOpen(true)}>
         <Plus className="mr-2 h-4 w-4" />
         Add Student
       </Button>

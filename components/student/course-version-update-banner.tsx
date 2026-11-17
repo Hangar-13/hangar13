@@ -53,11 +53,11 @@ export function CourseVersionUpdateBanner({ updates }: Props) {
   }
 
   function requestUpdate(update: CourseVersionUpdateOfferView) {
-    if (update.completedLessons.length === 0) {
+    if (update.lessonsWithProgress.length === 0) {
       apply(update, "all");
       return;
     }
-    setChosenIds(update.completedLessons.map((lesson) => lesson.id));
+    setChosenIds([]);
     setOpenUpdate(update);
   }
 
@@ -119,18 +119,20 @@ export function CourseVersionUpdateBanner({ updates }: Props) {
           <DialogHeader>
             <DialogTitle>Update course</DialogTitle>
             <DialogDescription>
-              Updating a lesson resets your progress for that lesson.
+              Updating a lesson resets your progress for that lesson. Update all
+              lessons resets progress on every lesson listed here.
             </DialogDescription>
           </DialogHeader>
           {openUpdate ? (
             <div className="space-y-3">
               <p className="text-sm">
-                These lessons are already finished. Choose which of them to update.
-                Unfinished lessons update with the course. Lessons covered by prior
-                experience stay as they are unless you have already finished them.
+                These lessons have progress. Check a lesson to update it and reset
+                that progress. Lessons you have not started update with the course.
+                Lessons covered by prior experience stay as they are unless you have
+                progress on them.
               </p>
               <ul className="max-h-64 space-y-2 overflow-y-auto">
-                {openUpdate.completedLessons.map((lesson) => (
+                {openUpdate.lessonsWithProgress.map((lesson) => (
                   <li key={lesson.id}>
                     <label className="flex items-center gap-2 text-sm">
                       <input
@@ -149,26 +151,26 @@ export function CourseVersionUpdateBanner({ updates }: Props) {
           <DialogFooter className="gap-2 sm:flex-col sm:items-stretch">
             <Button
               type="button"
+              variant="outline"
+              disabled={busy || openUpdate == null}
+              onClick={() => openUpdate && apply(openUpdate, "keep-progress")}
+            >
+              Keep lessons with progress
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy || openUpdate == null || chosenIds.length === 0}
+              onClick={() => openUpdate && apply(openUpdate, "selected", chosenIds)}
+            >
+              Update checked lessons
+            </Button>
+            <Button
+              type="button"
               disabled={busy || openUpdate == null}
               onClick={() => openUpdate && apply(openUpdate, "all")}
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update all lessons"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy || openUpdate == null}
-              onClick={() => openUpdate && apply(openUpdate, "unfinished")}
-            >
-              Update unfinished lessons
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy || openUpdate == null}
-              onClick={() => openUpdate && apply(openUpdate, "selected", chosenIds)}
-            >
-              Update chosen lessons
             </Button>
           </DialogFooter>
         </DialogContent>

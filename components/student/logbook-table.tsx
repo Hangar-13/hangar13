@@ -23,6 +23,7 @@ export interface LogbookEntry {
   id: string;
   entry_date: string;
   hours_worked: number;
+  source?: "manual" | "prior_exp" | "coursework";
   description: string;
   status: "draft" | "submitted" | "approved" | "rejected";
   category?: string | null;
@@ -115,7 +116,7 @@ export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEnt
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4" data-tour="logbook-filters">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           <Input
@@ -155,7 +156,7 @@ export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEnt
 
       <div className="space-y-3">
         <DashboardSectionLabel>Logbook entries</DashboardSectionLabel>
-        <DashboardTableShell>
+        <DashboardTableShell dataTour="logbook-entries">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border/40 bg-muted/20">
@@ -188,7 +189,9 @@ export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEnt
                       <td className="px-4 py-3 text-sm">{formatUiDate(entry.entry_date)}</td>
                       <td className="px-4 py-3 text-sm font-medium">{taskDescription}</td>
                       <td className="px-4 py-3 text-sm font-semibold tabular-nums text-secondary">
-                        {entry.hours_worked}h
+                        {entry.source === "prior_exp" && !(Number(entry.hours_worked) > 0)
+                          ? "—"
+                          : `${entry.hours_worked}h`}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
                         {extractATAChapters(entry).map((c) => formatATA(c)).join(", ") || "—"}

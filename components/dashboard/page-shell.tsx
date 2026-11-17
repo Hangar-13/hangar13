@@ -105,12 +105,15 @@ export function DashboardStatCell({
 export function DashboardAccentBlock({
   children,
   className,
+  dataTour,
 }: {
   children: React.ReactNode;
   className?: string;
+  dataTour?: string;
 }) {
   return (
     <div
+      data-tour={dataTour}
       className={cn(
         "relative overflow-hidden rounded-md bg-primary/15 px-5 py-4 sm:px-6 sm:py-5",
         className
@@ -126,12 +129,15 @@ export function DashboardAccentBlock({
 export function DashboardTableShell({
   children,
   className,
+  dataTour,
 }: {
   children: React.ReactNode;
   className?: string;
+  dataTour?: string;
 }) {
   return (
     <div
+      data-tour={dataTour}
       className={cn(
         "overflow-x-auto rounded-md ring-1 ring-black/[0.04]",
         className

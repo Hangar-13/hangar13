@@ -8,6 +8,7 @@ export const PRIOR_OJT_BACKGROUNDS = [
   "pilot_flight",
   "military_mos",
   "ga_maintenance",
+  "repair_station",
   "part_147",
   "other",
 ] as const;
@@ -18,6 +19,7 @@ export const PRIOR_OJT_BACKGROUND_LABELS: Record<PriorOjtBackground, string> = {
   pilot_flight: "Pilot / flight experience",
   military_mos: "Military / MOS",
   ga_maintenance: "GA maintenance experience",
+  repair_station: "Repair station",
   part_147: "Part 147 school",
   other: "Other",
 };
@@ -263,7 +265,7 @@ export function generateProposedEntriesFromClaims(args: {
     const evidenceList = [...row.evidence]
       .map((e) => PRIOR_OJT_EVIDENCE_LABELS[e])
       .join(", ");
-    const hoursWorked = Math.max(1, Number((row.codeIds.length * 0.5).toFixed(2)));
+    const hoursWorked = 0;
 
     return {
       entryDate: today,

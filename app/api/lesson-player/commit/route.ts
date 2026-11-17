@@ -22,7 +22,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
   }
 
-  const record = body as { packageId?: unknown; cmi?: unknown; finish?: unknown };
+  const record = body as {
+    packageId?: unknown;
+    sittingId?: unknown;
+    cmi?: unknown;
+    finish?: unknown;
+  };
   if (typeof record.packageId !== "string" || !record.cmi || typeof record.cmi !== "object") {
     return NextResponse.json({ error: "Missing package." }, { status: 400 });
   }
@@ -32,6 +37,7 @@ export async function POST(request: Request) {
     packageId: record.packageId,
     cmi: record.cmi as Record<string, unknown>,
     finish: record.finish === true,
+    sittingId: typeof record.sittingId === "string" ? record.sittingId : null,
   });
 
   if (!result.ok) {

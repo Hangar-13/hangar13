@@ -24,7 +24,7 @@ export function LogbookExportButton({
 
   return (
     <>
-      <Button type="button" variant="outline" onClick={() => setExportOpen(true)}>
+      <Button type="button" variant="outline" data-tour="logbook-export" onClick={() => setExportOpen(true)}>
         <FileDown className="mr-2 h-4 w-4" />
         Print / Export Logs
       </Button>

@@ -12,7 +12,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "scenario": "node scripts/scenario.mjs",
+    "update-db": "node scripts/update-db.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
