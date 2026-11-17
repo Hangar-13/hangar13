@@ -91,7 +91,7 @@ export async function getTrainingPathOwnedByUser(
   const { data: path } = await supabase
     .from("training_paths")
     .select(
-      "id, name, description, created_by, is_active, organization_id, visibility"
+      "id, name, description, created_by, is_active, organization_id, visibility, is_apprentice_program, ojt_months_required"
     )
     .eq("id", trainingPathId)
     .maybeSingle();

@@ -199,6 +199,8 @@ interface AddEntryModalProps {
   defaultOpen?: boolean;
   /** When true, no trigger button is shown (modal opened programmatically only) */
   hideTrigger?: boolean;
+  /** Apprentices must attach ACS codes. The enable switch stays on and locked. */
+  requireAcsCodes?: boolean;
 }
 
 export function AddEntryModal({ 
@@ -210,7 +212,8 @@ export function AddEntryModal({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   defaultOpen = false,
-  hideTrigger = false
+  hideTrigger = false,
+  requireAcsCodes = false,
 }: AddEntryModalProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -336,7 +339,7 @@ export function AddEntryModal({
   const [viewMeta, setViewMeta] = useState<LogbookEntryStudentViewMeta | null>(null);
   const [viewMetaLoading, setViewMetaLoading] = useState(false);
   /** Student new/edit only: off by default; on when editing an entry that has ACS, or when user enables. */
-  const [enableAcsCodes, setEnableAcsCodes] = useState(false);
+  const [enableAcsCodes, setEnableAcsCodes] = useState(requireAcsCodes);
   const [acsDisableConfirmOpen, setAcsDisableConfirmOpen] = useState(false);
   const [acsListSearch, setAcsListSearch] = useState("");
   const [mentorAcsUiMode, setMentorAcsUiMode] = useState<"summary" | "edit">(
@@ -595,7 +598,7 @@ export function AddEntryModal({
       setSelectedAcsCodeIds(new Set());
       return;
     }
-    if (isStudent && isNewEntry && !enableAcsCodes) {
+    if (isStudent && isNewEntry && !enableAcsCodes && !requireAcsCodes) {
       setAcsCodes([]);
       setSelectedAcsCodeIds(new Set());
       setAcsLoading(false);
@@ -643,9 +646,14 @@ export function AddEntryModal({
       }
       setAcsLoading(false);
     });
-  }, [ataChapter, entry?.id, entry?.status, isEditMode, isNewEntry, isStudent, mentorMode, mentorAcsUiMode, studentAcsListMode, enableAcsCodes]);
+  }, [ataChapter, entry?.id, entry?.status, isEditMode, isNewEntry, isStudent, mentorMode, mentorAcsUiMode, studentAcsListMode, enableAcsCodes, requireAcsCodes]);
+
+  useEffect(() => {
+    if (requireAcsCodes) setEnableAcsCodes(true);
+  }, [requireAcsCodes, isOpen]);
 
   function handleEnableAcsChange(checked: boolean) {
+    if (requireAcsCodes) return;
     if (checked) {
       setEnableAcsCodes(true);
       return;
@@ -936,7 +944,17 @@ export function AddEntryModal({
     setIsSubmitting(true);
 
     const acsIdsToSave =
-      mentorMode || enableAcsCodes ? Array.from(selectedAcsCodeIds) : [];
+      mentorMode || enableAcsCodes || requireAcsCodes ? Array.from(selectedAcsCodeIds) : [];
+    if (
+      requireAcsCodes &&
+      isStudent &&
+      (isNewEntry || isStudentEditor) &&
+      acsIdsToSave.length === 0
+    ) {
+      setSubmitError("Select at least one ACS code.");
+      setIsSubmitting(false);
+      return;
+    }
 
     const logPageFromForm = (() => {
       const t = data.logPageNumber?.trim();
@@ -1417,11 +1435,17 @@ export function AddEntryModal({
           ) : !studentAcsListMode && !mentorMode ? (
             <div className="space-y-3">
               {isStudent && (isNewEntry || isStudentEditor) && (
-                <AcsInclusionSwitchRow
-                  id="student-logbook-enable-acs"
-                  include={enableAcsCodes}
-                  onChange={handleEnableAcsChange}
-                />
+                <span
+                  className={requireAcsCodes ? "inline-flex" : undefined}
+                  title={requireAcsCodes ? "Required for apprentices" : undefined}
+                >
+                  <AcsInclusionSwitchRow
+                    id="student-logbook-enable-acs"
+                    include={requireAcsCodes || enableAcsCodes}
+                    onChange={handleEnableAcsChange}
+                    disabled={requireAcsCodes}
+                  />
+                </span>
               )}
               {(isNewEntry || isStudentEditor) && enableAcsCodes && (
                 <div className="space-y-2">

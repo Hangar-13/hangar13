@@ -20,8 +20,11 @@ export default async function StudentCertificationPage() {
     redirect("/auth/login");
   }
 
-  const ctx = await getCurrentUserTrainingContext(supabase, user.id);
   const profile = await fetchSessionUserProfile(supabase);
+  if (!profile?.is_apprentice) {
+    redirect("/dashboard/student");
+  }
+  const ctx = await getCurrentUserTrainingContext(supabase, user.id);
   const studentName = profile?.full_name?.trim() || "Student";
 
   const [progressData, ataChapters, certificationAwards, acsProgressStats] = await Promise.all([

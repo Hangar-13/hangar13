@@ -12,6 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { purchaseTrainingPlan } from "@/app/actions/purchase-training";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAppNavigation } from "@/components/app-navigation-provider";
 
 export type TrainingPathOfferRow = {
@@ -22,25 +24,29 @@ export type TrainingPathOfferRow = {
   total_hours: number | null;
   visibility?: string;
   monetization?: string;
+  is_apprentice_program?: boolean;
 };
 
 type Props = {
   plans: TrainingPathOfferRow[];
   enrolledPlanIds: string[];
+  viewerIsApprentice?: boolean;
 };
 
 export function FindTrainingProgramsClient({
   plans,
   enrolledPlanIds,
+  viewerIsApprentice = false,
 }: Props) {
   const router = useRouter();
-  const { refreshTraineeEnrollment } = useAppNavigation();
+  const { refreshTraineeEnrollment, refreshSessionUser } = useAppNavigation();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<TrainingPathOfferRow | null>(
     null
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [startedOn, setStartedOn] = useState("");
 
   const enrolledSet = new Set(enrolledPlanIds);
 
@@ -54,7 +60,17 @@ export function FindTrainingProgramsClient({
     if (!selectedPlan) return;
     setBusy(true);
     setError(null);
-    const res = await purchaseTrainingPlan(selectedPlan.id);
+    const needsStart =
+      selectedPlan.is_apprentice_program === true && !viewerIsApprentice;
+    if (needsStart && !startedOn) {
+      setError("Enter the month your apprenticeship started.");
+      setBusy(false);
+      return;
+    }
+    const res = await purchaseTrainingPlan(
+      selectedPlan.id,
+      needsStart ? { apprenticeshipStartedOn: startedOn } : undefined
+    );
     setBusy(false);
     if (res.error) {
       setError(res.error);
@@ -63,6 +79,7 @@ export function FindTrainingProgramsClient({
     setConfirmOpen(false);
     setSelectedPlan(null);
     await refreshTraineeEnrollment();
+    await refreshSessionUser();
     router.refresh();
   }
 
@@ -134,6 +151,19 @@ export function FindTrainingProgramsClient({
               ) : null}
             </DialogDescription>
           </DialogHeader>
+          {selectedPlan?.is_apprentice_program && !viewerIsApprentice ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="enroll-apprenticeship-start">
+                When did your apprenticeship start?
+              </Label>
+              <Input
+                id="enroll-apprenticeship-start"
+                type="month"
+                value={startedOn}
+                onChange={(event) => setStartedOn(event.target.value)}
+              />
+            </div>
+          ) : null}
           {error ? (
             <p className="text-sm text-destructive" role="alert">
               {error}

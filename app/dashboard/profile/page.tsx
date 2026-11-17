@@ -4,10 +4,15 @@ import {
   DashboardPageShell,
 } from "@/components/dashboard/page-shell";
 import { ProfileForm } from "@/components/user/profile-form";
+import { CertificationStatusSection } from "@/components/user/certification-status-section";
+import { getCertificationStatus } from "@/app/actions/apprenticeship-status";
 import { getUserSettings } from "@/app/actions/user-settings";
 
 export default async function ProfilePage() {
-  const settings = await getUserSettings();
+  const [settings, certification] = await Promise.all([
+    getUserSettings(),
+    getCertificationStatus(),
+  ]);
   if ("error" in settings) {
     redirect("/auth/login");
   }
@@ -21,11 +26,16 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <DashboardContentFrame>
+      <DashboardContentFrame className="space-y-8">
         <ProfileForm
           initialFullName={settings.fullName ?? ""}
           initialEmail={settings.email ?? ""}
         />
+        {"error" in certification ? (
+          <p className="text-sm text-muted-foreground">{certification.error}</p>
+        ) : (
+          <CertificationStatusSection status={certification} />
+        )}
       </DashboardContentFrame>
     </DashboardPageShell>
   );

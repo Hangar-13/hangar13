@@ -9,6 +9,7 @@ import {
   DashboardContentFrame,
   DashboardPageShell,
 } from "@/components/dashboard/page-shell";
+import { fetchSessionUserProfile } from "@/lib/session-user-profile";
 
 export default async function FindTrainingPage() {
   const supabase = await createServerSupabaseClient();
@@ -23,15 +24,18 @@ export default async function FindTrainingPage() {
   const orgIds = await listUserOrganizationIds(supabase, user.id);
   const orFilter = discoverableTrainingPathsOrFilter(orgIds);
 
-  const [{ data: plans, error: plansError }, { data: enrollments }] =
+  const [{ data: plans, error: plansError }, { data: enrollments }, profile] =
     await Promise.all([
       supabase
         .from("training_paths")
-        .select("id, name, description, total_hours, visibility, monetization")
+        .select(
+          "id, name, description, total_hours, visibility, monetization, is_apprentice_program"
+        )
         .eq("is_active", true)
         .or(orFilter)
         .order("name", { ascending: true }),
       supabase.from("user_trainings").select("training_path_id").eq("user_id", user.id),
+      fetchSessionUserProfile(supabase),
     ]);
 
   if (plansError) {
@@ -59,8 +63,12 @@ export default async function FindTrainingPage() {
       ) : (
         <DashboardContentFrame>
           <FindTrainingProgramsClient
-            plans={plans ?? []}
+            plans={(plans ?? []).map((plan) => ({
+              ...plan,
+              is_apprentice_program: plan.is_apprentice_program === true,
+            }))}
             enrolledPlanIds={enrolledPlanIds}
+            viewerIsApprentice={profile?.is_apprentice === true}
           />
         </DashboardContentFrame>
       )}

@@ -10,6 +10,7 @@ import {
   type LogbookAdditionalInformation,
 } from "@/lib/logbook-additional-information";
 import { recordLogbookEquipmentTermsUsed } from "@/app/actions/logbook-equipment-catalog";
+import { userIsApprentice } from "@/lib/apprenticeship-progress";
 
 function normalizeLogPageNumber(
   n: number | null | undefined
@@ -17,6 +18,18 @@ function normalizeLogPageNumber(
   if (n == null) return null;
   if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1) return null;
   return n;
+}
+
+async function apprenticeManualAcsError(
+  supabase: SupabaseClient,
+  userId: string,
+  source: string | null | undefined,
+  acsIds: number[]
+): Promise<string | null> {
+  if ((source ?? "manual") !== "manual") return null;
+  if (acsIds.length > 0) return null;
+  if (!(await userIsApprentice(supabase, userId))) return null;
+  return "Select at least one ACS code. ACS codes are required for apprentices.";
 }
 
 async function recordEquipmentCatalogForEntry(
@@ -168,6 +181,14 @@ export async function createLogbookEntry(formData: {
   }
 
   const status = formData.certified ? "submitted" : "draft";
+  const acsIds = formData.selectedAcsCodeIds ?? [];
+  const acsRequiredError = await apprenticeManualAcsError(
+    supabase,
+    user.id,
+    formData.source,
+    acsIds
+  );
+  if (acsRequiredError) return { error: acsRequiredError };
 
   const nowIso = new Date().toISOString();
   // Create logbook entry
@@ -204,7 +225,6 @@ export async function createLogbookEntry(formData: {
   }
 
   // Save ACS codes to logbook_entry_acs_pending
-  const acsIds = formData.selectedAcsCodeIds ?? [];
   if (acsIds.length > 0) {
     const { error: acsError } = await supabase.from("logbook_entry_acs_pending").insert(
       acsIds.map((acs_code_id) => ({
@@ -284,6 +304,15 @@ export async function updateLogbookEntry(
     };
   }
 
+  const updateAcsIds = formData.selectedAcsCodeIds ?? [];
+  const updateAcsError = await apprenticeManualAcsError(
+    supabase,
+    user.id,
+    existingEntry.source as string | null,
+    updateAcsIds
+  );
+  if (updateAcsError) return { error: updateAcsError };
+
   const signingOpts = {
     certified: formData.certified,
     mentorSigningEnabled: formData.mentorSigningEnabled ?? false,
@@ -355,10 +384,9 @@ export async function updateLogbookEntry(
     .delete()
     .eq("logbook_entry_id", entryId);
 
-  const acsIds = formData.selectedAcsCodeIds ?? [];
-  if (acsIds.length > 0) {
+  if (updateAcsIds.length > 0) {
     const { error: acsError } = await supabase.from("logbook_entry_acs_pending").insert(
-      acsIds.map((acs_code_id) => ({
+      updateAcsIds.map((acs_code_id) => ({
         logbook_entry_id: entryId,
         acs_code_id,
       }))

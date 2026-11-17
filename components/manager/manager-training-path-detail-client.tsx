@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
 import {
@@ -31,6 +33,8 @@ type Props = {
     name: string;
     description: string | null;
     visibility: CatalogVisibility;
+    isApprenticeProgram: boolean;
+    ojtMonthsRequired: number | null;
   };
   mapItems: TrainingPathMapItem[];
   catalog: TrainingContentCatalogCourse[];
@@ -51,7 +55,28 @@ export function ManagerTrainingPathDetailClient({
     []
   );
   const [mapError, setMapError] = useState<string | null>(null);
+  const [apprenticeProgram, setApprenticeProgram] = useState(path.isApprenticeProgram);
+  const [monthsRequired, setMonthsRequired] = useState(
+    path.ojtMonthsRequired != null ? String(path.ojtMonthsRequired) : ""
+  );
+  const [apprenticeError, setApprenticeError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function saveApprenticeSettings(nextProgram: boolean, monthsText: string) {
+    setApprenticeError(null);
+    const months = Number(monthsText);
+    startTransition(async () => {
+      const result = await updateTrainingPathFields(path.id, {
+        isApprenticeProgram: nextProgram,
+        ojtMonthsRequired: nextProgram ? months : null,
+      });
+      if (!result.ok) {
+        setApprenticeError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   function beginMapEdit() {
     const sorted = [...mapItems].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -134,7 +159,51 @@ export function ManagerTrainingPathDetailClient({
             return r;
           }}
         />
-        <div className="pt-2 space-y-1">
+        <div className="space-y-3 pt-2">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={apprenticeProgram}
+              disabled={pending}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setApprenticeProgram(checked);
+                if (!checked) saveApprenticeSettings(false, monthsRequired);
+              }}
+            />
+            <span>
+              <span className="font-medium">Apprentice program</span>
+              <span className="mt-0.5 block text-muted-foreground">
+                Apprentices on this path track months of OJT. Unchecked by default.
+              </span>
+            </span>
+          </label>
+          {apprenticeProgram ? (
+            <div className="max-w-xs space-y-1.5">
+              <Label htmlFor="ojt-months-required">Months required</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="ojt-months-required"
+                  inputMode="numeric"
+                  value={monthsRequired}
+                  onChange={(event) => setMonthsRequired(event.target.value.replace(/[^\d]/g, ""))}
+                />
+                <Button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => saveApprenticeSettings(true, monthsRequired)}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {apprenticeError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {apprenticeError}
+            </p>
+          ) : null}
           <VisibilitySectionEditor
             entityKind="trainingPath"
             visibility={path.visibility}

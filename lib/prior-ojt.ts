@@ -19,7 +19,7 @@ export const PRIOR_OJT_BACKGROUND_LABELS: Record<PriorOjtBackground, string> = {
   pilot_flight: "Pilot / flight experience",
   military_mos: "Military / MOS",
   ga_maintenance: "GA maintenance experience",
-  repair_station: "Repair station",
+  repair_station: "Part 145 Repair station",
   part_147: "Part 147 school",
   other: "Other",
 };
