@@ -13,38 +13,57 @@ export const authButtonClassName =
 export function AuthShell({
   children,
   contentClassName = "max-w-[26rem]",
+  panelHref,
 }: {
   children: ReactNode;
   contentClassName?: string;
+  /** When set, the whole photo panel links here. The logo is not a separate link. */
+  panelHref?: string;
 }) {
+  const panelClassName =
+    "relative hidden min-h-screen overflow-hidden lg:block lg:w-[46%] xl:w-[52%]";
+  const panel = (
+    <>
+      <img
+        src="/marketing/maintenance-workbench.webp"
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#121417] via-[#121417]/50 to-[#121417]/20" />
+      <div className="absolute inset-x-0 top-0 z-10 p-8">
+        <Hangar13Mark href={panelHref ? undefined : "/"} onDark size="lg" />
+      </div>
+      <div className="absolute inset-x-0 bottom-0 z-10 p-8 text-white xl:p-12">
+        <p className="font-mono text-xs font-bold uppercase tracking-[.22em] text-white/70">
+          Aviation training, built right
+        </p>
+        <p className="mt-4 text-[clamp(2.5rem,5vw,4.25rem)] font-black uppercase leading-[.84] tracking-[-.07em]">
+          Log.
+          <br />
+          Learn.
+          <br />
+          Certify.
+        </p>
+      </div>
+    </>
+  );
+
   return (
     <div
       className="flex min-h-screen bg-[#F4F7F9] text-[#121417]"
       data-auth-page
     >
-      <div className="relative hidden min-h-screen overflow-hidden lg:block lg:w-[46%] xl:w-[52%]">
-        <img
-          src="/marketing/maintenance-workbench.webp"
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#121417] via-[#121417]/50 to-[#121417]/20" />
-        <div className="absolute inset-x-0 top-0 z-10 p-8">
-          <Hangar13Mark href="/" onDark size="lg" />
-        </div>
-        <div className="absolute inset-x-0 bottom-0 z-10 p-8 text-white xl:p-12">
-          <p className="font-mono text-xs font-bold uppercase tracking-[.22em] text-white/70">
-            Aviation training, built right
-          </p>
-          <p className="mt-4 text-[clamp(2.5rem,5vw,4.25rem)] font-black uppercase leading-[.84] tracking-[-.07em]">
-            Log.
-            <br />
-            Learn.
-            <br />
-            Certify.
-          </p>
-        </div>
-      </div>
+      {panelHref ? (
+        <Link
+          href={panelHref}
+          aria-label="Back to Hangar 13"
+          className={cn(panelClassName, "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-4px] focus-visible:outline-white")}
+        >
+          {panel}
+        </Link>
+      ) : (
+        <div className={panelClassName}>{panel}</div>
+      )}
 
       <div className="flex min-h-screen flex-1 flex-col">
         <div className="flex items-center justify-between border-b border-[#121417]/10 px-5 py-4 lg:hidden">

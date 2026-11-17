@@ -6,18 +6,19 @@ import {
   isValidMechanicCertificateNumber,
   sanitizeMechanicCertificateNumberInput,
 } from "@/lib/mechanic-certificate-number";
+import {
+  certificateAllowsApprentice,
+  isMechanicCertificateType,
+  type MechanicCertificateType,
+} from "@/lib/mechanic-certificate-type";
 import { monthInputToDate } from "@/lib/apprenticeship-months";
 
-export type ApprenticeshipBreakInput = {
-  startedOn: string;
-  endedOn: string | null;
-};
-
 export type CertificationStatus = {
+  mechanicCertificateType: MechanicCertificateType | null;
   mechanicCertificateNumber: string | null;
   isApprentice: boolean;
   apprenticeshipStartedOn: string | null;
-  breaks: ApprenticeshipBreakInput[];
+  declared: boolean;
 };
 
 function revalidateCertificationSurfaces() {
@@ -38,78 +39,36 @@ export async function getCertificationStatus(): Promise<
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in." };
 
-  const [{ data: profile, error }, { data: breaks, error: breakError }] = await Promise.all([
-    supabase
-      .from("users")
-      .select("mechanic_certificate_number, is_apprentice, apprenticeship_started_on")
-      .eq("id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("user_apprenticeship_breaks")
-      .select("started_on, ended_on")
-      .eq("user_id", user.id)
-      .order("started_on", { ascending: true }),
-  ]);
+  const { data: profile, error } = await supabase
+    .from("users")
+    .select(
+      "mechanic_certificate_type, mechanic_certificate_number, is_apprentice, apprenticeship_started_on, certification_declared_at"
+    )
+    .eq("id", user.id)
+    .maybeSingle();
 
-  if (error || breakError || !profile) {
+  if (error || !profile) {
     return { error: "Could not load certification status." };
   }
 
+  const rawType = (profile.mechanic_certificate_type as string | null)?.trim() ?? "";
+  const certificateType = isMechanicCertificateType(rawType) ? rawType : null;
+
   return {
+    mechanicCertificateType: certificateType,
     mechanicCertificateNumber:
       (profile.mechanic_certificate_number as string | null)?.trim() || null,
     isApprentice: Boolean(profile.is_apprentice),
     apprenticeshipStartedOn: (profile.apprenticeship_started_on as string | null) ?? null,
-    breaks: (breaks ?? []).map((row) => ({
-      startedOn: row.started_on as string,
-      endedOn: (row.ended_on as string | null) ?? null,
-    })),
+    declared: profile.certification_declared_at != null,
   };
 }
 
-export async function saveMechanicCertificate(
-  rawNumber: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Not signed in." };
-
-  const number = sanitizeMechanicCertificateNumberInput(rawNumber);
-  if (!isValidMechanicCertificateNumber(number)) {
-    return { ok: false, error: "Certificate number must be exactly 7 digits." };
-  }
-
-  const { data: taken, error: takenError } = await supabase.rpc(
-    "is_mechanic_certificate_number_taken",
-    { p_cert_number: number }
-  );
-  if (takenError) return { ok: false, error: "Could not check that certificate number." };
-
-  const { data: mine } = await supabase
-    .from("users")
-    .select("mechanic_certificate_number")
-    .eq("id", user.id)
-    .maybeSingle();
-  const own = (mine?.mechanic_certificate_number as string | null)?.trim() ?? "";
-  if (taken && own !== number) {
-    return { ok: false, error: "That certificate number is already in use." };
-  }
-
-  const { error } = await supabase
-    .from("users")
-    .update({ mechanic_certificate_number: number })
-    .eq("id", user.id);
-  if (error) return { ok: false, error: "Could not save the certificate number." };
-
-  revalidateCertificationSurfaces();
-  return { ok: true };
-}
-
-export async function saveApprenticeStatus(input: {
-  startedOn: string;
-  breaks: ApprenticeshipBreakInput[];
+export async function saveCertificationStatus(input: {
+  certificateType: MechanicCertificateType | null;
+  certificateNumber: string;
+  isApprentice: boolean;
+  startedOn: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const supabase = await createServerSupabaseClient();
   const {
@@ -117,44 +76,48 @@ export async function saveApprenticeStatus(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not signed in." };
 
-  const startedOn = monthInputToDate(input.startedOn);
-  if (!startedOn) return { ok: false, error: "Enter the month the apprenticeship started." };
-
-  const breaks: { started_on: string; ended_on: string | null }[] = [];
-  for (const item of input.breaks) {
-    const started = monthInputToDate(item.startedOn);
-    if (!started) return { ok: false, error: "Each break needs a start month." };
-    const ended = item.endedOn?.trim() ? monthInputToDate(item.endedOn) : null;
-    if (item.endedOn?.trim() && !ended) {
-      return { ok: false, error: "Each break needs a valid end month." };
+  const certificateType = input.certificateType;
+  let certificateNumber: string | null = null;
+  if (certificateType) {
+    certificateNumber = sanitizeMechanicCertificateNumberInput(input.certificateNumber);
+    if (!isValidMechanicCertificateNumber(certificateNumber)) {
+      return { ok: false, error: "Certificate number must be exactly 7 digits." };
     }
-    if (ended && ended < started) {
-      return { ok: false, error: "A break cannot end before it starts." };
+    const { data: taken, error: takenError } = await supabase.rpc(
+      "is_mechanic_certificate_number_taken",
+      { p_cert_number: certificateNumber }
+    );
+    if (takenError) return { ok: false, error: "Could not check that certificate number." };
+    const { data: mine } = await supabase
+      .from("users")
+      .select("mechanic_certificate_number")
+      .eq("id", user.id)
+      .maybeSingle();
+    const own = (mine?.mechanic_certificate_number as string | null)?.trim() ?? "";
+    if (taken && own !== certificateNumber) {
+      return { ok: false, error: "That certificate number is already in use." };
     }
-    breaks.push({ started_on: started, ended_on: ended });
   }
 
-  const { error: userError } = await supabase
+  const allowsApprentice = certificateAllowsApprentice(certificateType);
+  const isApprentice = allowsApprentice && input.isApprentice;
+  let startedOn: string | null = null;
+  if (isApprentice) {
+    startedOn = monthInputToDate(input.startedOn ?? "");
+    if (!startedOn) return { ok: false, error: "Enter the month your apprenticeship started." };
+  }
+
+  const { error } = await supabase
     .from("users")
     .update({
-      is_apprentice: true,
+      mechanic_certificate_type: certificateType,
+      mechanic_certificate_number: certificateNumber,
+      is_apprentice: isApprentice,
       apprenticeship_started_on: startedOn,
+      certification_declared_at: new Date().toISOString(),
     })
     .eq("id", user.id);
-  if (userError) return { ok: false, error: "Could not save apprenticeship status." };
-
-  const { error: deleteError } = await supabase
-    .from("user_apprenticeship_breaks")
-    .delete()
-    .eq("user_id", user.id);
-  if (deleteError) return { ok: false, error: "Could not update apprenticeship breaks." };
-
-  if (breaks.length > 0) {
-    const { error: insertError } = await supabase.from("user_apprenticeship_breaks").insert(
-      breaks.map((row) => ({ ...row, user_id: user.id }))
-    );
-    if (insertError) return { ok: false, error: "Could not save apprenticeship breaks." };
-  }
+  if (error) return { ok: false, error: "Could not save certification status." };
 
   revalidateCertificationSurfaces();
   return { ok: true };

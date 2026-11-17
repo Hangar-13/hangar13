@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { formatDocSize, listPublicDocs } from "@/lib/public-docs";
 
@@ -14,7 +15,7 @@ export default function DocsDirectoryPage() {
   const docs = listPublicDocs();
 
   return (
-    <AuthShell contentClassName="max-w-xl">
+    <AuthShell contentClassName="max-w-xl" panelHref="/">
       <div className="space-y-8">
         <h1 className="whitespace-nowrap text-[clamp(1.15rem,4.6vw,1.85rem)] font-black uppercase leading-none tracking-[-.06em]">
           Apprenticeship Framework
@@ -53,6 +54,14 @@ export default function DocsDirectoryPage() {
             ))}
           </ul>
         )}
+        <p className="text-sm text-[#515860]">
+          <Link
+            href="/"
+            className="font-semibold text-[#0055FF] underline-offset-4 hover:underline"
+          >
+            Back to Hangar 13
+          </Link>
+        </p>
       </div>
     </AuthShell>
   );

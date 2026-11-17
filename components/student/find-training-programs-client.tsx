@@ -31,12 +31,14 @@ type Props = {
   plans: TrainingPathOfferRow[];
   enrolledPlanIds: string[];
   viewerIsApprentice?: boolean;
+  viewerHoldsFullAp?: boolean;
 };
 
 export function FindTrainingProgramsClient({
   plans,
   enrolledPlanIds,
   viewerIsApprentice = false,
+  viewerHoldsFullAp = false,
 }: Props) {
   const router = useRouter();
   const { refreshTraineeEnrollment, refreshSessionUser } = useAppNavigation();
@@ -61,7 +63,9 @@ export function FindTrainingProgramsClient({
     setBusy(true);
     setError(null);
     const needsStart =
-      selectedPlan.is_apprentice_program === true && !viewerIsApprentice;
+      selectedPlan.is_apprentice_program === true &&
+      !viewerIsApprentice &&
+      !viewerHoldsFullAp;
     if (needsStart && !startedOn) {
       setError("Enter the month your apprenticeship started.");
       setBusy(false);
@@ -151,7 +155,7 @@ export function FindTrainingProgramsClient({
               ) : null}
             </DialogDescription>
           </DialogHeader>
-          {selectedPlan?.is_apprentice_program && !viewerIsApprentice ? (
+          {selectedPlan?.is_apprentice_program && !viewerIsApprentice && !viewerHoldsFullAp ? (
             <div className="space-y-1.5">
               <Label htmlFor="enroll-apprenticeship-start">
                 When did your apprenticeship start?
