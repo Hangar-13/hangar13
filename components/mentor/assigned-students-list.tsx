@@ -36,6 +36,10 @@ export interface AssignedStudent {
     target: number;
     progress: number;
   };
+  apprenticeship?: {
+    monthsCompleted: number;
+    monthsRequired: number;
+  } | null;
   weeks?: {
     current: number;
   };
@@ -200,7 +204,13 @@ export function AssignedStudentsList({
                 {student.progress && (
                   <span title="Course progress">{student.progress.overall}%</span>
                 )}
-                {student.hours && <span title="Hours">{student.hours.total.toFixed(0)}h</span>}
+                {student.apprenticeship ? (
+                  <span title="Apprenticeship months">
+                    {student.apprenticeship.monthsCompleted}/{student.apprenticeship.monthsRequired} mo
+                  </span>
+                ) : student.hours ? (
+                  <span title="Hours">{student.hours.total.toFixed(0)}h</span>
+                ) : null}
                 {student.pendingEntries !== undefined && (
                   <Button
                     variant="ghost"
@@ -338,25 +348,44 @@ export function AssignedStudentsList({
                 </div>
               )}
 
-              {student.hours && (
+              {student.apprenticeship ? (
                 <div>
                   <div className="mb-1 flex items-center justify-between text-sm">
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      Hours Progress
+                      Apprenticeship
                     </span>
                     <span className="font-semibold">
-                      {student.hours.total.toFixed(1)} / {student.hours.target}
+                      {student.apprenticeship.monthsCompleted} / {student.apprenticeship.monthsRequired} months
                     </span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-secondary">
                     <div
                       className="h-2 rounded-full bg-primary transition-all"
-                      style={{ width: `${Math.min(student.hours.progress, 100)}%` }}
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          student.apprenticeship.monthsRequired > 0
+                            ? (student.apprenticeship.monthsCompleted /
+                                student.apprenticeship.monthsRequired) *
+                              100
+                            : 0
+                        )}%`,
+                      }}
                     />
                   </div>
                 </div>
-              )}
+              ) : student.hours ? (
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      Logbook hours
+                    </span>
+                    <span className="font-semibold">{student.hours.total.toFixed(1)}</span>
+                  </div>
+                </div>
+              ) : null}
 
               {student.pendingEntries !== undefined && (
                 <Button

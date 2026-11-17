@@ -101,6 +101,8 @@ export type NavigationOptions = {
    * still keys off the active org role only.
    */
   highestOrganizationRole?: OrganizationRole | null;
+  /** Certification nav is only for apprentices. */
+  isApprentice?: boolean;
 };
 
 function showStudentNavShell(systemRole: SystemRole | null): boolean {
@@ -151,7 +153,9 @@ export function getNavigationSections(
     trainingGroup,
     { name: "Logbook", href: "/dashboard/student/logbook", icon: ClipboardList },
     { name: "Skills profile", href: "/dashboard/student/skills", icon: IdCard },
-    { name: "Certification", href: "/dashboard/student/certification", icon: ClipboardCheck },
+    ...(options?.isApprentice
+      ? [{ name: "Certification", href: "/dashboard/student/certification", icon: ClipboardCheck }]
+      : []),
   ];
 
   const managerContentNavigation: NavItem[] = [

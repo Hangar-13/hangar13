@@ -106,6 +106,8 @@ export async function updateTrainingPathFields(
     name?: string;
     description?: string | null;
     visibility?: CatalogVisibility;
+    isApprenticeProgram?: boolean;
+    ojtMonthsRequired?: number | null;
   }
 ): Promise<ActionResult> {
   const supabase = await createServerSupabaseClient();
@@ -121,7 +123,7 @@ export async function updateTrainingPathFields(
   );
   if (!path) return { ok: false, error: "Training path not found." };
 
-  const update: Record<string, string | null> = {};
+  const update: Record<string, string | number | boolean | null> = {};
   if (patch.name !== undefined) {
     const n = patch.name.trim();
     if (!n) return { ok: false, error: "Title cannot be empty." };
@@ -135,6 +137,20 @@ export async function updateTrainingPathFields(
       return { ok: false, error: "Invalid visibility." };
     }
     update.visibility = patch.visibility;
+  }
+  if (patch.isApprenticeProgram !== undefined || patch.ojtMonthsRequired !== undefined) {
+    const isProgram = patch.isApprenticeProgram === true;
+    if (!isProgram) {
+      update.is_apprentice_program = false;
+      update.ojt_months_required = null;
+    } else {
+      const months = patch.ojtMonthsRequired;
+      if (months == null || !Number.isInteger(months) || months < 1) {
+        return { ok: false, error: "Enter the number of months required." };
+      }
+      update.is_apprentice_program = true;
+      update.ojt_months_required = months;
+    }
   }
 
   if (Object.keys(update).length === 0) return { ok: true };

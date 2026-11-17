@@ -88,6 +88,7 @@ export function AppNavigationProvider({
   const [sessionUser, setSessionUser] = useState<SessionUserSummary | null>(
     null
   );
+  const [isApprentice, setIsApprentice] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -152,6 +153,7 @@ export function AppNavigationProvider({
       fullName: profile?.full_name ?? null,
       email: profile?.email ?? user.email ?? null,
     });
+    setIsApprentice(profile?.is_apprentice === true);
   }, []);
 
   const refreshOrganizations = useCallback(async () => {
@@ -177,6 +179,7 @@ export function AppNavigationProvider({
           setStudentHasTrainings(null);
           setTrainingSwitcherData(null);
           setSessionUser(null);
+          setIsApprentice(false);
           setIsLoading(false);
           return;
         }
@@ -192,6 +195,7 @@ export function AppNavigationProvider({
           fullName: profile?.full_name ?? null,
           email: profile?.email ?? user.email ?? null,
         });
+        setIsApprentice(profile?.is_apprentice === true);
 
         if (payload) {
           setActiveOrganizationId(payload.activeOrganizationId);
@@ -255,8 +259,9 @@ export function AppNavigationProvider({
     return getNavigationSections(systemRole, organizationRole, {
       studentHasTrainings: studentHasTrainings ?? true,
       highestOrganizationRole: highestOrgRole,
+      isApprentice,
     });
-  }, [systemRole, organizationRole, studentHasTrainings, memberships]);
+  }, [systemRole, organizationRole, studentHasTrainings, memberships, isApprentice]);
 
   const openMobileNav = useCallback(() => setMobileNavOpen(true), []);
 

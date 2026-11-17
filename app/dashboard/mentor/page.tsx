@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { redirect } from "next/navigation";
 import { AssignedStudentsList, type AssignedStudent } from "@/components/mentor/assigned-students-list";
+import { loadApprenticeshipProgress } from "@/lib/apprenticeship-progress";
 import { PendingLogbookEntries } from "@/components/mentor/pending-logbook-entries";
 import {
   DashboardContentFrame,
@@ -160,13 +161,20 @@ async function buildStudentCards(
       );
       const currentWeek = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
 
+      const apprenticeship = await loadApprenticeshipProgress(
+        supabase,
+        student.user_id,
+        student.training_path_id
+      );
       const expectedHoursPerWeek = 40;
       const expectedHours = currentWeek * expectedHoursPerWeek;
       const hoursProgress = (totalHours / targetHours) * 100;
       const expectedProgress = (expectedHours / targetHours) * 100;
-      let progressStatus: "on_track" | "behind_pace" | "ahead" = "on_track";
-      if (hoursProgress < expectedProgress - 10) progressStatus = "behind_pace";
-      else if (hoursProgress > expectedProgress + 10) progressStatus = "ahead";
+      let progressStatus: "on_track" | "behind_pace" | "ahead" | undefined = apprenticeship
+        ? undefined
+        : "on_track";
+      if (!apprenticeship && hoursProgress < expectedProgress - 10) progressStatus = "behind_pace";
+      else if (!apprenticeship && hoursProgress > expectedProgress + 10) progressStatus = "ahead";
 
       const {
         hoursCompleted,
@@ -190,6 +198,7 @@ async function buildStudentCards(
           lessonsTotal: totalItems,
         },
         hours: { total: totalHours, target: targetHours, progress: Math.round(hoursProgress) },
+        apprenticeship,
         weeks: { current: currentWeek },
         progressStatus,
         pendingEntries,

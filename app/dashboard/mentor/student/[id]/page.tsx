@@ -27,6 +27,7 @@ import { StudentCoursework } from "@/components/mentor/student-coursework";
 import { fetchLessonsForEnrollment } from "@/lib/training-lessons";
 import { buildVersionContextForUserTraining } from "@/lib/course-versions";
 import { computeProgramLessonWeek } from "@/lib/training-program-week";
+import { loadApprenticeshipProgress } from "@/lib/apprenticeship-progress";
 import { LessonDiscussion } from "@/components/discussion/lesson-discussion";
 import { getLessonDiscussion } from "@/app/actions/lesson-discussion";
 
@@ -142,6 +143,14 @@ async function getStudentData(studentUserId: string, mentorId: string) {
     progressStatus = "ahead";
   }
 
+  const apprenticeship = student
+    ? await loadApprenticeshipProgress(
+        supabase,
+        studentUserId,
+        student.training_path_id as string
+      )
+    : null;
+
   const snapshot = student
     ? await getEnrollmentLessonSnapshot(supabase, student.id, student)
     : {
@@ -182,7 +191,8 @@ async function getStudentData(studentUserId: string, mentorId: string) {
     weeks: {
       current: currentWeek,
     },
-    progressStatus,
+    progressStatus: apprenticeship ? undefined : progressStatus,
+    apprenticeship,
     pendingEntries: entriesByStatus.submitted.length,
   };
 }
@@ -300,7 +310,7 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
     redirect("/dashboard/mentor");
   }
 
-  const { student, entries, entriesByStatus, progress, hours, weeks, progressStatus, pendingEntries } = data;
+  const { student, entries, entriesByStatus, progress, hours, weeks, progressStatus, pendingEntries, apprenticeship } = data;
 
   const [ataChapters, acsCodesByEntry, trainingCompletions, certificationAwards] = await Promise.all([
     getAtaChapters(),
@@ -492,16 +502,33 @@ export default async function StudentDetailPage({ params, searchParams }: PagePr
             />
             <div className="min-w-0 space-y-2 px-4 first:pl-0 last:pr-0 sm:px-5">
               <DashboardStatCell
-                value={`${(hours?.total ?? 0).toFixed(1)} / ${hours?.target ?? 0}`}
-                label="Hours progress"
-                detail={`${hours?.progress ?? 0}% complete`}
+                value={
+                  apprenticeship
+                    ? `${apprenticeship.monthsCompleted} / ${apprenticeship.monthsRequired}`
+                    : (hours?.total ?? 0).toFixed(1)
+                }
+                label={apprenticeship ? "Apprenticeship months" : "Logbook hours"}
+                detail={
+                  apprenticeship
+                    ? "Months completed of months required"
+                    : "Hours logged"
+                }
               />
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                <div
-                  className="h-full rounded-full bg-primary transition-all"
-                  style={{ width: `${Math.min(hours?.progress ?? 0, 100)}%` }}
-                />
-              </div>
+              {apprenticeship ? (
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        apprenticeship.monthsRequired > 0
+                          ? (apprenticeship.monthsCompleted / apprenticeship.monthsRequired) * 100
+                          : 0
+                      )}%`,
+                    }}
+                  />
+                </div>
+              ) : null}
               <div>{getStatusBadge(progressStatus)}</div>
             </div>
             <DashboardStatCell

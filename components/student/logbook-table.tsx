@@ -41,9 +41,10 @@ interface LogbookTableProps {
   acsCodesByEntry?: Record<string, string[]>;
   initialOpenEntryId?: string;
   defaultOpenAddModal?: boolean;
+  requireAcsCodes?: boolean;
 }
 
-export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEntry = {}, initialOpenEntryId, defaultOpenAddModal }: LogbookTableProps) {
+export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEntry = {}, initialOpenEntryId, defaultOpenAddModal, requireAcsCodes = false }: LogbookTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [chapterFilter, setChapterFilter] = useState<string>("all");
@@ -236,6 +237,7 @@ export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEnt
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         <AddEntryModal
           ataChapters={ataChapters}
+          requireAcsCodes={requireAcsCodes}
           defaultOpen={defaultOpenAddModal}
           trigger={
             <Button>
@@ -254,6 +256,7 @@ export function LogbookTable({ entries, runningTotal, ataChapters, acsCodesByEnt
       <AddEntryModal
         ataChapters={ataChapters}
         entry={selectedEntry || undefined}
+        requireAcsCodes={requireAcsCodes}
         onSuccess={() => setSelectedEntry(null)}
         open={!!selectedEntry}
         onOpenChange={(open) => {

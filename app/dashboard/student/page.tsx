@@ -27,6 +27,8 @@ import {
   DashboardContentFrame,
   DashboardPageShell,
 } from "@/components/dashboard/page-shell";
+import { getCertificationStatus } from "@/app/actions/apprenticeship-status";
+import { loadApprenticeshipProgress } from "@/lib/apprenticeship-progress";
 import { getPriorOjtDashboardProgress } from "@/app/actions/prior-ojt";
 import { PriorOjtDashboardSection } from "@/components/student/prior-ojt-dashboard-section";
 import { FindTrainingDashboardSection } from "@/components/student/find-training-dashboard-section";
@@ -153,6 +155,7 @@ async function getStudentData(userId: string) {
         thisWeek: thisWeekHours,
         target: DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS,
       },
+      apprenticeship: null,
       weeks: {
         current: 0,
         total: 0,
@@ -229,6 +232,11 @@ async function getStudentData(userId: string) {
     .eq("id", student.training_path_id)
     .maybeSingle();
   trainingPlanName = pathRow?.name ?? null;
+  const apprenticeship = await loadApprenticeshipProgress(
+    supabase,
+    userId,
+    student.training_path_id
+  );
 
   return {
     hasActiveCurriculum: !!activeStudent,
@@ -247,6 +255,7 @@ async function getStudentData(userId: string) {
       thisWeek: thisWeekHours,
       target: DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS,
     },
+    apprenticeship,
     weeks: {
       current: currentWeek,
       total: totalWeeks,
@@ -297,11 +306,12 @@ export default async function StudentDashboard() {
 
   const firstName = profile.full_name?.split(" ")[0] || "there";
 
-  const [data, trainings, certifications, priorOjt] = await Promise.all([
+  const [data, trainings, certifications, priorOjt, certification] = await Promise.all([
     getStudentData(user.id),
     getTrainingCompletionsForUser(user.id),
     getCertificationAwardsForUser(user.id),
     getPriorOjtDashboardProgress(),
+    getCertificationStatus(),
   ]);
 
   const priorOjtProgress = "error" in priorOjt ? null : priorOjt;
@@ -357,7 +367,10 @@ export default async function StudentDashboard() {
       </div>
 
       {showPriorOjtSection && priorOjtProgress ? (
-        <PriorOjtDashboardSection progress={priorOjtProgress} />
+        <PriorOjtDashboardSection
+          progress={priorOjtProgress}
+          certification={"error" in certification ? null : certification}
+        />
       ) : null}
 
       {showFullDashboard ? (
@@ -376,6 +389,7 @@ export default async function StudentDashboard() {
               completedHours={data.hours.total}
               targetHours={data.hours.target}
               status={data.hours.thisWeek === 0 ? "behind" : "on_pace"}
+              apprenticeship={data.apprenticeship}
             />
           </div>
 

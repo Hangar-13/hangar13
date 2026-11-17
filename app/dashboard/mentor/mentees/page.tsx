@@ -7,6 +7,7 @@ import {
   DashboardPageShell,
 } from "@/components/dashboard/page-shell";
 import { getEnrollmentLessonSnapshot } from "@/lib/training-progress";
+import { loadApprenticeshipProgress } from "@/lib/apprenticeship-progress";
 import { pendingSubmissionCountsByUser } from "@/lib/student-coursework";
 import {
   fetchCurrentCurriculumIdsForUsers,
@@ -83,16 +84,23 @@ async function getMentees(userId: string): Promise<{ mentees: AssignedStudent[] 
       );
       const currentWeek = Math.max(1, Math.floor(daysSinceStart / 7) + 1);
 
+      const apprenticeship = await loadApprenticeshipProgress(
+        supabase,
+        student.user_id,
+        student.training_path_id
+      );
       const expectedHoursPerWeek = 40;
       const expectedHours = currentWeek * expectedHoursPerWeek;
 
       const hoursProgress = (totalHours / targetHours) * 100;
       const expectedProgress = (expectedHours / targetHours) * 100;
-      let progressStatus: "on_track" | "behind_pace" | "ahead" = "on_track";
+      let progressStatus: "on_track" | "behind_pace" | "ahead" | undefined = apprenticeship
+        ? undefined
+        : "on_track";
 
-      if (hoursProgress < expectedProgress - 10) {
+      if (!apprenticeship && hoursProgress < expectedProgress - 10) {
         progressStatus = "behind_pace";
-      } else if (hoursProgress > expectedProgress + 10) {
+      } else if (!apprenticeship && hoursProgress > expectedProgress + 10) {
         progressStatus = "ahead";
       }
 
@@ -122,6 +130,7 @@ async function getMentees(userId: string): Promise<{ mentees: AssignedStudent[] 
           target: targetHours,
           progress: Math.round(hoursProgress),
         },
+        apprenticeship,
         weeks: {
           current: currentWeek,
         },

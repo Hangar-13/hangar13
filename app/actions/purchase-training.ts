@@ -7,9 +7,11 @@ import {
 } from "@/lib/discoverable-training-paths";
 import { revalidatePath } from "next/cache";
 import { pinLatestCourseVersionsForPathEnrollment } from "@/lib/course-versions";
+import { monthInputToDate } from "@/lib/apprenticeship-months";
 
 export async function purchaseTrainingPlan(
-  trainingPathId: string
+  trainingPathId: string,
+  options?: { apprenticeshipStartedOn?: string }
 ): Promise<{ error?: string }> {
   const supabase = await createServerSupabaseClient();
   const {
@@ -25,11 +27,15 @@ export async function purchaseTrainingPlan(
       supabase
         .from("training_paths")
         .select(
-          "id, organization_id, is_active, visibility, monetization"
+          "id, organization_id, is_active, visibility, monetization, is_apprentice_program"
         )
         .eq("id", trainingPathId)
         .maybeSingle(),
-      supabase.from("users").select("role").eq("id", user.id).maybeSingle(),
+      supabase
+        .from("users")
+        .select("role, is_apprentice, apprenticeship_started_on")
+        .eq("id", user.id)
+        .maybeSingle(),
       listUserOrganizationIds(supabase, user.id),
     ]);
 
@@ -64,6 +70,15 @@ export async function purchaseTrainingPlan(
 
   if (existing) {
     return { error: "You are already enrolled in this program." };
+  }
+
+  const becomingApprentice =
+    path.is_apprentice_program === true && me?.is_apprentice !== true;
+  const apprenticeshipStartedOn = becomingApprentice
+    ? monthInputToDate(options?.apprenticeshipStartedOn ?? "")
+    : null;
+  if (becomingApprentice && !apprenticeshipStartedOn) {
+    return { error: "Enter the month your apprenticeship started." };
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -111,6 +126,19 @@ export async function purchaseTrainingPlan(
 
   if (userErr) {
     return { error: userErr.message };
+  }
+
+  if (becomingApprentice && apprenticeshipStartedOn) {
+    const { error: apprenticeError } = await supabase
+      .from("users")
+      .update({
+        is_apprentice: true,
+        apprenticeship_started_on: apprenticeshipStartedOn,
+      })
+      .eq("id", user.id);
+    if (apprenticeError) {
+      return { error: "Enrolled, but could not mark you as an apprentice." };
+    }
   }
 
   await pinLatestCourseVersionsForPathEnrollment({

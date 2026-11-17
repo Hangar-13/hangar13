@@ -90,6 +90,7 @@ export default async function LogbookPage({ searchParams }: PageProps) {
               label: `${c.chapter_number} - ${c.title}`,
             }))}
             defaultOpen={openAddModal}
+            requireAcsCodes={profile?.is_apprentice === true}
           />
         </div>
       </div>
@@ -112,6 +113,7 @@ export default async function LogbookPage({ searchParams }: PageProps) {
           acsCodesByEntry={acsCodesByEntry}
           initialOpenEntryId={openLogId}
           defaultOpenAddModal={openAddModal}
+          requireAcsCodes={profile?.is_apprentice === true}
         />
       </DashboardContentFrame>
     </DashboardPageShell>

@@ -51,6 +51,8 @@ export function ProgressTrackingDashboard({
     ataChapterHours,
     chaptersWithHours,
     logbookEntries,
+    isApprentice,
+    apprenticeship,
   } = progressData;
 
   const [selectedEntry, setSelectedEntry] = useState<ProgressData["logbookEntries"][0] | null>(null);
@@ -89,8 +91,14 @@ export function ProgressTrackingDashboard({
       .sort((a, b) => new Date(b.entry_date).getTime() - new Date(a.entry_date).getTime());
   }, [logbookEntries, selectedChapter]);
 
-  const targetHours = 5200;
   const percentageComplete = Math.round(trainingProgressPercent);
+  const monthPercent =
+    apprenticeship && apprenticeship.monthsRequired > 0
+      ? Math.min(
+          100,
+          Math.round((apprenticeship.monthsCompleted / apprenticeship.monthsRequired) * 100)
+        )
+      : 0;
   const totalATAChapters = ataChapters.length;
   const ataChaptersMap = Object.fromEntries(
     ataChapters.map((c) => [c.chapter_number, `${c.chapter_number} - ${c.title}`])
@@ -103,7 +111,7 @@ export function ProgressTrackingDashboard({
       <div className="space-y-2.5" data-tour="progress-program">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <DashboardSectionLabel>Overall program progress</DashboardSectionLabel>
+            <DashboardSectionLabel>Program progress</DashboardSectionLabel>
             <p className="mt-1 text-sm text-muted-foreground">
               {totalWeeks > 0 ? (
                 <>Week {currentWeek} of {totalWeeks}</>
@@ -122,7 +130,12 @@ export function ProgressTrackingDashboard({
 
       {showSummaryStats ? (
       <DashboardStatStrip>
-        <div className="grid grid-cols-2 gap-y-5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-y-0 lg:divide-x lg:divide-border/30">
+        <div
+          className={cn(
+            "grid grid-cols-2 gap-y-5 sm:grid-cols-3 lg:gap-y-0 lg:divide-x lg:divide-border/30",
+            apprenticeship ? "lg:grid-cols-4" : "lg:grid-cols-5"
+          )}
+        >
           <DashboardStatCell
             value={lessonsTotal > 0 ? `${trainingProgressPercent}%` : "—"}
             label="Training path"
@@ -135,13 +148,15 @@ export function ProgressTrackingDashboard({
           <DashboardStatCell
             value={totalHours}
             label="Logbook hours"
-            detail={`of ${targetHours.toLocaleString()} OJT target`}
+            detail={apprenticeship ? "Logged toward the apprenticeship" : "Logged in the logbook"}
           />
-          <DashboardStatCell
-            value={`${hoursDifference >= 0 ? "+" : ""}${hoursDifference}h`}
-            label="Pace"
-            detail={hoursDifference < 0 ? "Behind schedule" : "Ahead of schedule"}
-          />
+          {apprenticeship ? null : (
+            <DashboardStatCell
+              value={`${hoursDifference >= 0 ? "+" : ""}${hoursDifference}h`}
+              label="Pace"
+              detail={hoursDifference < 0 ? "Behind schedule" : "Ahead of schedule"}
+            />
+          )}
           <DashboardStatCell
             value={chaptersWithHours}
             label="ATA chapters"
@@ -156,37 +171,22 @@ export function ProgressTrackingDashboard({
       </DashboardStatStrip>
       ) : null}
 
+      {apprenticeship ? (
       <section className="space-y-2.5">
-        <DashboardSectionLabel>OJT hours progress</DashboardSectionLabel>
+        <DashboardSectionLabel>Apprenticeship progress</DashboardSectionLabel>
         <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="font-medium">{totalHours} hours logged</span>
-          <span className="text-muted-foreground">{targetHours.toLocaleString()} target</span>
+          <span className="font-medium">{apprenticeship.monthsCompleted} months completed</span>
+          <span className="text-muted-foreground">
+            {apprenticeship.monthsRequired} months required
+          </span>
         </div>
         <Progress
-          value={Math.min(100, (totalHours / targetHours) * 100)}
+          value={monthPercent}
           className="h-2 bg-secondary/20"
           indicatorClassName="bg-secondary"
         />
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-          <span>
-            <span className="text-muted-foreground">Expected </span>
-            <span className="font-semibold">{expectedHours}h</span>
-          </span>
-          <span>
-            <span className="text-muted-foreground">Actual </span>
-            <span className="font-semibold">{totalHours}h</span>
-          </span>
-          <span>
-            <span className="text-muted-foreground">Difference </span>
-            <span
-              className={cn("font-semibold", hoursDifference >= 0 ? "text-emerald-600" : "text-red-600")}
-            >
-              {hoursDifference >= 0 ? "+" : ""}
-              {hoursDifference}h
-            </span>
-          </span>
-        </div>
       </section>
+      ) : null}
 
       <section className="space-y-5" data-tour="progress-coverage">
         <DashboardSectionLabel>Log coverage</DashboardSectionLabel>
@@ -308,6 +308,7 @@ export function ProgressTrackingDashboard({
             label: `${c.chapter_number} - ${c.title}`,
           }))}
           entry={selectedEntry}
+          requireAcsCodes={isApprentice}
           open={!!selectedEntry}
           onOpenChange={(open) => {
             if (!open) setSelectedEntry(null);

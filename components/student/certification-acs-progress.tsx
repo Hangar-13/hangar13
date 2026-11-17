@@ -336,6 +336,7 @@ export function CertificationAcsProgress({
             label: `${c.chapter_number} - ${c.title}`,
           }))}
           entry={selectedEntry}
+          requireAcsCodes={progressData.isApprentice}
           open={!!selectedEntry}
           onOpenChange={(open) => {
             if (!open) setSelectedEntry(null);

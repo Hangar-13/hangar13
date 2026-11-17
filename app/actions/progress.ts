@@ -19,6 +19,11 @@ import {
   DEFAULT_FULL_PROGRAM_LOGBOOK_HOURS,
   expectedLogbookHoursForLessonWeek,
 } from "@/lib/training-program-week";
+import {
+  loadApprenticeshipProgress,
+  userIsApprentice,
+  type ApprenticeshipProgress,
+} from "@/lib/apprenticeship-progress";
 
 export type ProgressData = {
   student: { id: string; user_id: string; start_date: string; [key: string]: unknown };
@@ -62,6 +67,9 @@ export type ProgressData = {
     number,
     { signed_at: string; signer_initials: string; signer_full_name: string }
   >;
+  isApprentice: boolean;
+  /** Set when this enrollment is an apprentice program and the student is an apprentice. */
+  apprenticeship: ApprenticeshipProgress | null;
 };
 
 type LessonSnapshot = Awaited<ReturnType<typeof getEnrollmentLessonSnapshot>>;
@@ -193,11 +201,18 @@ async function buildProgressData(
     padChapter(c.chapter_number)
   );
 
-  const [acsCoverageByChapter, entriesByAcsCode, acsSignoffs] = await Promise.all([
-    getAcsCoverageByChapter(enrollmentIds, ataChapterNumbers),
-    getLogbookEntriesByAcsCode(enrollmentIds),
-    getAcsSignoffsByStudent(userId),
-  ]);
+  const [acsCoverageByChapter, entriesByAcsCode, acsSignoffs, isApprentice, apprenticeship] =
+    await Promise.all([
+      getAcsCoverageByChapter(enrollmentIds, ataChapterNumbers),
+      getLogbookEntriesByAcsCode(enrollmentIds),
+      getAcsSignoffsByStudent(userId),
+      userIsApprentice(supabase, userId),
+      loadApprenticeshipProgress(
+        supabase,
+        userId,
+        (studentRecord.training_path_id as string | null) ?? null
+      ),
+    ]);
 
   return {
     student: studentRecord,
@@ -219,6 +234,8 @@ async function buildProgressData(
     acsCoverageByChapter,
     entriesByAcsCode,
     acsSignoffs,
+    isApprentice,
+    apprenticeship,
   };
 }
 

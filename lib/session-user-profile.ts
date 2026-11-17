@@ -12,6 +12,9 @@ export type SessionUserProfileRow = {
   current_certification: string | null;
   default_start_path: string | null;
   prior_ojt_skipped_at: string | null;
+  is_apprentice: boolean | null;
+  apprenticeship_started_on: string | null;
+  mechanic_certificate_number: string | null;
 };
 
 /**
