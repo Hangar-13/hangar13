@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Hangar13Mark } from "@/components/brand/hangar13-mark";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { formatDocSize, listPublicDocs } from "@/lib/public-docs";
 
 export const metadata: Metadata = {
-  title: "Documents · Hangar 13",
-  description: "Documents from Hangar 13.",
+  title: "Apprenticeship Framework · Hangar 13",
+  description: "Apprenticeship framework documents from Hangar 13.",
   robots: { index: false, follow: false },
 };
 
@@ -14,40 +14,46 @@ export default function DocsDirectoryPage() {
   const docs = listPublicDocs();
 
   return (
-    <div className="marketing-page min-h-svh bg-[#F4F7F9] text-[#121417]">
-      <header className="border-b border-[#121417]/15 px-5 py-5 sm:px-8">
-        <Hangar13Mark href="/" size="lg" />
-      </header>
-      <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:px-8 sm:py-14">
-        <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-[#FF4D00]">
-          Hangar 13
-        </p>
-        <h1 className="mt-3 text-4xl font-black tracking-tight">Documents</h1>
-        <p className="mt-3 max-w-xl text-base text-[#121417]/70">
-          Open a file below.
-        </p>
+    <AuthShell contentClassName="max-w-xl">
+      <div className="space-y-8">
+        <h1 className="whitespace-nowrap text-[clamp(1.15rem,4.6vw,1.85rem)] font-black uppercase leading-none tracking-[-.06em]">
+          Apprenticeship Framework
+        </h1>
         {docs.length === 0 ? (
-          <p className="mt-10 border border-[#121417]/15 bg-white px-5 py-8 text-sm text-[#121417]/70">
+          <p className="border border-[#121417]/15 bg-white px-5 py-8 text-sm text-[#515860]">
             No documents have been added yet.
           </p>
         ) : (
-          <ul className="mt-10 divide-y divide-[#121417]/10 border border-[#121417]/15 bg-white">
-            {docs.map((doc) => (
-              <li key={doc.name}>
+          <ul className="border border-[#121417]/15 bg-white">
+            {docs.map((doc, index) => (
+              <li key={doc.name} className="border-b border-[#121417]/10 last:border-b-0">
                 <a
                   href={doc.href}
-                  className="flex items-baseline justify-between gap-4 px-5 py-4 hover:bg-[#F4F7F9]"
+                  className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-[#F4F7F9] sm:gap-4 sm:px-4"
                 >
-                  <span className="min-w-0 break-words font-semibold">{doc.name}</span>
-                  <span className="shrink-0 font-mono text-xs uppercase tracking-wide text-[#121417]/50">
-                    {doc.extension || "file"} · {formatDocSize(doc.bytes)}
+                  {doc.previewHref ? (
+                    <img
+                      src={doc.previewHref}
+                      alt=""
+                      className="h-16 w-[3.25rem] shrink-0 border border-[#121417]/15 bg-white object-cover object-top shadow-sm"
+                    />
+                  ) : null}
+                  <span className="w-6 shrink-0 font-mono text-xs font-bold text-[#FF4D00]">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span className="min-w-0 flex-1 font-semibold leading-snug">
+                    {doc.displayName}
+                  </span>
+                  <span className="shrink-0 text-right font-mono text-[10px] uppercase tracking-[.14em] text-[#515860]">
+                    {doc.extension || "file"}
+                    <span className="mt-0.5 block tracking-normal">{formatDocSize(doc.bytes)}</span>
                   </span>
                 </a>
               </li>
             ))}
           </ul>
         )}
-      </main>
-    </div>
+      </div>
+    </AuthShell>
   );
 }
