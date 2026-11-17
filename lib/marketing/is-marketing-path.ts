@@ -4,6 +4,7 @@ export function isMarketingPath(pathname: string | null | undefined): boolean {
   return (
     pathname === "/" ||
     pathname === "/join" ||
+    pathname === "/docs" ||
     pathname.startsWith("/marketing/")
   );
 }
